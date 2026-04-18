@@ -258,7 +258,24 @@ export function StudentDetailModal({ student: s, teachers, currentUser, categori
   const pw = getBirthPassword(s.birthDate);
   const copyLoginInfo = () => {
     const url = `${window.location.origin}/myryk/?code=${s.studentCode}`;
-    const text = `[My RYE-K 로그인 안내]\n접속 링크: ${url}\n회원코드: ${s.studentCode}\n비밀번호: ${pw} (생일 4자리 MMDD)\n\n링크를 클릭하면 회원코드가 자동으로 입력됩니다.\n비밀번호만 입력하시면 됩니다.`;
+    const text = [
+      `[My RYE-K 로그인 안내]`,
+      ``,
+      `📱 접속 링크: ${url}`,
+      ``,
+      `─── 아이디 (ID) ───`,
+      `• 회원코드: ${s.studentCode}`,
+      `  (링크 클릭 시 자동 입력됩니다)`,
+      `• 또는 등록된 연락처(본인 또는 보호자 번호)로도 로그인 가능합니다.`,
+      ``,
+      `─── 비밀번호 ───`,
+      `• ${s.name} 학생의 생일 4자리 (월월일일 / MMDD)`,
+      `• 비밀번호 예시: 4월 10일 생 → 0410`,
+      ``,
+      `─── 다자녀 안내 ───`,
+      `💡 같은 연락처로 등록된 자녀가 2명 이상인 경우,`,
+      `   로그인 후 상단의 [자녀 변경 🔄] 버튼으로 간편하게 전환할 수 있습니다.`,
+    ].join("\n");
     navigator.clipboard?.writeText(text).then(() => { setCopyMsg("로그인 안내가 복사되었습니다!"); setTimeout(() => setCopyMsg(""), 2000); });
   };
   return (

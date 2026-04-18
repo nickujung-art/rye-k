@@ -245,9 +245,15 @@ export function PublicParentView() {
   const [loginPw, setLoginPw] = useState("");
   const [loginErr, setLoginErr] = useState("");
   const [saveCode, setSaveCode] = useState(() => { try { return !!localStorage.getItem("ryekSavedCode"); } catch { return false; } });
-  // 다자녀 선택 모달
+  // 2단계 로그인
+  const [loginStep, setLoginStep] = useState("id"); // "id" | "pw"
+  const [pendingStudent, setPendingStudent] = useState(null);
+  // 다자녀 선택 모달 (ID 확인 후)
   const [childCandidates, setChildCandidates] = useState([]);
   const [childModalErr, setChildModalErr] = useState("");
+  // 자녀 전환 (로그인 후)
+  const [showSiblingModal, setShowSiblingModal] = useState(false);
+  const [switchErr, setSwitchErr] = useState("");
   // 읽음 추적 — localStorage에 학생별 저장
   const [lastNoteRead, setLastNoteRead] = useState(0);       // 강사 댓글 마지막 읽은 시각
   const [readNoticeIds, setReadNoticeIds] = useState(new Set()); // 읽은 공지 ID set
@@ -342,18 +348,20 @@ export function PublicParentView() {
   }, [students]);
 
   // ── 로그인 최종 처리 (상태 체크 포함) ───────────────────────────────────────
-  const doLogin = (found) => {
+  const doLogin = (found, errSetter = setLoginErr) => {
     const status = found.status || "active";
     if (status === "paused") {
-      setLoginErr("현재 휴원 중인 계정입니다. 복귀 문의는 센터로 연락주세요.");
+      errSetter("현재 휴원 중인 계정입니다. 복귀 문의는 센터로 연락주세요.");
       return false;
     }
     if (status !== "active") {
-      setLoginErr("퇴원 처리된 계정입니다. 문의사항은 센터로 연락주세요.");
+      errSetter("퇴원 처리된 계정입니다. 문의사항은 센터로 연락주세요.");
       return false;
     }
     setStudent(found);
     setLoggedIn(true);
+    setLoginStep("id");
+    setPendingStudent(null);
     try {
       localStorage.setItem("ryekPortal", JSON.stringify({ code: found.studentCode, pw: getBirthPassword(found.birthDate) }));
       if (saveCode) localStorage.setItem("ryekSavedCode", found.studentCode);
@@ -363,51 +371,69 @@ export function PublicParentView() {
     return true;
   };
 
-  // ── 회원코드 or 연락처 로그인 (다자녀 분기 포함) ────────────────────────────
-  const handleLogin = () => {
+  // ── STEP 1: ID 확인 → 대상 특정 ─────────────────────────────────────────────
+  const handleIdConfirm = () => {
     setLoginErr("");
-    if (!loginCode.trim() || !loginPw.trim()) { setLoginErr("회원코드와 비밀번호를 입력하세요."); return; }
+    if (!loginCode.trim()) { setLoginErr("회원코드 또는 연락처를 입력하세요."); return; }
 
-    // 1. 회원코드(studentCode) 우선 검색
+    // 1a. 회원코드(studentCode) 우선 검색
     const byCode = students.find(s => s.studentCode === loginCode.trim().toUpperCase());
     if (byCode) {
-      if (loginPw !== getBirthPassword(byCode.birthDate)) { setLoginErr("비밀번호가 올바르지 않습니다. (생일 4자리: MMDD)"); return; }
-      doLogin(byCode);
+      setPendingStudent(byCode);
+      setLoginPw("");
+      setLoginStep("pw");
       return;
     }
 
-    // 2. 연락처(phone / guardianPhone) 폴백 — 다자녀 지원
+    // 1b. 연락처(숫자만 추출) 검색 — 퇴원 제외
     const rawPhone = loginCode.replace(/\D/g, "");
     if (rawPhone.length >= 9) {
       const matches = students.filter(s => {
+        const st = s.status || "active";
+        if (st !== "active" && st !== "paused") return false; // 퇴원 제외
         const p = (s.phone || "").replace(/\D/g, "");
         const gp = (s.guardianPhone || "").replace(/\D/g, "");
         return p === rawPhone || gp === rawPhone;
       });
       if (matches.length === 0) { setLoginErr("회원코드 또는 연락처를 찾을 수 없습니다."); return; }
       if (matches.length === 1) {
-        if (loginPw !== getBirthPassword(matches[0].birthDate)) { setLoginErr("비밀번호가 올바르지 않습니다. (생일 4자리: MMDD)"); return; }
-        doLogin(matches[0]);
+        setPendingStudent(matches[0]);
+        setLoginPw("");
+        setLoginStep("pw");
         return;
       }
-      // 2명 이상 → 자녀 선택 모달
+      // 2명 이상 → 자녀 선택 모달 (PW 입력 전)
       setChildCandidates(matches);
       setChildModalErr("");
       return;
     }
 
-    setLoginErr("회원코드를 찾을 수 없습니다.");
+    setLoginErr("회원코드 또는 연락처를 찾을 수 없습니다.");
   };
 
-  // ── 자녀 선택 후 로그인 처리 ────────────────────────────────────────────────
+  // ── 자녀 선택 → PW 단계로 전환 (모달에서 PW는 묻지 않음) ─────────────────────
   const handleChildSelect = (child) => {
-    if (loginPw !== getBirthPassword(child.birthDate)) {
-      setChildModalErr(`${child.name}의 비밀번호가 올바르지 않습니다. (생일 4자리: MMDD)`);
-      return;
-    }
     setChildCandidates([]);
     setChildModalErr("");
-    doLogin(child);
+    setPendingStudent(child);
+    setLoginPw("");
+    setLoginStep("pw");
+  };
+
+  // ── STEP 2: 비밀번호 확인 → 로그인 ──────────────────────────────────────────
+  const handlePwConfirm = () => {
+    setLoginErr("");
+    if (!loginPw.trim()) { setLoginErr("비밀번호를 입력하세요."); return; }
+    if (loginPw !== getBirthPassword(pendingStudent.birthDate)) {
+      setLoginErr("비밀번호가 올바르지 않습니다. (생일 4자리: MMDD)"); return;
+    }
+    doLogin(pendingStudent);
+  };
+
+  // ── 로그인 후 자녀 전환 (PW 없이, 가족 인증 신뢰) ────────────────────────────
+  const handleSiblingSwitch = (sibling) => {
+    const ok = doLogin(sibling, setSwitchErr);
+    if (ok) { setShowSiblingModal(false); setSwitchErr(""); setTab("home"); }
   };
 
   const handleTabChange = (tabId) => {
@@ -419,67 +445,122 @@ export function PublicParentView() {
 
   if (loading) return <><style>{CSS}</style><div className="loading-screen"><div className="loading-logo"><Logo size={56} /></div><div className="loading-text">RYE-K</div></div></>;
 
-  // Login screen - clean white
-  if (!loggedIn) return (
-    <><style>{CSS}</style>
-    <div style={{minHeight:"100vh",minHeight:"100dvh",background:"#fff",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:20}}>
-      <div style={{width:"100%",maxWidth:380,textAlign:"center"}}>
-        <Logo size={48} />
-        <div style={{fontFamily:"'Noto Serif KR',serif",fontSize:22,fontWeight:700,color:"var(--blue)",marginTop:14}}>My RYE-K</div>
-        <div style={{fontSize:11,color:"#A1A1AA",letterSpacing:2,marginTop:4,marginBottom:36}}>RYE-K K-Culture Center</div>
-        <div style={{background:"#fff",borderRadius:20,padding:"32px 28px",boxShadow:"0 2px 24px rgba(0,0,0,.06)",border:"1px solid #F0F0F0",textAlign:"left"}}>
-          {loginErr && <div className="form-err" style={{marginBottom:14,borderRadius:10}}>⚠ {loginErr}</div>}
-          <div className="fg"><label className="fg-label">회원코드 또는 연락처</label><input className="inp" value={loginCode} onChange={e => {setLoginCode(e.target.value.toUpperCase());setLoginErr("");}} placeholder="예: RKAB12 또는 010-0000-0000" style={{fontSize:15,letterSpacing:1,textTransform:"uppercase",borderRadius:10}} onKeyDown={e=>e.key==="Enter"&&handleLogin()} /></div>
-          <div className="fg"><label className="fg-label">비밀번호 (생일 MMDD)</label><input className="inp" type="password" value={loginPw} onChange={e => {setLoginPw(e.target.value);setLoginErr("");}} placeholder="예: 0410" maxLength={4} inputMode="numeric" style={{fontSize:16,letterSpacing:4,borderRadius:10}} onKeyDown={e=>e.key==="Enter"&&handleLogin()} /></div>
-          <div style={{display:"flex",alignItems:"center",gap:7,marginBottom:14,cursor:"pointer"}} onClick={() => setSaveCode(s => !s)}>
-            <div style={{width:16,height:16,borderRadius:4,border:`1.5px solid ${saveCode?"var(--blue)":"#D0D0D0"}`,background:saveCode?"var(--blue)":"#fff",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,transition:"all .12s"}}>
-              {saveCode && <span style={{color:"#fff",fontSize:11,fontWeight:700,lineHeight:1}}>✓</span>}
+  // ── 로그인 화면 (2단계) ───────────────────────────────────────────────────────
+  if (!loggedIn) {
+    // 자녀 카드 공통 렌더 (선택 모달에서 재사용)
+    const ChildCard = ({ child, onClick }) => {
+      const insts = (child.lessons||[]).map(l=>l.instrument).filter(Boolean).join(" · ");
+      return (
+        <button onClick={onClick}
+          style={{background:"#F8FAFF",border:"2px solid #E8EAF6",borderRadius:16,padding:"18px 20px",cursor:"pointer",fontFamily:"inherit",textAlign:"left",transition:"all .15s",WebkitTapHighlightColor:"transparent",width:"100%",minHeight:72}}
+          onMouseEnter={e=>{e.currentTarget.style.border="2px solid var(--blue)";e.currentTarget.style.background="var(--blue-lt)";}}
+          onMouseLeave={e=>{e.currentTarget.style.border="2px solid #E8EAF6";e.currentTarget.style.background="#F8FAFF";}}
+        >
+          <div style={{fontSize:18,fontWeight:700,color:"var(--ink)"}}>{child.name}</div>
+          {insts && <div style={{fontSize:14,color:"var(--blue)",marginTop:4,fontWeight:500}}>{insts}</div>}
+          <div style={{fontSize:11,color:"#C0C0C0",marginTop:4,fontFamily:"monospace",letterSpacing:1}}>{child.studentCode}</div>
+        </button>
+      );
+    };
+
+    return (
+      <><style>{CSS}</style>
+      <div style={{minHeight:"100vh",minHeight:"100dvh",background:"#fff",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:20}}>
+        <div style={{width:"100%",maxWidth:380,textAlign:"center"}}>
+          <Logo size={48} />
+          <div style={{fontFamily:"'Noto Serif KR',serif",fontSize:22,fontWeight:700,color:"var(--blue)",marginTop:14}}>My RYE-K</div>
+          <div style={{fontSize:11,color:"#A1A1AA",letterSpacing:2,marginTop:4,marginBottom:36}}>RYE-K K-Culture Center</div>
+
+          <div style={{background:"#fff",borderRadius:20,padding:"32px 28px",boxShadow:"0 2px 24px rgba(0,0,0,.06)",border:"1px solid #F0F0F0",textAlign:"left"}}>
+            {loginErr && <div className="form-err" style={{marginBottom:14,borderRadius:10}}>⚠ {loginErr}</div>}
+
+            {/* ── STEP 1: ID 입력 ── */}
+            {loginStep === "id" && (<>
+              <div className="fg">
+                <label className="fg-label">회원코드 또는 등록된 연락처</label>
+                <input className="inp" value={loginCode}
+                  onChange={e=>{setLoginCode(e.target.value.toUpperCase());setLoginErr("");}}
+                  placeholder="회원코드 또는 등록된 연락처(본인/보호자)"
+                  style={{fontSize:14,letterSpacing:.5,textTransform:"uppercase",borderRadius:10}}
+                  onKeyDown={e=>e.key==="Enter"&&handleIdConfirm()} />
+              </div>
+              <div style={{display:"flex",alignItems:"center",gap:7,marginBottom:14,cursor:"pointer"}} onClick={()=>setSaveCode(s=>!s)}>
+                <div style={{width:16,height:16,borderRadius:4,border:`1.5px solid ${saveCode?"var(--blue)":"#D0D0D0"}`,background:saveCode?"var(--blue)":"#fff",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,transition:"all .12s"}}>
+                  {saveCode && <span style={{color:"#fff",fontSize:11,fontWeight:700,lineHeight:1}}>✓</span>}
+                </div>
+                <span style={{fontSize:12,color:"#888"}}>회원코드 저장</span>
+              </div>
+              <button className="btn btn-primary btn-full" style={{padding:14,fontSize:15,borderRadius:10}} onClick={handleIdConfirm}>확인 →</button>
+            </>)}
+
+            {/* ── STEP 2: 비밀번호 입력 ── */}
+            {loginStep === "pw" && pendingStudent && (<>
+              {/* 선택된 학생 카드 */}
+              <div style={{background:"var(--blue-lt)",borderRadius:12,padding:"12px 16px",marginBottom:20,display:"flex",alignItems:"center",gap:12}}>
+                <div style={{width:36,height:36,borderRadius:10,background:"var(--blue)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                  <span style={{color:"#fff",fontSize:16,fontWeight:700}}>{pendingStudent.name[0]}</span>
+                </div>
+                <div>
+                  <div style={{fontSize:15,fontWeight:700,color:"var(--ink)"}}>{pendingStudent.name}</div>
+                  <div style={{fontSize:11,color:"var(--blue)",marginTop:1}}>{(pendingStudent.lessons||[]).map(l=>l.instrument).filter(Boolean).join(" · ")}</div>
+                </div>
+              </div>
+              <div className="fg">
+                <label className="fg-label">{pendingStudent.name} 학생의 생일 4자리(MMDD)</label>
+                <input className="inp" type="password" value={loginPw}
+                  onChange={e=>{setLoginPw(e.target.value);setLoginErr("");}}
+                  placeholder="예: 0410" maxLength={4} inputMode="numeric"
+                  style={{fontSize:20,letterSpacing:6,borderRadius:10,textAlign:"center"}}
+                  autoFocus onKeyDown={e=>e.key==="Enter"&&handlePwConfirm()} />
+              </div>
+              <button className="btn btn-primary btn-full" style={{padding:14,fontSize:15,borderRadius:10,marginBottom:10}} onClick={handlePwConfirm}>로그인</button>
+              <button style={{width:"100%",background:"none",border:"1.5px solid #E8E8E8",borderRadius:10,padding:"11px",fontSize:13,color:"#888",cursor:"pointer",fontFamily:"inherit"}}
+                onClick={()=>{setLoginStep("id");setPendingStudent(null);setLoginPw("");setLoginErr("");}}>← 다시 입력</button>
+            </>)}
+          </div>
+          <div style={{marginTop:20,fontSize:11,color:"#C0C0C0",lineHeight:1.7}}>회원코드 또는 등록된 연락처(본인/보호자)로 로그인하세요.<br/>문의는 담당 강사에게 연락해 주세요.</div>
+        </div>
+      </div>
+
+      {/* ── 자녀 선택 모달 (STEP 1 → 다자녀) ── */}
+      {childCandidates.length > 0 && (
+        <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.55)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
+          <div style={{background:"#fff",borderRadius:24,padding:"32px 24px",width:"100%",maxWidth:380,boxShadow:"0 12px 48px rgba(0,0,0,.25)"}}>
+            <div style={{textAlign:"center",marginBottom:24}}>
+              <div style={{fontSize:32,marginBottom:10}}>👨‍👩‍👧‍👦</div>
+              <div style={{fontSize:18,fontWeight:700,color:"var(--ink)",fontFamily:"'Noto Serif KR',serif"}}>자녀를 선택하세요</div>
+              <div style={{fontSize:13,color:"#999",marginTop:6,lineHeight:1.5}}>수강 이력을 확인할 자녀를 눌러주세요<br/>선택 후 생일 비밀번호를 입력합니다</div>
             </div>
-            <span style={{fontSize:12,color:"#888"}}>회원코드 저장</span>
+            {childModalErr && <div className="form-err" style={{marginBottom:14,borderRadius:10,fontSize:13}}>⚠ {childModalErr}</div>}
+            <div style={{display:"flex",flexDirection:"column",gap:12}}>
+              {childCandidates.map(child => <ChildCard key={child.id} child={child} onClick={()=>handleChildSelect(child)} />)}
+            </div>
+            <button onClick={()=>{setChildCandidates([]);setChildModalErr("");}}
+              style={{width:"100%",marginTop:16,background:"none",border:"1.5px solid #E8E8E8",borderRadius:12,padding:"12px",fontSize:13,color:"#888",cursor:"pointer",fontFamily:"inherit"}}>← 돌아가기</button>
           </div>
-          <button className="btn btn-primary btn-full" style={{marginTop:0,padding:14,fontSize:15,borderRadius:10}} onClick={handleLogin}>로그인</button>
         </div>
-        <div style={{marginTop:20,fontSize:11,color:"#C0C0C0",lineHeight:1.6}}>회원코드는 담당 강사에게 문의하세요.<br/>연락처로도 로그인할 수 있습니다.</div>
-      </div>
-    </div>
-    {/* ── 자녀 선택 모달 (다자녀 가정) ── */}
-    {childCandidates.length > 0 && (
-      <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.55)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
-        <div style={{background:"#fff",borderRadius:24,padding:"32px 24px",width:"100%",maxWidth:380,boxShadow:"0 12px 48px rgba(0,0,0,.25)"}}>
-          <div style={{textAlign:"center",marginBottom:24}}>
-            <div style={{fontSize:32,marginBottom:10}}>👨‍👩‍👧‍👦</div>
-            <div style={{fontSize:18,fontWeight:700,color:"var(--ink)",fontFamily:"'Noto Serif KR',serif"}}>자녀를 선택하세요</div>
-            <div style={{fontSize:13,color:"#999",marginTop:6,lineHeight:1.5}}>수강 이력을 확인할 자녀를 눌러주세요</div>
-          </div>
-          {childModalErr && <div className="form-err" style={{marginBottom:14,borderRadius:10,fontSize:13}}>⚠ {childModalErr}</div>}
-          <div style={{display:"flex",flexDirection:"column",gap:12}}>
-            {childCandidates.map(child => {
-              const insts = (child.lessons||[]).map(l=>l.instrument).filter(Boolean).join(" · ");
-              return (
-                <button key={child.id} onClick={()=>handleChildSelect(child)}
-                  style={{background:"#F8FAFF",border:"2px solid #E8EAF6",borderRadius:16,padding:"18px 20px",cursor:"pointer",fontFamily:"inherit",textAlign:"left",transition:"all .15s",WebkitTapHighlightColor:"transparent"}}
-                  onMouseEnter={e=>{e.currentTarget.style.border="2px solid var(--blue)";e.currentTarget.style.background="var(--blue-lt)";}}
-                  onMouseLeave={e=>{e.currentTarget.style.border="2px solid #E8EAF6";e.currentTarget.style.background="#F8FAFF";}}
-                >
-                  <div style={{fontSize:18,fontWeight:700,color:"var(--ink)"}}>{child.name}</div>
-                  {insts && <div style={{fontSize:14,color:"var(--blue)",marginTop:4,fontWeight:500}}>{insts}</div>}
-                  <div style={{fontSize:11,color:"#C0C0C0",marginTop:4,fontFamily:"monospace",letterSpacing:1}}>{child.studentCode}</div>
-                </button>
-              );
-            })}
-          </div>
-          <button onClick={()=>{setChildCandidates([]);setChildModalErr("");}} style={{width:"100%",marginTop:16,background:"none",border:"1.5px solid #E8E8E8",borderRadius:12,padding:"12px",fontSize:13,color:"#888",cursor:"pointer",fontFamily:"inherit"}}>← 돌아가기</button>
-        </div>
-      </div>
-    )}
-    </>
-  );
+      )}
+      </>
+    );
+  }
 
   // Logged in - white minimal portal
   const teacher = teachers.find(t => t.id === student.teacherId);
   const sAtt = attendance.filter(a => a.studentId === student.id).sort((a, b) => (b.date||"").localeCompare(a.date||""));
   const sPay = payments.filter(p => p.studentId === student.id).sort((a, b) => (b.month||"").localeCompare(a.month||""));
   const notes = sAtt.filter(a => (a.lessonNote || a.note) && (typeof a.lessonNote === "object" ? true : (a.note && a.note.trim()))).slice(0, 30);
+
+  // 형제·자매 감지 (동일 연락처, 퇴원 제외) — 자녀 변경 버튼 노출 조건
+  const myPhone = (student.phone||"").replace(/\D/g,"");
+  const myGuardian = (student.guardianPhone||"").replace(/\D/g,"");
+  const siblings = students.filter(s => {
+    if (s.id === student.id) return false;
+    const st = s.status || "active";
+    if (st !== "active" && st !== "paused") return false;
+    const sp = (s.phone||"").replace(/\D/g,"");
+    const sgp = (s.guardianPhone||"").replace(/\D/g,"");
+    return (myPhone && (sp===myPhone||sgp===myPhone)) || (myGuardian && (sp===myGuardian||sgp===myGuardian));
+  });
   const attStatusStyle = {
     present: { color: "#22C55E", bg: "#F0FDF4", icon: "✓", text: "출석" },
     absent: { color: "#EF4444", bg: "#FEF2F2", icon: "✗", text: "결석" },
@@ -539,7 +620,15 @@ export function PublicParentView() {
           <div style={{flex:1}}>
             <div style={{fontFamily:"'Noto Serif KR',serif",fontSize:15,fontWeight:700,color:"var(--blue)"}}>My RYE-K</div>
           </div>
-          <button onClick={()=>{setLoggedIn(false);setStudent(null);setLoginCode("");setLoginPw("");setTab("home");try{localStorage.removeItem("ryekPortal");}catch{}}} style={{background:"#F5F5F5",border:"none",color:"#999",fontSize:11,padding:"6px 14px",borderRadius:8,cursor:"pointer",fontFamily:"inherit"}}>로그아웃</button>
+          <div style={{display:"flex",gap:6,alignItems:"center"}}>
+            {siblings.length > 0 && (
+              <button onClick={()=>{setShowSiblingModal(true);setSwitchErr("");}}
+                style={{background:"var(--blue-lt)",border:"1px solid rgba(43,58,159,.15)",color:"var(--blue)",fontSize:11,padding:"6px 12px",borderRadius:8,cursor:"pointer",fontFamily:"inherit",fontWeight:600,display:"flex",alignItems:"center",gap:4}}>
+                자녀 변경 🔄
+              </button>
+            )}
+            <button onClick={()=>{setLoggedIn(false);setStudent(null);setLoginCode("");setLoginPw("");setLoginStep("id");setPendingStudent(null);setTab("home");try{localStorage.removeItem("ryekPortal");}catch{}}} style={{background:"#F5F5F5",border:"none",color:"#999",fontSize:11,padding:"6px 14px",borderRadius:8,cursor:"pointer",fontFamily:"inherit"}}>로그아웃</button>
+          </div>
         </div>
       </div>
 
@@ -890,6 +979,43 @@ export function PublicParentView() {
           My RYE-K · RYE-K K-Culture Center
         </div>
       </div>
-    </div></>
+    </div>
+
+    {/* ── 자녀 전환 모달 (로그인 후) ── */}
+    {showSiblingModal && (
+      <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.55)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
+        <div style={{background:"#fff",borderRadius:24,padding:"32px 24px",width:"100%",maxWidth:380,boxShadow:"0 12px 48px rgba(0,0,0,.25)"}}>
+          <div style={{textAlign:"center",marginBottom:24}}>
+            <div style={{fontSize:32,marginBottom:10}}>🔄</div>
+            <div style={{fontSize:18,fontWeight:700,color:"var(--ink)",fontFamily:"'Noto Serif KR',serif"}}>자녀 전환</div>
+            <div style={{fontSize:13,color:"#999",marginTop:6}}>전환할 자녀를 선택하세요</div>
+          </div>
+          {switchErr && <div className="form-err" style={{marginBottom:14,borderRadius:10,fontSize:13}}>⚠ {switchErr}</div>}
+          <div style={{display:"flex",flexDirection:"column",gap:12}}>
+            {siblings.map(sib => {
+              const insts = (sib.lessons||[]).map(l=>l.instrument).filter(Boolean).join(" · ");
+              const isActive = (sib.status||"active") === "active";
+              return (
+                <button key={sib.id} onClick={()=>handleSiblingSwitch(sib)}
+                  style={{background: isActive?"#F8FAFF":"#FAFAFA",border:`2px solid ${isActive?"#E8EAF6":"#E8E8E8"}`,borderRadius:16,padding:"18px 20px",cursor:"pointer",fontFamily:"inherit",textAlign:"left",transition:"all .15s",WebkitTapHighlightColor:"transparent",width:"100%",minHeight:72,opacity:isActive?1:.7}}
+                  onMouseEnter={e=>{if(isActive){e.currentTarget.style.border="2px solid var(--blue)";e.currentTarget.style.background="var(--blue-lt)";}}}
+                  onMouseLeave={e=>{if(isActive){e.currentTarget.style.border="2px solid #E8EAF6";e.currentTarget.style.background="#F8FAFF";}}}
+                >
+                  <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                    <div style={{fontSize:18,fontWeight:700,color:"var(--ink)"}}>{sib.name}</div>
+                    {!isActive && <span style={{fontSize:11,color:"#F59E0B",background:"#FEF3C7",padding:"2px 8px",borderRadius:6,fontWeight:600}}>휴원</span>}
+                  </div>
+                  {insts && <div style={{fontSize:14,color:"var(--blue)",marginTop:4,fontWeight:500}}>{insts}</div>}
+                  <div style={{fontSize:11,color:"#C0C0C0",marginTop:4,fontFamily:"monospace",letterSpacing:1}}>{sib.studentCode}</div>
+                </button>
+              );
+            })}
+          </div>
+          <button onClick={()=>{setShowSiblingModal(false);setSwitchErr("");}}
+            style={{width:"100%",marginTop:16,background:"none",border:"1.5px solid #E8E8E8",borderRadius:12,padding:"12px",fontSize:13,color:"#888",cursor:"pointer",fontFamily:"inherit"}}>닫기</button>
+        </div>
+      </div>
+    )}
+    </>
   );
 }
