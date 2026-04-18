@@ -2,7 +2,7 @@
 
 export const RELEASE_HISTORY = [
   {
-    version: "14.0.1", // 숫자를 14.0.1로 올려서 브라우저의 캐시를 강제 갱신합니다.
+    version: "14.0.1",
     date: "2026-04-18",
     title: "따뜻한 배려와 똑똑한 관리, RYE-K v14.0",
     isMajor: true, 
@@ -27,3 +27,7 @@ export const RELEASE_HISTORY = [
     pmComment: "현장의 소중한 목소리를 반영하여 더욱 따뜻하고 편리해진 RYE-K를 만나보세요! 🚀"
   }
 ];
+
+// 아래 로직이 빠져서 빌드가 실패했습니다. (반드시 포함해주세요!)
+export const LATEST_RELEASE = RELEASE_HISTORY[0];
+export const CURRENT_VERSION = RELEASE_HISTORY[0].version;
