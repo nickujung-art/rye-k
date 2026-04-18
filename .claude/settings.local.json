@@ -18,7 +18,8 @@
       "Bash(awk 'NR>=1129 && NR<=1492' C:/Users/GIGABYTE/Coding/rye-k/src/App.jsx)",
       "Bash(awk 'NR>=2128 && NR<=2278' C:/Users/GIGABYTE/Coding/rye-k/src/App.jsx)",
       "Bash(python3 *)",
-      "Bash(xargs grep *)"
+      "Bash(xargs grep *)",
+      "Bash(git *)"
     ]
   }
 }

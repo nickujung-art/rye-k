@@ -16,6 +16,8 @@ import Dashboard from "./components/dashboard/Dashboard.jsx";
 import { PublicParentView, PublicRegisterForm } from "./components/portal/PublicPortal.jsx";
 import { LoginScreen, ProfileView } from "./components/auth/UserAuth.jsx";
 import { BottomNav, Sidebar, MoreMenu } from "./components/layout/NavLayout.jsx";
+import { UpdatePopup } from "./components/updates/UpdatePopup.jsx";
+import { SystemNewsView } from "./components/updates/SystemNewsView.jsx";
 
 // ── Storage (Firestore — 실시간 크로스플랫폼 동기화) ─────────────────────────
 const COLLECTION = "appData";
@@ -608,7 +610,7 @@ function MainApp() {
   if (!user) return <><style>{CSS}</style><LoginScreen onLogin={login} /></>;
 
   const pendingCount = canManageAll(user?.role) ? pending.length : 0;
-  const topTitle = { dashboard: "RYE-K", students: "회원 관리", attendance: "출석 체크", payments: "수납 관리", teachers: "강사 관리", notices: "공지사항", categories: "과목 관리", analytics: "현황 분석", profile: "내 정보", more: "더보기", activity: "활동 기록", pending: "등록 대기", schedule: "강사 스케줄", trash: "휴지통", studentNotices: "수강생 공지", lessonNotes: "레슨노트", institutions: "기관 관리" }[view] || "RYE-K";
+  const topTitle = { dashboard: "RYE-K", students: "회원 관리", attendance: "출석 체크", payments: "수납 관리", teachers: "강사 관리", notices: "공지사항", categories: "과목 관리", analytics: "현황 분석", profile: "내 정보", more: "더보기", activity: "활동 기록", pending: "등록 대기", schedule: "강사 스케줄", trash: "휴지통", studentNotices: "수강생 공지", lessonNotes: "레슨노트", institutions: "기관 관리", systemNews: "시스템 소식" }[view] || "RYE-K";
 
   return (
     <>
@@ -638,11 +640,14 @@ function MainApp() {
             {view === "trash" && canManageAll(user.role) && <TrashView trash={trash} onRestore={restoreFromTrash} onPermanentDelete={permanentDeleteFromTrash} />}
             {view === "studentNotices" && (canManageAll(user.role) || user.role === "teacher") && <StudentNoticeManager notices={studentNotices} students={allMembers} teachers={teachers} currentUser={user} onSave={async (upd) => { await saveStudentNotices(upd); showToast("수강생 공지가 저장되었습니다."); }} />}
             {view === "lessonNotes" && <LessonNotesView students={allMembers} teachers={teachers} currentUser={user} attendance={attendance} onSaveAttendance={async (upd) => { await saveAttendance(upd); }} />}
+            {view === "systemNews" && <SystemNewsView user={user} navigate={navigate} />}
             {view === "more" && <MoreMenu user={user} setView={navigate} onLogout={handleLogout} onResetSeed={resetSeed} counts={{ teachers: teachers.length }} pendingCount={pendingCount} darkMode={darkMode} setDarkMode={setDarkMode} trash={trash} newCommentCount={newCommentCount} />}
           </div>
         </div>
         <BottomNav view={view} setView={navigate} unpaidCount={unpaidCount} pendingCount={pendingCount} newCommentCount={newCommentCount} />
       </div>
+
+      <UpdatePopup user={user} />
 
       {modal === "sForm" && <StudentFormModal student={selected} teachers={teachers} currentUser={user} categories={categories} feePresets={feePresets} onClose={() => setModal(null)} onSave={async data => {
         const isNew = !data.id;

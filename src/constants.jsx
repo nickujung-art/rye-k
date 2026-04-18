@@ -538,4 +538,32 @@ input[type="date"]::-webkit-date-and-time-value{text-align:left}
 .tl-student-item:active{background:var(--blue-lt)}
 .tl-plus-btn{display:inline-flex;align-items:center;padding:2px 8px;font-size:12px;color:var(--blue);background:var(--blue-lt);border:none;border-radius:6px;cursor:pointer;font-family:inherit;font-weight:600;transition:all .12s;margin-left:4px}
 .tl-plus-btn:hover{background:var(--blue);color:#fff}
+
+/* ── Update Popup ─────────────────────────────────────────── */
+.update-popup .modal-h{flex-direction:column;align-items:flex-start;gap:4px}
+.up-desc{font-size:15px;line-height:1.7;color:var(--ink-60);margin:12px 0}
+.up-pm{background:var(--blue-lt);border-left:3px solid var(--blue);border-radius:var(--radius-sm);padding:12px 14px;margin-top:8px}
+.up-pm-badge{font-size:10px;font-weight:700;color:var(--blue);text-transform:uppercase;letter-spacing:.08em}
+.tag-update{background:var(--blue);color:#fff;font-weight:700}
+.tag-신규기능{background:#EEF1FF;color:var(--blue)}
+.tag-UX개선{background:var(--gold-lt);color:var(--gold-dk)}
+.tag-기능개선{background:var(--green-lt);color:var(--green)}
+.tag-버그수정{background:var(--red-lt);color:var(--red-dk)}
+
+/* ── System News Timeline ─────────────────────────────────── */
+.news-wrap{padding:16px;max-width:680px;margin:0 auto}
+.news-item{display:flex;gap:14px;margin-bottom:0}
+.news-spine{display:flex;flex-direction:column;align-items:center;padding-top:4px}
+.news-dot{width:13px;height:13px;border-radius:50%;background:var(--ink-30);flex-shrink:0}
+.news-dot.major{background:var(--blue);box-shadow:0 0 0 3px var(--blue-lt)}
+.news-line{width:2px;flex:1;background:var(--border);min-height:20px;margin-top:4px}
+.news-card{flex:1;background:var(--paper);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;margin-bottom:16px}
+.news-card.major{border-color:var(--blue);border-width:1.5px}
+.news-meta{display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap}
+.news-ver{font-size:12px;font-weight:700;color:var(--blue);background:var(--blue-lt);padding:2px 8px;border-radius:99px}
+.news-date{font-size:12px;color:var(--ink-30)}
+.news-title{font-size:15px;font-weight:700;color:var(--ink);margin-bottom:6px}
+.news-desc{font-size:13px;color:var(--ink-60);line-height:1.65}
+.news-pm{background:var(--blue-lt);border-left:3px solid var(--blue);border-radius:var(--radius-sm);padding:10px 12px;margin-top:10px;font-size:13px;color:var(--blue);font-style:italic}
+.news-tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
 `;

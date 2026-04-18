@@ -15,7 +15,7 @@ export function BottomNav({ view, setView, unpaidCount, pendingCount, newComment
   return (
     <nav className="bnav">
       {tabs.map(t => (
-        <div key={t.id} className={`bnav-item ${view === t.id || (t.id === "more" && ["teachers","notices","categories","profile","activity","pending","trash","studentNotices","analytics","lessonNotes","schedule","institutions"].includes(view)) ? "active" : ""}`} onClick={() => setView(t.id)}>
+        <div key={t.id} className={`bnav-item ${view === t.id || (t.id === "more" && ["teachers","notices","categories","profile","activity","pending","trash","studentNotices","analytics","lessonNotes","schedule","institutions","systemNews"].includes(view)) ? "active" : ""}`} onClick={() => setView(t.id)}>
           <span className="bnav-dot" />
           {t.badge > 0 && <span className="bnav-badge">{t.badge > 99 ? "99+" : t.badge}</span>}
           {t.icon}
@@ -85,6 +85,7 @@ export function Sidebar({ view, setView, user, onLogout, counts, pendingCount, d
     ...(user.role === "admin" ? [{ id: "analytics", label: "현황 분석", icon: "◈" }] : []),
     ...(canManageAll(user.role) ? [{ id: "activity", label: "활동 기록", icon: "◷" }] : []),
     ...(canManageAll(user.role) ? [{ id: "trash", label: "휴지통", icon: "🗑" }] : []),
+    { id: "systemNews", label: "시스템 소식", icon: "🔔" },
     { id: "profile", label: "내 정보", icon: "◎" },
   ];
   const isDark = darkMode === "dark" || (darkMode === null && window.matchMedia?.("(prefers-color-scheme: dark)").matches);
@@ -150,6 +151,7 @@ export function MoreMenu({ user, setView, onLogout, onResetSeed, counts, pending
     ...(user.role === "admin" ? [{ id: "analytics", label: "현황 분석", desc: "마케팅 · 보고 · 통계", icon: IC.search }] : []),
     ...(canManageAll(user.role) ? [{ id: "activity", label: "활동 기록", icon: IC.cal }] : []),
     ...(canManageAll(user.role) ? [{ id: "trash", label: "휴지통", desc: trash.length > 0 ? `${trash.length}건` : "", icon: IC.x }] : []),
+    { id: "systemNews", label: "시스템 소식", desc: "업데이트 이력 확인", icon: IC.bell },
     { id: "profile", label: "내 정보", icon: IC.teacher },
   ];
   return (
