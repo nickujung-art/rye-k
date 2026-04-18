@@ -1,3 +1,4 @@
+import { UpdatePopup } from "../updates/UpdatePopup";
 import { useState, useEffect, useRef } from "react";
 import { db, doc, setDoc, onSnapshot, firebaseSignInAnon } from "../../firebase.js";
 import { DEFAULT_CATEGORIES, TODAY_STR, CSS, DAYS, THIS_MONTH } from "../../constants.jsx";
@@ -614,6 +615,7 @@ export function PublicParentView() {
     <><style>{CSS}</style>
     <div style={{minHeight:"100vh",minHeight:"100dvh",background:"#FAFAFA"}}>
       {/* Clean white header */}
+      <UpdatePopup user={{ role: "member", id: student.id }} />
       <div style={{background:"#fff",padding:"14px 20px",paddingTop:"calc(14px + env(safe-area-inset-top,0px))",borderBottom:"1px solid #F0F0F0"}}>
         <div style={{display:"flex",alignItems:"center",gap:10,maxWidth:640,margin:"0 auto"}}>
           <Logo size={28} />
