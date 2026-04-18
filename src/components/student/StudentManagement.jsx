@@ -31,9 +31,17 @@ export function LessonEditor({ lessons, onChange, categories, teachers }) {
       {lessons.length > 0 && (
         <div style={{ marginTop: 14 }}>
           <div className="section-label">레슨 요일 · 시간 설정</div>
-          {lessons.map(l => (
+          {lessons.map(l => {
+            const isGhost = !Object.values(categories).flat().includes(l.instrument);
+            return (
             <div key={l.instrument} className="lesson-item">
-              <div className="lesson-item-head"><div className="lesson-inst-label">{l.instrument}</div></div>
+              <div className="lesson-item-head" style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                <div style={{display:"flex",alignItems:"center",gap:6}}>
+                  <div className="lesson-inst-label">{l.instrument}</div>
+                  {isGhost && <span style={{fontSize:10,color:"#92400E",background:"#FEF3C7",padding:"1px 6px",borderRadius:4,fontWeight:600}}>삭제된 과목</span>}
+                </div>
+                <button type="button" style={{background:"none",border:"1px solid var(--border)",borderRadius:4,color:"var(--red)",cursor:"pointer",fontSize:11,padding:"2px 8px",lineHeight:1.5,fontFamily:"inherit"}} onClick={()=>onChange(lessons.filter(x=>x.instrument!==l.instrument))} title="과목 제거">× 제거</button>
+              </div>
               {teachers && teachers.length > 0 && (
                 <div style={{ marginBottom: 8 }}>
                   <div style={{ fontSize: 10.5, color: "var(--ink-30)", fontWeight: 600, letterSpacing: .5, marginBottom: 4 }}>담당 강사</div>
@@ -55,7 +63,8 @@ export function LessonEditor({ lessons, onChange, categories, teachers }) {
               ))}
               <button className="add-sch-btn" onClick={() => addSch(l.instrument)}>+ 요일/시간 추가</button>
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

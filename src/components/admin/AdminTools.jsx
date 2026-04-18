@@ -242,81 +242,251 @@ export function CategoriesView({ categories, onSave, feePresets, onSaveFees }) {
   const [dirty, setDirty] = useState(false);
   const [newRentalName, setNewRentalName] = useState("");
   const [newRentalFee, setNewRentalFee] = useState("");
-  const addCat = () => { if (!newCat.trim() || cats[newCat.trim()]) return; setCats(c => ({ ...c, [newCat.trim()]: [] })); setNewCat(""); setDirty(true); };
+  // 인플레이스 에디팅 상태
+  const [editingCat, setEditingCat] = useState(null);
+  const [editingCatVal, setEditingCatVal] = useState("");
+  const [editingInst, setEditingInst] = useState(null); // {cat, inst}
+  const [editingInstVal, setEditingInstVal] = useState("");
+  const [editingRental, setEditingRental] = useState(null); // rental key
+  const [editingRentalVal, setEditingRentalVal] = useState("");
+  const [savedFlash, setSavedFlash] = useState("");
+
+  const flashSaved = (msg = "저장됨 ✓") => { setSavedFlash(msg); setTimeout(() => setSavedFlash(""), 1800); };
+
+  // ── 기본 CRUD ────────────────────────────────────────────────────────────────
+  const addCat = () => {
+    const v = newCat.trim();
+    if (!v) return;
+    if (cats[v]) { alert("이미 존재하는 카테고리명입니다."); return; }
+    setCats(c => ({ ...c, [v]: [] })); setNewCat(""); setDirty(true);
+  };
   const rmCat = cat => { const next = { ...cats }; delete next[cat]; setCats(next); setDirty(true); };
-  const addInst = cat => { const v = (newInst[cat] || "").trim(); if (!v || cats[cat].includes(v)) return; setCats(c => ({ ...c, [cat]: [...c[cat], v] })); setNewInst(x => ({ ...x, [cat]: "" })); setDirty(true); };
+  const addInst = cat => {
+    const v = (newInst[cat] || "").trim();
+    if (!v) return;
+    if (cats[cat].includes(v)) { alert("이미 존재하는 과목명입니다."); return; }
+    setCats(c => ({ ...c, [cat]: [...c[cat], v] })); setNewInst(x => ({ ...x, [cat]: "" })); setDirty(true);
+  };
   const rmInst = (cat, inst) => { setCats(c => ({ ...c, [cat]: c[cat].filter(x => x !== inst) })); setDirty(true); };
-  const addRental = () => { const name = newRentalName.trim(); if (!name) return; setFees(f => ({ ...f, ["rental:" + name]: parseInt(newRentalFee) || 0 })); setNewRentalName(""); setNewRentalFee(""); setDirty(true); };
-  const rmRental = (key) => { setFees(f => { const next = { ...f }; delete next[key]; return next; }); setDirty(true); };
-  const handleSaveAll = () => { onSave(cats); onSaveFees(fees); setDirty(false); };
+  const addRental = () => {
+    const name = newRentalName.trim();
+    if (!name) return;
+    const key = "rental:" + name;
+    if (fees[key] !== undefined) { alert("이미 존재하는 악기명입니다."); return; }
+    const next = { ...fees, [key]: parseInt(newRentalFee) || 0 };
+    setFees(next); setNewRentalName(""); setNewRentalFee(""); setDirty(true);
+    onSaveFees(next); flashSaved("악기 추가됨 ✓");
+  };
+  const rmRental = key => {
+    const next = { ...fees }; delete next[key];
+    setFees(next); setDirty(true);
+    onSaveFees(next); flashSaved("악기 삭제됨 ✓");
+  };
+
+  // ── 카테고리명 인플레이스 수정 ───────────────────────────────────────────────
+  const confirmEditCat = oldCat => {
+    const trimmed = editingCatVal.trim();
+    if (!trimmed) { setEditingCat(null); return; }
+    if (trimmed !== oldCat && cats[trimmed]) { alert("이미 존재하는 카테고리명입니다."); return; }
+    if (trimmed !== oldCat) {
+      const next = {};
+      Object.entries(cats).forEach(([k, v]) => { next[k === oldCat ? trimmed : k] = v; });
+      setCats(next); setDirty(true);
+    }
+    setEditingCat(null);
+  };
+
+  // ── 과목명 인플레이스 수정 (연동 프리셋 키도 갱신) ───────────────────────────
+  const confirmEditInst = () => {
+    if (!editingInst) return;
+    const { cat, inst: oldInst } = editingInst;
+    const trimmed = editingInstVal.trim();
+    if (!trimmed) { setEditingInst(null); return; }
+    if (trimmed !== oldInst && cats[cat].includes(trimmed)) { alert("이미 존재하는 과목명입니다."); return; }
+    if (trimmed !== oldInst) {
+      setCats(c => ({ ...c, [cat]: c[cat].map(x => x === oldInst ? trimmed : x) }));
+      setFees(f => {
+        if (f[oldInst] === undefined) return f;
+        const next = { ...f, [trimmed]: f[oldInst] };
+        delete next[oldInst];
+        return next;
+      });
+      setDirty(true);
+    }
+    setEditingInst(null);
+  };
+
+  // ── 악기 대여명 인플레이스 수정 (즉시 Firestore 저장) ────────────────────────
+  const confirmEditRental = oldKey => {
+    const trimmed = editingRentalVal.trim();
+    if (!trimmed) { setEditingRental(null); return; }
+    const newKey = "rental:" + trimmed;
+    if (newKey === oldKey) { setEditingRental(null); return; }
+    if (fees[newKey] !== undefined) { alert("이미 존재하는 악기명입니다."); return; }
+    setFees(f => {
+      const next = { ...f, [newKey]: f[oldKey] };
+      delete next[oldKey];
+      onSaveFees(next);
+      return next;
+    });
+    setEditingRental(null);
+    flashSaved("악기명 저장됨 ✓");
+  };
+
+  const handleSaveAll = () => { onSave(cats); onSaveFees(fees); setDirty(false); flashSaved("전체 저장 완료 ✓"); };
+
+  // 공통 인플레이스 확인/취소 버튼
+  const EditConfirmBtns = ({ onConfirm, onCancel }) => (
+    <>
+      <button onClick={onConfirm} style={{background:"var(--green)",border:"none",borderRadius:5,color:"#fff",fontSize:12,padding:"3px 10px",cursor:"pointer",flexShrink:0,fontFamily:"inherit"}}>✓</button>
+      <button onClick={onCancel}  style={{background:"none",border:"1px solid var(--border)",borderRadius:5,color:"var(--ink-30)",fontSize:12,padding:"3px 8px",cursor:"pointer",fontFamily:"inherit"}}>×</button>
+    </>
+  );
+
   return (
     <div>
       <div className="ph">
         <div><h1>과목 관리</h1><div className="ph-sub">관리자 전용</div></div>
-        {dirty && <button className="btn btn-primary btn-sm" onClick={handleSaveAll}>저장</button>}
+        <div style={{display:"flex",alignItems:"center",gap:10}}>
+          {savedFlash && <span style={{fontSize:12,color:"var(--green)",fontWeight:600}}>{savedFlash}</span>}
+          {dirty && <button className="btn btn-primary btn-sm" onClick={handleSaveAll}>저장</button>}
+        </div>
       </div>
-      {Object.entries(cats).map(([cat, insts]) => (
+
+      {/* ── 카테고리 목록 (가나다순) ── */}
+      {Object.entries(cats).sort(([a],[b]) => a.localeCompare(b,"ko")).map(([cat, insts]) => (
         <div key={cat} className="card" style={{ marginBottom: 10, padding: 16 }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-            <div style={{ fontFamily: "'Noto Serif KR',serif", fontSize: 14, fontWeight: 600, display: "flex", alignItems: "center", gap: 6 }}>
-              <span style={{ width: 3, height: 13, background: "linear-gradient(180deg,var(--blue),var(--gold))", display: "inline-block", borderRadius: 2 }} />
-              {cat} <span className="cat-count">{insts.length}</span>
+          {/* 카테고리 헤더 */}
+          <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom: 10 }}>
+            <div style={{ display:"flex", alignItems:"center", gap:6, flex:1 }}>
+              <span style={{ width:3, height:13, background:"linear-gradient(180deg,var(--blue),var(--gold))", display:"inline-block", borderRadius:2 }} />
+              {editingCat === cat ? (
+                <div style={{display:"flex",alignItems:"center",gap:6,flex:1}}>
+                  <input className="inp" style={{flex:1,fontSize:13,padding:"4px 8px"}} value={editingCatVal}
+                    onChange={e=>setEditingCatVal(e.target.value)}
+                    onKeyDown={e=>{if(e.key==="Enter")confirmEditCat(cat);if(e.key==="Escape")setEditingCat(null);}}
+                    autoFocus />
+                  <EditConfirmBtns onConfirm={()=>confirmEditCat(cat)} onCancel={()=>setEditingCat(null)} />
+                </div>
+              ) : (
+                <>
+                  <span onClick={()=>{setEditingCat(cat);setEditingCatVal(cat);}}
+                    title="클릭하여 카테고리명 수정"
+                    style={{fontFamily:"'Noto Serif KR',serif",fontSize:14,fontWeight:600,cursor:"pointer",borderBottom:"1px dashed transparent",transition:"border-color .15s"}}
+                    onMouseEnter={e=>e.target.style.borderBottomColor="var(--border)"}
+                    onMouseLeave={e=>e.target.style.borderBottomColor="transparent"}>
+                    {cat}
+                  </span>
+                  <span className="cat-count">{insts.length}</span>
+                </>
+              )}
             </div>
-            <button className="btn btn-danger btn-xs" onClick={() => rmCat(cat)}>삭제</button>
+            {editingCat !== cat && <button className="btn btn-danger btn-xs" onClick={() => rmCat(cat)}>삭제</button>}
           </div>
-          {insts.map(inst => (
-            <div key={inst} style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 5 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 4, background: "var(--blue-lt)", padding: "5px 10px", border: "1px solid rgba(43,58,159,.15)", borderRadius: 6, flex: 1 }}>
-                <span style={{ fontSize: 12.5, color: "var(--blue)", fontWeight: 500, flex: 1 }}>{inst}</span>
-                <button style={{ background: "none", border: "none", color: "var(--ink-30)", cursor: "pointer", fontSize: 14, lineHeight: 1, padding: "0 2px" }} onClick={() => rmInst(cat, inst)}>×</button>
+
+          {/* 과목 리스트 (가나다순) */}
+          {[...insts].sort((a,b)=>a.localeCompare(b,"ko")).map(inst => {
+            const isEditingThis = editingInst?.cat === cat && editingInst?.inst === inst;
+            return (
+              <div key={inst} style={{ display:"flex", alignItems:"center", gap:6, marginBottom:5 }}>
+                <div style={{ display:"flex", alignItems:"center", gap:4, background:"var(--blue-lt)", padding:"5px 10px", border:"1px solid rgba(43,58,159,.15)", borderRadius:6, flex:1 }}>
+                  {isEditingThis ? (
+                    <div style={{display:"flex",alignItems:"center",gap:4,flex:1}}>
+                      <input className="inp" style={{flex:1,fontSize:13,padding:"2px 6px"}} value={editingInstVal}
+                        onChange={e=>setEditingInstVal(e.target.value)}
+                        onKeyDown={e=>{if(e.key==="Enter")confirmEditInst();if(e.key==="Escape")setEditingInst(null);}}
+                        autoFocus />
+                      <EditConfirmBtns onConfirm={confirmEditInst} onCancel={()=>setEditingInst(null)} />
+                    </div>
+                  ) : (
+                    <>
+                      <span onClick={()=>{setEditingInst({cat,inst});setEditingInstVal(inst);}} title="클릭하여 과목명 수정"
+                        style={{ fontSize:12.5, color:"var(--blue)", fontWeight:500, flex:1, cursor:"pointer" }}>
+                        {inst}
+                      </span>
+                      <button style={{ background:"none", border:"none", color:"var(--ink-30)", cursor:"pointer", fontSize:14, lineHeight:1, padding:"0 2px" }} onClick={() => rmInst(cat, inst)}>×</button>
+                    </>
+                  )}
+                </div>
+                {/* 기본 수강료 */}
+                <div style={{position:"relative",width:105,flexShrink:0}}>
+                  <input className="inp" inputMode="numeric"
+                    value={fees[inst] ? fees[inst].toLocaleString("ko-KR") : ""}
+                    onChange={e => { setFees(f => ({...f, [inst]: parseInt(e.target.value.replace(/[^\d]/g,"")) || 0})); setDirty(true); }}
+                    placeholder="기본료" style={{fontSize:11,padding:"5px 22px 5px 7px"}} />
+                  <span style={{position:"absolute",right:6,top:"50%",transform:"translateY(-50%)",fontSize:10,color:"var(--ink-30)",pointerEvents:"none"}}>원</span>
+                </div>
               </div>
-              <div style={{position:"relative",width:105,flexShrink:0}}>
-                <input className="inp" inputMode="numeric" value={fees[inst] ? fees[inst].toLocaleString("ko-KR") : ""} onChange={e => { setFees(f => ({...f, [inst]: parseInt(e.target.value.replace(/[^\d]/g,"")) || 0})); setDirty(true); }} placeholder="기본료" style={{fontSize:11,padding:"5px 22px 5px 7px"}} />
-                <span style={{position:"absolute",right:6,top:"50%",transform:"translateY(-50%)",fontSize:10,color:"var(--ink-30)",pointerEvents:"none"}}>원</span>
-              </div>
-            </div>
-          ))}
-          <div style={{ display: "flex", gap: 8 }}>
-            <input className="inp" style={{ flex: 1 }} value={newInst[cat] || ""} onChange={e => setNewInst(x => ({ ...x, [cat]: e.target.value }))} placeholder="새 과목명" onKeyDown={e => e.key === "Enter" && addInst(cat)} />
+            );
+          })}
+
+          <div style={{ display:"flex", gap:8 }}>
+            <input className="inp" style={{ flex:1 }} value={newInst[cat] || ""} onChange={e => setNewInst(x => ({ ...x, [cat]: e.target.value }))} placeholder="새 과목명" onKeyDown={e => e.key === "Enter" && addInst(cat)} />
             <button className="btn btn-green btn-sm" onClick={() => addInst(cat)}>추가</button>
           </div>
         </div>
       ))}
-      {/* 악기 대여료 설정 */}
+
+      {/* ── 악기 대여료 설정 (가나다순, 인플레이스+즉시저장) ── */}
       <div className="card" style={{ marginBottom: 10, padding: 16 }}>
-        <div style={{ fontFamily: "'Noto Serif KR',serif", fontSize: 14, fontWeight: 600, marginBottom: 12, display: "flex", alignItems: "center", gap: 6 }}>
-          <span style={{ width: 3, height: 13, background: "linear-gradient(180deg,var(--gold),var(--gold-dk))", display: "inline-block", borderRadius: 2 }} />
+        <div style={{ fontFamily:"'Noto Serif KR',serif", fontSize:14, fontWeight:600, marginBottom:12, display:"flex", alignItems:"center", gap:6 }}>
+          <span style={{ width:3, height:13, background:"linear-gradient(180deg,var(--gold),var(--gold-dk))", display:"inline-block", borderRadius:2 }} />
           악기 대여료 설정
-          <span style={{ fontSize: 11, fontWeight: 400, color: "var(--ink-30)", marginLeft: 4 }}>회원 등록 시 대여 종류 선택에 사용됩니다</span>
         </div>
-        {Object.entries(fees).filter(([k]) => k.startsWith("rental:")).map(([key, fee]) => (
-          <div key={key} style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 5 }}>
-            <div style={{ flex: 1, background: "var(--gold-lt)", padding: "5px 10px", border: "1px solid rgba(245,168,0,.2)", borderRadius: 6, fontSize: 12.5, color: "var(--gold-dk)", fontWeight: 500 }}>
-              {key.replace("rental:", "")}
+
+        {Object.entries(fees).filter(([k]) => k.startsWith("rental:")).sort(([a],[b])=>a.localeCompare(b,"ko")).map(([key, fee]) => (
+          <div key={key} style={{ display:"flex", alignItems:"center", gap:6, marginBottom:6 }}>
+            {/* 악기명 (인플레이스 수정, 즉시 저장) */}
+            {editingRental === key ? (
+              <div style={{flex:1,display:"flex",alignItems:"center",gap:6}}>
+                <input className="inp" style={{flex:1,fontSize:13,padding:"5px 8px"}} value={editingRentalVal}
+                  onChange={e=>setEditingRentalVal(e.target.value)}
+                  onKeyDown={e=>{if(e.key==="Enter")confirmEditRental(key);if(e.key==="Escape")setEditingRental(null);}}
+                  autoFocus />
+                <EditConfirmBtns onConfirm={()=>confirmEditRental(key)} onCancel={()=>setEditingRental(null)} />
+              </div>
+            ) : (
+              <div onClick={()=>{setEditingRental(key);setEditingRentalVal(key.replace("rental:",""));}}
+                title="클릭하여 악기명 수정"
+                style={{ flex:1, background:"var(--gold-lt)", padding:"6px 10px", border:"1px solid rgba(245,168,0,.25)", borderRadius:6, fontSize:12.5, color:"var(--gold-dk)", fontWeight:500, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+                <span>{key.replace("rental:", "")}</span>
+                <span style={{fontSize:11,color:"var(--ink-30)",fontWeight:400}}>✎</span>
+              </div>
+            )}
+            {/* 대여료 (blur 시 즉시 Firestore 저장) */}
+            <div style={{ position:"relative", width:110, flexShrink:0 }}>
+              <input className="inp" inputMode="numeric"
+                value={fee ? fee.toLocaleString("ko-KR") : ""}
+                onChange={e => { const v = parseInt(e.target.value.replace(/[^\d]/g,"")) || 0; setFees(f => ({ ...f, [key]: v })); setDirty(true); }}
+                onBlur={e => {
+                  const v = parseInt(e.target.value.replace(/[^\d]/g,"")) || 0;
+                  const next = { ...fees, [key]: v };
+                  setFees(next);
+                  onSaveFees(next);
+                  flashSaved("대여료 저장됨 ✓");
+                }}
+                placeholder="대여료" style={{ fontSize:11, padding:"5px 22px 5px 7px" }} />
+              <span style={{ position:"absolute", right:6, top:"50%", transform:"translateY(-50%)", fontSize:10, color:"var(--ink-30)", pointerEvents:"none" }}>원/월</span>
             </div>
-            <div style={{ position: "relative", width: 110, flexShrink: 0 }}>
-              <input className="inp" inputMode="numeric" value={fee ? fee.toLocaleString("ko-KR") : ""}
-                onChange={e => { setFees(f => ({ ...f, [key]: parseInt(e.target.value.replace(/[^\d]/g, "")) || 0 })); setDirty(true); }}
-                placeholder="대여료" style={{ fontSize: 11, padding: "5px 22px 5px 7px" }} />
-              <span style={{ position: "absolute", right: 6, top: "50%", transform: "translateY(-50%)", fontSize: 10, color: "var(--ink-30)", pointerEvents: "none" }}>원/월</span>
-            </div>
-            <button style={{ background: "none", border: "none", color: "var(--ink-30)", cursor: "pointer", fontSize: 16, padding: "0 4px", lineHeight: 1 }} onClick={() => rmRental(key)}>×</button>
+            <button style={{ background:"none", border:"none", color:"var(--ink-30)", cursor:"pointer", fontSize:16, padding:"0 4px", lineHeight:1 }} onClick={() => rmRental(key)}>×</button>
           </div>
         ))}
-        <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
-          <input className="inp" style={{ flex: 2 }} value={newRentalName} onChange={e => setNewRentalName(e.target.value)} placeholder="종류명 (예: 해금-입문용)" onKeyDown={e => e.key === "Enter" && addRental()} />
-          <div style={{ position: "relative", flex: 1 }}>
-            <input className="inp" inputMode="numeric" value={newRentalFee} onChange={e => setNewRentalFee(e.target.value.replace(/[^\d]/g, ""))} placeholder="대여료" style={{ paddingRight: 24 }} onKeyDown={e => e.key === "Enter" && addRental()} />
-            <span style={{ position: "absolute", right: 6, top: "50%", transform: "translateY(-50%)", fontSize: 10, color: "var(--ink-30)", pointerEvents: "none" }}>원</span>
+
+        <div style={{ display:"flex", gap:6, marginTop:8 }}>
+          <input className="inp" style={{ flex:2 }} value={newRentalName} onChange={e => setNewRentalName(e.target.value)} placeholder="종류명 (예: 해금-입문용)" onKeyDown={e => e.key === "Enter" && addRental()} />
+          <div style={{ position:"relative", flex:1 }}>
+            <input className="inp" inputMode="numeric" value={newRentalFee} onChange={e => setNewRentalFee(e.target.value.replace(/[^\d]/g,""))} placeholder="대여료" style={{ paddingRight:24 }} onKeyDown={e => e.key === "Enter" && addRental()} />
+            <span style={{ position:"absolute", right:6, top:"50%", transform:"translateY(-50%)", fontSize:10, color:"var(--ink-30)", pointerEvents:"none" }}>원</span>
           </div>
           <button className="btn btn-gold btn-sm" onClick={addRental}>추가</button>
         </div>
       </div>
 
-      <div className="card" style={{ padding: 16, borderStyle: "dashed" }}>
-        <div style={{ fontFamily: "'Noto Serif KR',serif", fontSize: 13, fontWeight: 600, marginBottom: 10 }}>새 카테고리</div>
-        <div style={{ display: "flex", gap: 8 }}>
-          <input className="inp" style={{ flex: 1 }} value={newCat} onChange={e => setNewCat(e.target.value)} placeholder="카테고리 이름" onKeyDown={e => e.key === "Enter" && addCat()} />
+      {/* ── 새 카테고리 ── */}
+      <div className="card" style={{ padding:16, borderStyle:"dashed" }}>
+        <div style={{ fontFamily:"'Noto Serif KR',serif", fontSize:13, fontWeight:600, marginBottom:10 }}>새 카테고리</div>
+        <div style={{ display:"flex", gap:8 }}>
+          <input className="inp" style={{ flex:1 }} value={newCat} onChange={e => setNewCat(e.target.value)} placeholder="카테고리 이름" onKeyDown={e => e.key === "Enter" && addCat()} />
           <button className="btn btn-primary btn-sm" onClick={addCat}>추가</button>
         </div>
       </div>
