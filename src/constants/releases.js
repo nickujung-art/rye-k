@@ -2,7 +2,7 @@
 
 export const RELEASE_HISTORY = [
   {
-    version: "14.0.0",
+    version: "14.0.1",
     date: "2026-04-18",
     title: "따뜻한 배려와 똑똑한 관리, RYE-K v14.0",
     isMajor: true, // true면 로그인 시 팝업이 뜹니다.
