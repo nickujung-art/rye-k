@@ -1,5 +1,6 @@
 // src/constants/releases.js
 
+// 1. 기본 데이터 배열
 export const RELEASE_HISTORY = [
   {
     version: "14.0.1",
@@ -28,6 +29,7 @@ export const RELEASE_HISTORY = [
   }
 ];
 
-// 아래 로직이 빠져서 빌드가 실패했습니다. (반드시 포함해주세요!)
-export const LATEST_RELEASE = RELEASE_HISTORY[0];
-export const CURRENT_VERSION = RELEASE_HISTORY[0].version;
+// 2. 다른 파일들이 각자 다른 이름으로 불러도 다 대답해주는 '이름표' 모음 (빌드 에러 방지용)
+export const RELEASES = RELEASE_HISTORY;           // SystemNewsView.jsx 가 찾는 이름
+export const LATEST_RELEASE = RELEASE_HISTORY[0];  // UpdatePopup.jsx 가 찾는 이름
+export const CURRENT_VERSION = RELEASE_HISTORY[0].version; // UpdatePopup.jsx 가 찾는 이름
