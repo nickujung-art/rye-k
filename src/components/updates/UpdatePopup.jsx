@@ -15,12 +15,19 @@ export function UpdatePopup({ user }) {
 
   if (!visible) return null;
 
+  const displayFeatures = LATEST_RELEASE.features
+  ? LATEST_RELEASE.features.filter(f => f.target.includes(user.role))
+  : [];
+
+if (displayFeatures.length === 0) return null; // 권한에 맞는 내용이 없으면 팝업을 띄우지 않음
+
   const handleConfirm = () => {
     localStorage.setItem("ryek_lastSeenVersion", CURRENT_VERSION);
     setVisible(false);
   };
 
-  const { version, title, tags, description, pmComment } = LATEST_RELEASE;
+  // [수정 후] (description을 지우고 features를 넣습니다)
+  const { version, title, tags, pmComment } = LATEST_RELEASE;
 
   return (
     <div className="mb" onClick={e => e.target === e.currentTarget && handleConfirm()}>
@@ -40,12 +47,13 @@ export function UpdatePopup({ user }) {
               ))}
             </div>
           )}
-          <p className="up-desc" style={{ whiteSpace: "pre-wrap" }}>{description}</p>
-          {pmComment && (
-            <div className="up-pm">
-              <div className="up-pm-badge">PM NOTE</div>
-              <p style={{ marginTop: 4, fontSize: 13, color: "var(--ink-60)", lineHeight: 1.65 }}>{pmComment}</p>
-            </div>
+          <div className="up-desc" style={{ whiteSpace: "pre-wrap" }}>
+            {displayFeatures.map((f, i) => (
+              <div key={i} style={{ marginBottom: 12 }}>
+               • {f.text}
+              </div>
+             ))}
+          </div>
           )}
         </div>
         <div className="modal-f">
