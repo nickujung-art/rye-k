@@ -245,6 +245,9 @@ export function PublicParentView() {
   const [loginPw, setLoginPw] = useState("");
   const [loginErr, setLoginErr] = useState("");
   const [saveCode, setSaveCode] = useState(() => { try { return !!localStorage.getItem("ryekSavedCode"); } catch { return false; } });
+  // 다자녀 선택 모달
+  const [childCandidates, setChildCandidates] = useState([]);
+  const [childModalErr, setChildModalErr] = useState("");
   // 읽음 추적 — localStorage에 학생별 저장
   const [lastNoteRead, setLastNoteRead] = useState(0);       // 강사 댓글 마지막 읽은 시각
   const [readNoticeIds, setReadNoticeIds] = useState(new Set()); // 읽은 공지 ID set
@@ -314,14 +317,14 @@ export function PublicParentView() {
     return () => unsubscribes.forEach(u => u());
   }, []);
 
-  // 데이터 로드 후 sessionStorage로 자동 로그인
+  // 데이터 로드 후 localStorage로 자동 로그인 (활성 회원만)
   useEffect(() => {
     if (!loading && students.length > 0 && !loggedIn) {
       try {
         const saved = JSON.parse(localStorage.getItem("ryekPortal") || "null");
         if (saved?.code && saved?.pw) {
           const found = students.find(s => s.studentCode === saved.code);
-          if (found && getBirthPassword(found.birthDate) === saved.pw) {
+          if (found && getBirthPassword(found.birthDate) === saved.pw && (found.status || "active") === "active") {
             setStudent(found);
             setLoggedIn(true);
             initReadState(found.id);
@@ -338,22 +341,73 @@ export function PublicParentView() {
     }
   }, [students]);
 
-  const handleLogin = () => {
-    setLoginErr("");
-    if (!loginCode.trim() || !loginPw.trim()) { setLoginErr("회원코드와 비밀번호를 입력하세요."); return; }
-    // 식별자: studentCode (연락처 중복 형제·자매 문제 방지 — phone은 사용하지 않음)
-    const found = students.find(s => s.studentCode === loginCode.trim().toUpperCase());
-    if (!found) { setLoginErr("회원코드를 찾을 수 없습니다."); return; }
-    const expectedPw = getBirthPassword(found.birthDate);
-    if (loginPw !== expectedPw) { setLoginErr("비밀번호가 올바르지 않습니다. (생일 4자리: MMDD)"); return; }
+  // ── 로그인 최종 처리 (상태 체크 포함) ───────────────────────────────────────
+  const doLogin = (found) => {
+    const status = found.status || "active";
+    if (status === "paused") {
+      setLoginErr("현재 휴원 중인 계정입니다. 복귀 문의는 센터로 연락주세요.");
+      return false;
+    }
+    if (status !== "active") {
+      setLoginErr("퇴원 처리된 계정입니다. 문의사항은 센터로 연락주세요.");
+      return false;
+    }
     setStudent(found);
     setLoggedIn(true);
     try {
-      localStorage.setItem("ryekPortal", JSON.stringify({ code: found.studentCode, pw: loginPw }));
+      localStorage.setItem("ryekPortal", JSON.stringify({ code: found.studentCode, pw: getBirthPassword(found.birthDate) }));
       if (saveCode) localStorage.setItem("ryekSavedCode", found.studentCode);
       else localStorage.removeItem("ryekSavedCode");
     } catch {}
     initReadState(found.id);
+    return true;
+  };
+
+  // ── 회원코드 or 연락처 로그인 (다자녀 분기 포함) ────────────────────────────
+  const handleLogin = () => {
+    setLoginErr("");
+    if (!loginCode.trim() || !loginPw.trim()) { setLoginErr("회원코드와 비밀번호를 입력하세요."); return; }
+
+    // 1. 회원코드(studentCode) 우선 검색
+    const byCode = students.find(s => s.studentCode === loginCode.trim().toUpperCase());
+    if (byCode) {
+      if (loginPw !== getBirthPassword(byCode.birthDate)) { setLoginErr("비밀번호가 올바르지 않습니다. (생일 4자리: MMDD)"); return; }
+      doLogin(byCode);
+      return;
+    }
+
+    // 2. 연락처(phone / guardianPhone) 폴백 — 다자녀 지원
+    const rawPhone = loginCode.replace(/\D/g, "");
+    if (rawPhone.length >= 9) {
+      const matches = students.filter(s => {
+        const p = (s.phone || "").replace(/\D/g, "");
+        const gp = (s.guardianPhone || "").replace(/\D/g, "");
+        return p === rawPhone || gp === rawPhone;
+      });
+      if (matches.length === 0) { setLoginErr("회원코드 또는 연락처를 찾을 수 없습니다."); return; }
+      if (matches.length === 1) {
+        if (loginPw !== getBirthPassword(matches[0].birthDate)) { setLoginErr("비밀번호가 올바르지 않습니다. (생일 4자리: MMDD)"); return; }
+        doLogin(matches[0]);
+        return;
+      }
+      // 2명 이상 → 자녀 선택 모달
+      setChildCandidates(matches);
+      setChildModalErr("");
+      return;
+    }
+
+    setLoginErr("회원코드를 찾을 수 없습니다.");
+  };
+
+  // ── 자녀 선택 후 로그인 처리 ────────────────────────────────────────────────
+  const handleChildSelect = (child) => {
+    if (loginPw !== getBirthPassword(child.birthDate)) {
+      setChildModalErr(`${child.name}의 비밀번호가 올바르지 않습니다. (생일 4자리: MMDD)`);
+      return;
+    }
+    setChildCandidates([]);
+    setChildModalErr("");
+    doLogin(child);
   };
 
   const handleTabChange = (tabId) => {
@@ -375,7 +429,7 @@ export function PublicParentView() {
         <div style={{fontSize:11,color:"#A1A1AA",letterSpacing:2,marginTop:4,marginBottom:36}}>RYE-K K-Culture Center</div>
         <div style={{background:"#fff",borderRadius:20,padding:"32px 28px",boxShadow:"0 2px 24px rgba(0,0,0,.06)",border:"1px solid #F0F0F0",textAlign:"left"}}>
           {loginErr && <div className="form-err" style={{marginBottom:14,borderRadius:10}}>⚠ {loginErr}</div>}
-          <div className="fg"><label className="fg-label">회원코드</label><input className="inp" value={loginCode} onChange={e => {setLoginCode(e.target.value.toUpperCase());setLoginErr("");}} placeholder="예: RKAB12" style={{fontSize:16,letterSpacing:2,textTransform:"uppercase",borderRadius:10}} onKeyDown={e=>e.key==="Enter"&&handleLogin()} /></div>
+          <div className="fg"><label className="fg-label">회원코드 또는 연락처</label><input className="inp" value={loginCode} onChange={e => {setLoginCode(e.target.value.toUpperCase());setLoginErr("");}} placeholder="예: RKAB12 또는 010-0000-0000" style={{fontSize:15,letterSpacing:1,textTransform:"uppercase",borderRadius:10}} onKeyDown={e=>e.key==="Enter"&&handleLogin()} /></div>
           <div className="fg"><label className="fg-label">비밀번호 (생일 MMDD)</label><input className="inp" type="password" value={loginPw} onChange={e => {setLoginPw(e.target.value);setLoginErr("");}} placeholder="예: 0410" maxLength={4} inputMode="numeric" style={{fontSize:16,letterSpacing:4,borderRadius:10}} onKeyDown={e=>e.key==="Enter"&&handleLogin()} /></div>
           <div style={{display:"flex",alignItems:"center",gap:7,marginBottom:14,cursor:"pointer"}} onClick={() => setSaveCode(s => !s)}>
             <div style={{width:16,height:16,borderRadius:4,border:`1.5px solid ${saveCode?"var(--blue)":"#D0D0D0"}`,background:saveCode?"var(--blue)":"#fff",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,transition:"all .12s"}}>
@@ -385,9 +439,40 @@ export function PublicParentView() {
           </div>
           <button className="btn btn-primary btn-full" style={{marginTop:0,padding:14,fontSize:15,borderRadius:10}} onClick={handleLogin}>로그인</button>
         </div>
-        <div style={{marginTop:20,fontSize:11,color:"#C0C0C0",lineHeight:1.6}}>회원코드는 담당 강사에게 문의하세요.</div>
+        <div style={{marginTop:20,fontSize:11,color:"#C0C0C0",lineHeight:1.6}}>회원코드는 담당 강사에게 문의하세요.<br/>연락처로도 로그인할 수 있습니다.</div>
       </div>
-    </div></>
+    </div>
+    {/* ── 자녀 선택 모달 (다자녀 가정) ── */}
+    {childCandidates.length > 0 && (
+      <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.55)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
+        <div style={{background:"#fff",borderRadius:24,padding:"32px 24px",width:"100%",maxWidth:380,boxShadow:"0 12px 48px rgba(0,0,0,.25)"}}>
+          <div style={{textAlign:"center",marginBottom:24}}>
+            <div style={{fontSize:32,marginBottom:10}}>👨‍👩‍👧‍👦</div>
+            <div style={{fontSize:18,fontWeight:700,color:"var(--ink)",fontFamily:"'Noto Serif KR',serif"}}>자녀를 선택하세요</div>
+            <div style={{fontSize:13,color:"#999",marginTop:6,lineHeight:1.5}}>수강 이력을 확인할 자녀를 눌러주세요</div>
+          </div>
+          {childModalErr && <div className="form-err" style={{marginBottom:14,borderRadius:10,fontSize:13}}>⚠ {childModalErr}</div>}
+          <div style={{display:"flex",flexDirection:"column",gap:12}}>
+            {childCandidates.map(child => {
+              const insts = (child.lessons||[]).map(l=>l.instrument).filter(Boolean).join(" · ");
+              return (
+                <button key={child.id} onClick={()=>handleChildSelect(child)}
+                  style={{background:"#F8FAFF",border:"2px solid #E8EAF6",borderRadius:16,padding:"18px 20px",cursor:"pointer",fontFamily:"inherit",textAlign:"left",transition:"all .15s",WebkitTapHighlightColor:"transparent"}}
+                  onMouseEnter={e=>{e.currentTarget.style.border="2px solid var(--blue)";e.currentTarget.style.background="var(--blue-lt)";}}
+                  onMouseLeave={e=>{e.currentTarget.style.border="2px solid #E8EAF6";e.currentTarget.style.background="#F8FAFF";}}
+                >
+                  <div style={{fontSize:18,fontWeight:700,color:"var(--ink)"}}>{child.name}</div>
+                  {insts && <div style={{fontSize:14,color:"var(--blue)",marginTop:4,fontWeight:500}}>{insts}</div>}
+                  <div style={{fontSize:11,color:"#C0C0C0",marginTop:4,fontFamily:"monospace",letterSpacing:1}}>{child.studentCode}</div>
+                </button>
+              );
+            })}
+          </div>
+          <button onClick={()=>{setChildCandidates([]);setChildModalErr("");}} style={{width:"100%",marginTop:16,background:"none",border:"1.5px solid #E8E8E8",borderRadius:12,padding:"12px",fontSize:13,color:"#888",cursor:"pointer",fontFamily:"inherit"}}>← 돌아가기</button>
+        </div>
+      </div>
+    )}
+    </>
   );
 
   // Logged in - white minimal portal
@@ -408,6 +493,10 @@ export function PublicParentView() {
   const totalThisMonth = attThisMonth.length;
   const attRate = totalThisMonth > 0 ? Math.round((presentCount + lateCount) / totalThisMonth * 100) : null;
   const latestPay = sPay[0];
+  // 이번 달 수납 우선 체크
+  const thisMonthPay = sPay.find(p => p.month === THIS_MONTH);
+  const payStatusText = thisMonthPay?.paid ? "완료" : thisMonthPay ? "수납 안내" : sPay.length === 0 ? "수납" : "수납 안내";
+  const payStatusColor = thisMonthPay?.paid ? "#22C55E" : sPay.length === 0 ? "#B0B0B0" : "#F59E0B";
   const lessonDays = allLessonDays(student);
 
   // Next lesson D-day
@@ -463,7 +552,7 @@ export function PublicParentView() {
             <div style={{flex:1}}>
               <div style={{fontSize:20,fontWeight:700,fontFamily:"'Noto Serif KR',serif",color:"var(--ink)"}}>{student.name}</div>
               <div style={{display:"flex",gap:6,flexWrap:"wrap",marginTop:6}}>
-                {(student.lessons||[]).map(l => <span key={l.instrument} style={{background:"var(--blue-lt)",color:"var(--blue)",fontSize:11,padding:"3px 10px",borderRadius:12,fontWeight:500}}>{l.instrument}</span>)}
+                {(student.lessons||[]).map(l => <span key={l.instrument} style={{background:"var(--blue-lt)",color:"var(--blue)",fontSize:11,padding:"3px 10px",borderRadius:12,fontWeight:500,maxWidth:120,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",display:"inline-block"}}>{l.instrument}</span>)}
               </div>
               {teacher && <div style={{fontSize:12,color:"#999",marginTop:4}}>{teacher.name} 강사</div>}
             </div>
@@ -501,9 +590,9 @@ export function PublicParentView() {
           <div style={{fontSize:24,fontWeight:700,color:"#22C55E",fontFamily:"'Noto Serif KR',serif"}}>{presentCount}</div>
           <div style={{fontSize:10,color:"#B0B0B0",marginTop:3}}>출석</div>
         </div>
-        <div style={{background:"#fff",borderRadius:14,padding:"14px 10px",textAlign:"center",boxShadow:"0 1px 4px rgba(0,0,0,.03)",border:"1px solid #F0F0F0"}}>
-          <div style={{fontSize:24,fontWeight:700,color:latestPay?.paid?"#22C55E":"#EF4444",fontFamily:"'Noto Serif KR',serif"}}>{latestPay?.paid?"✓":"!"}</div>
-          <div style={{fontSize:10,color:"#B0B0B0",marginTop:3}}>{latestPay?monthLabel(latestPay.month):"수납"}</div>
+        <div onClick={()=>setTab("pay")} style={{background:"#fff",borderRadius:14,padding:"14px 10px",textAlign:"center",boxShadow:"0 1px 4px rgba(0,0,0,.03)",border:"1px solid #F0F0F0",cursor:"pointer",transition:"background .12s"}} onMouseEnter={e=>e.currentTarget.style.background="#F9FAFB"} onMouseLeave={e=>e.currentTarget.style.background="#fff"}>
+          <div style={{fontSize:18,fontWeight:700,color:payStatusColor,fontFamily:"'Noto Serif KR',serif"}}>{payStatusText}</div>
+          <div style={{fontSize:10,color:"#B0B0B0",marginTop:3}}>이번달 수납</div>
         </div>
       </div>
 
@@ -589,13 +678,13 @@ export function PublicParentView() {
               return (
                 <div style={{marginBottom:16}}>
                   <div style={{fontSize:13,fontWeight:600,color:"var(--ink)",marginBottom:8}}>이번 달 수납</div>
-                  <div onClick={()=>setTab("pay")} style={{cursor:"pointer",background:isPaid?"#F0FDF4":"#FFF8F8",border:`1px solid ${isPaid?"#BBF7D0":"#FEE2E2"}`,borderRadius:12,padding:"14px 16px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                  <div onClick={()=>setTab("pay")} style={{cursor:"pointer",background:isPaid?"#F0FDF4":"#FFFBEB",border:`1px solid ${isPaid?"#BBF7D0":"rgba(245,158,11,.25)"}`,borderRadius:12,padding:"14px 16px",display:"flex",alignItems:"center",justifyContent:"space-between",transition:"opacity .12s"}} onMouseEnter={e=>e.currentTarget.style.opacity=".85"} onMouseLeave={e=>e.currentTarget.style.opacity="1"}>
                     <div>
-                      <div style={{fontSize:14,fontWeight:600,color:isPaid?"#16A34A":"#DC2626"}}>{isPaid ? "✓ 납부 완료" : `미납 · ${fmtMoney(amt)}`}</div>
+                      <div style={{fontSize:14,fontWeight:600,color:isPaid?"#16A34A":"#92400E"}}>{isPaid ? "✓ 납부 완료" : `수납 안내 · ${fmtMoney(amt)}`}</div>
                       {tp?.paidDate && <div style={{fontSize:11,color:"#A0A0A0",marginTop:2}}>{fmtDate(tp.paidDate)} 납부</div>}
                       {!tp && <div style={{fontSize:11,color:"#A0A0A0",marginTop:2}}>수납 내역 없음</div>}
                     </div>
-                    <span style={{fontSize:18}}>{isPaid ? "✅" : "⚠️"}</span>
+                    <span style={{fontSize:18}}>{isPaid ? "✅" : "💛"}</span>
                   </div>
                 </div>
               );
@@ -745,15 +834,15 @@ export function PublicParentView() {
                 const methodLabel = { transfer: "계좌이체", cash: "현금", card: "카드" };
                 const isPaid = !!p.paid;
                 return (
-                  <div key={i} style={{background:"#fff",borderRadius:14,marginBottom:10,overflow:"hidden",boxShadow:"0 2px 8px rgba(0,0,0,.04)",border:`1px solid ${isPaid?"#E6F7EE":"#FEE2E2"}`}}>
+                  <div key={i} style={{background:"#fff",borderRadius:14,marginBottom:10,overflow:"hidden",boxShadow:"0 2px 8px rgba(0,0,0,.04)",border:`1px solid ${isPaid?"#E6F7EE":"#FED7AA"}`}}>
                     {/* 명세서 헤더 */}
-                    <div style={{padding:"12px 16px",background:isPaid?"#F0FDF4":"#FFF8F8",borderBottom:"1px solid #F0F0F0",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                    <div style={{padding:"12px 16px",background:isPaid?"#F0FDF4":"#FFFBEB",borderBottom:"1px solid #F0F0F0",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
                       <div>
                         <div style={{fontSize:13,fontWeight:700,color:"var(--ink)",fontFamily:"'Noto Serif KR',serif"}}>{monthLabel(p.month)} 수강료 명세서</div>
                         {p.paidDate && <div style={{fontSize:10,color:"#A0A0A0",marginTop:2}}>납부일: {fmtDate(p.paidDate)}{p.method ? ` · ${methodLabel[p.method] || p.method}` : ""}</div>}
                       </div>
-                      <div style={{fontSize:13,fontWeight:700,color:isPaid?"#22C55E":"#EF4444",background:isPaid?"#DCFCE7":"#FEE2E2",padding:"4px 12px",borderRadius:20}}>
-                        {isPaid ? "✓ 완료" : "미납"}
+                      <div style={{fontSize:13,fontWeight:700,color:isPaid?"#22C55E":"#92400E",background:isPaid?"#DCFCE7":"#FEF3C7",padding:"4px 12px",borderRadius:20}}>
+                        {isPaid ? "✓ 완료" : "수납 안내"}
                       </div>
                     </div>
                     {/* 명세 항목 */}
@@ -764,15 +853,15 @@ export function PublicParentView() {
                       </div>
                       {rentalFee > 0 && (
                         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"5px 0",fontSize:13,color:"var(--ink)"}}>
-                          <span style={{display:"flex",alignItems:"center",gap:4}}>악기 대여료 <span style={{fontSize:10,color:"#A0A0A0",background:"#F5F5F5",padding:"1px 6px",borderRadius:4}}>{rentalLabel}</span></span>
+                          <span style={{display:"flex",alignItems:"center",gap:4}}>악기 대여료 <span style={{fontSize:10,color:"#A0A0A0",background:"#F5F5F5",padding:"1px 6px",borderRadius:4,maxWidth:100,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",display:"inline-block"}}>{rentalLabel}</span></span>
                           <span style={{fontFamily:"'Noto Serif KR',serif",fontWeight:500}}>{fmtMoney(rentalFee)}</span>
                         </div>
                       )}
                       {(p.extraCharges||[]).map((ec, ei) => (
                         <div key={ei} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"5px 0",fontSize:13,color:"var(--ink)"}}>
-                          <span style={{display:"flex",alignItems:"center",gap:4}}>
-                            {ec.title}
-                            <span style={{fontSize:10,color:"#A0A0A0",background:"#F5F5F5",padding:"1px 6px",borderRadius:4}}>추가</span>
+                          <span style={{display:"flex",alignItems:"center",gap:4,minWidth:0}}>
+                            <span style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:120}}>{ec.title}</span>
+                            <span style={{fontSize:10,color:"#A0A0A0",background:"#F5F5F5",padding:"1px 6px",borderRadius:4,flexShrink:0}}>추가</span>
                           </span>
                           <span style={{fontFamily:"'Noto Serif KR',serif",fontWeight:500}}>{fmtMoney(ec.amount||0)}</span>
                         </div>
@@ -788,7 +877,7 @@ export function PublicParentView() {
                         <span style={{fontSize:13,fontWeight:600,color:"var(--ink)"}}>합계</span>
                         <span style={{fontFamily:"'Noto Serif KR',serif",fontSize:17,fontWeight:700,color:isPaid?"#22C55E":"var(--ink)"}}>{fmtMoney(total)}</span>
                       </div>
-                      {p.note && <div style={{marginTop:8,fontSize:11,color:"#A0A0A0",background:"#FAFAFA",padding:"6px 10px",borderRadius:6}}>📝 {p.note}</div>}
+                      {/* ⛔ p.note는 관리자 전용 비고 — 절대 렌더링 금지 */}
                     </div>
                   </div>
                 );
