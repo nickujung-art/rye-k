@@ -37,7 +37,7 @@ export function SystemNewsView({ user }) {
                 )}
               </div>
               <div className="news-title">{r.title}</div>
-              {r.description && <p className="news-desc">{r.description}</p>}
+              {r.description && <p className="news-desc" style={{ whiteSpace: "pre-wrap" }}>{r.description}</p>}
               {r.tags?.length > 0 && (
                 <div className="news-tags">
                   {r.tags.map(t => (
