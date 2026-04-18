@@ -17,7 +17,8 @@ export function PublicRegisterForm() {
     purpose: "", purposeOther: "",
     referral: "", referralOther: "",
     teacherName: "", lessonType: "", lessonTypeOther: "",
-    lessonDay: "", lessonTime: "", monthlyFee: 0, instrumentRental: false, startDate: TODAY_STR,
+    lessonDay: "", lessonTime: "", monthlyFee: 0, startDate: TODAY_STR,
+    pendingOneTimeCharges: [],
   });
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -48,7 +49,7 @@ export function PublicRegisterForm() {
     if (!privacyAgreed) { setErr("개인정보 수집·이용에 동의해주세요."); return; }
     setSubmitting(true);
     try {
-      const reg = { id: uid(), name: form.name.trim(), birthDate: form.birthDate, phone: form.phone, guardianPhone: form.guardianPhone, desiredInstruments: form.desiredInstruments, notes: form.notes.trim(), photo: form.photo, experience: form.experience === "yes" ? form.experienceDetail : "없음", purpose: form.purpose === "기타" ? form.purposeOther : form.purpose, referral: form.referral === "기타" ? form.referralOther : form.referral, optionalConsent: optionalAgreed, consent: { privacy: { agreed: true, agreedAt: Date.now(), ip: null }, photo: { agreed: optionalAgreed, agreedAt: optionalAgreed ? Date.now() : null } }, teacherName: form.teacherName, lessonType: form.lessonType === "기타" ? form.lessonTypeOther : form.lessonType, lessonDay: form.lessonDay, lessonTime: form.lessonTime, monthlyFee: form.monthlyFee, instrumentRental: form.instrumentRental, startDate: form.startDate, status: "pending", createdAt: Date.now() };
+      const reg = { id: uid(), name: form.name.trim(), birthDate: form.birthDate, phone: form.phone, guardianPhone: form.guardianPhone, desiredInstruments: form.desiredInstruments, notes: form.notes.trim(), photo: form.photo, experience: form.experience === "yes" ? form.experienceDetail : "없음", purpose: form.purpose === "기타" ? form.purposeOther : form.purpose, referral: form.referral === "기타" ? form.referralOther : form.referral, optionalConsent: optionalAgreed, consent: { privacy: { agreed: true, agreedAt: Date.now(), ip: null }, photo: { agreed: optionalAgreed, agreedAt: optionalAgreed ? Date.now() : null } }, teacherName: form.teacherName, lessonType: form.lessonType === "기타" ? form.lessonTypeOther : form.lessonType, lessonDay: form.lessonDay, lessonTime: form.lessonTime, monthlyFee: form.monthlyFee, instrumentRental: form.pendingOneTimeCharges.some(c => c.type === "악기 대여"), pendingOneTimeCharges: form.pendingOneTimeCharges.filter(c => c.name.trim() || c.amount > 0), startDate: form.startDate, status: "pending", createdAt: Date.now() };
       const snap = await new Promise((resolve) => { const unsub = onSnapshot(doc(db, COLLECTION, "rye-pending"), (s) => { unsub(); resolve(s); }, () => resolve(null)); });
       const existing = snap?.exists() ? snap.data().value || [] : [];
       await sSet("rye-pending", [...existing, reg]);
@@ -56,7 +57,7 @@ export function PublicRegisterForm() {
     } catch (e) { setErr("등록에 실패했습니다. 다시 시도해주세요."); } finally { setSubmitting(false); }
   };
 
-  if (submitted) return (<><style>{CSS}</style><div style={{minHeight:"100vh",background:"#fff",display:"flex",alignItems:"center",justifyContent:"center",padding:20}}><div style={{maxWidth:400,width:"100%",textAlign:"center"}}><div style={{width:64,height:64,borderRadius:"50%",background:"#F0FDF4",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 20px",fontSize:28}}>✓</div><div style={{fontFamily:"'Noto Serif KR',serif",fontSize:20,fontWeight:600,marginBottom:10}}>등록이 완료되었습니다</div><div style={{fontSize:14,color:"var(--ink-60)",lineHeight:1.7,marginBottom:24}}><strong>{form.name}</strong>님의 수강 등록 신청이 정상적으로 접수되었습니다.</div><button className="btn btn-primary btn-full" onClick={() => { setSubmitted(false); setForm({name:"",birthDate:"",phone:"",guardianPhone:"",desiredInstruments:[],notes:"",photo:"",experience:"none",experienceDetail:"",purpose:"",purposeOther:"",referral:"",referralOther:"",teacherName:"",lessonType:"",lessonTypeOther:"",lessonDay:"",lessonTime:"",monthlyFee:0,instrumentRental:false,startDate:TODAY_STR}); setStep(1); setPrivacyAgreed(false); setOptionalAgreed(false); }}>새로운 등록</button></div></div></>);
+  if (submitted) return (<><style>{CSS}</style><div style={{minHeight:"100vh",background:"#fff",display:"flex",alignItems:"center",justifyContent:"center",padding:20}}><div style={{maxWidth:400,width:"100%",textAlign:"center"}}><div style={{width:64,height:64,borderRadius:"50%",background:"#F0FDF4",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 20px",fontSize:28}}>✓</div><div style={{fontFamily:"'Noto Serif KR',serif",fontSize:20,fontWeight:600,marginBottom:10}}>등록이 완료되었습니다</div><div style={{fontSize:14,color:"var(--ink-60)",lineHeight:1.7,marginBottom:24}}><strong>{form.name}</strong>님의 수강 등록 신청이 정상적으로 접수되었습니다.</div><button className="btn btn-primary btn-full" onClick={() => { setSubmitted(false); setForm({name:"",birthDate:"",phone:"",guardianPhone:"",desiredInstruments:[],notes:"",photo:"",experience:"none",experienceDetail:"",purpose:"",purposeOther:"",referral:"",referralOther:"",teacherName:"",lessonType:"",lessonTypeOther:"",lessonDay:"",lessonTime:"",monthlyFee:0,startDate:TODAY_STR,pendingOneTimeCharges:[]}); setStep(1); setPrivacyAgreed(false); setOptionalAgreed(false); }}>새로운 등록</button></div></div></>);
 
   const progressPct = (step / 4) * 100;
   return (
@@ -139,7 +140,36 @@ export function PublicRegisterForm() {
               <div className="fg"><label className="fg-label">수업 구분</label><div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:form.lessonType==="기타"?8:0}}>{["그룹 (초급반)","소그룹 (중급반)","개인 (초급)","개인 (중급)","개인 (고급)","기타"].map(t => (<button key={t} className={`ftab ${form.lessonType===t?"active":""}`} onClick={()=>set("lessonType",t)} style={{textAlign:"center",padding:"6px 10px",fontSize:11.5}}>{t}</button>))}</div>{form.lessonType==="기타" && <input className="inp" value={form.lessonTypeOther} onChange={e=>set("lessonTypeOther",e.target.value)} placeholder="직접 입력" />}</div>
               <div className="fg-row"><div className="fg"><label className="fg-label">수업 요일</label><input className="inp" value={form.lessonDay} onChange={e=>set("lessonDay",e.target.value)} placeholder="예: 화, 목" /></div><div className="fg"><label className="fg-label">시간</label><input className="time-inp" type="time" value={form.lessonTime} onChange={e=>set("lessonTime",e.target.value)} style={{width:"100%"}} /></div></div>
               <div className="fg"><label className="fg-label">월 수강료</label><div style={{position:"relative",maxWidth:220}}><input className="inp" inputMode="numeric" value={form.monthlyFee?form.monthlyFee.toLocaleString("ko-KR"):""} onChange={e=>set("monthlyFee",parseInt(e.target.value.replace(/[^\d]/g,""))||0)} placeholder="0" style={{paddingRight:30}} /><span style={{position:"absolute",right:12,top:"50%",transform:"translateY(-50%)",fontSize:13,color:"var(--ink-30)",pointerEvents:"none"}}>원</span></div></div>
-              <div className="fg" style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer"}} onClick={()=>set("instrumentRental",!form.instrumentRental)}><div style={{width:20,height:20,border:"1.5px solid var(--border)",borderRadius:6,display:"flex",alignItems:"center",justifyContent:"center",background:form.instrumentRental?"var(--blue)":"var(--paper)",transition:"all .12s"}}>{form.instrumentRental && <span style={{color:"#fff",fontSize:12,fontWeight:700}}>✓</span>}</div><span style={{fontSize:13,color:"var(--ink-60)"}}>악기 대여</span></div>
+              <div className="fg">
+                <label className="fg-label">단발성 청구</label>
+                {["악기 대여","악기 구매","교재 구매","악세사리/기타"].map(type => {
+                  const charge = form.pendingOneTimeCharges.find(c => c.type === type);
+                  const checked = !!charge;
+                  const toggle = () => setForm(f => {
+                    const exists = f.pendingOneTimeCharges.find(c => c.type === type);
+                    return { ...f, pendingOneTimeCharges: exists
+                      ? f.pendingOneTimeCharges.filter(c => c.type !== type)
+                      : [...f.pendingOneTimeCharges, { type, name: "", amount: 0 }] };
+                  });
+                  return (
+                    <div key={type}>
+                      <div style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer",padding:"6px 0"}} onClick={toggle}>
+                        <div style={{width:20,height:20,border:"1.5px solid var(--border)",borderRadius:6,display:"flex",alignItems:"center",justifyContent:"center",background:checked?"var(--blue)":"var(--paper)",transition:"all .12s",flexShrink:0}}>{checked && <span style={{color:"#fff",fontSize:12,fontWeight:700}}>✓</span>}</div>
+                        <span style={{fontSize:13,color:"var(--ink-60)"}}>{type}</span>
+                      </div>
+                      {checked && (
+                        <div style={{display:"flex",gap:6,marginLeft:28,marginBottom:6}}>
+                          <input className="inp" value={charge.name} onChange={e => setForm(f => ({...f, pendingOneTimeCharges: f.pendingOneTimeCharges.map(c => c.type===type ? {...c, name:e.target.value} : c)}))} placeholder="항목명 (예: 해금 대여)" style={{flex:2}} />
+                          <div style={{position:"relative",flex:1}}>
+                            <input className="inp" inputMode="numeric" value={charge.amount ? charge.amount.toLocaleString("ko-KR") : ""} onChange={e => setForm(f => ({...f, pendingOneTimeCharges: f.pendingOneTimeCharges.map(c => c.type===type ? {...c, amount: Number(e.target.value.replace(/[^\d]/g,""))||0} : c)}))} placeholder="0" style={{paddingRight:26}} />
+                            <span style={{position:"absolute",right:10,top:"50%",transform:"translateY(-50%)",fontSize:11,color:"var(--ink-30)",pointerEvents:"none"}}>원</span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
               <div className="fg"><label className="fg-label">수업 시작일</label><input className="inp" type="date" value={form.startDate} onChange={e=>set("startDate",e.target.value)} /></div>
               <div style={{display:"flex",gap:8,marginTop:12}}><button className="btn btn-secondary" style={{flex:1}} onClick={()=>setStep(3)}>이전</button><button className="btn btn-primary" style={{flex:2}} onClick={handleSubmit} disabled={submitting}>{submitting?"등록 중…":"수강 등록 완료"}</button></div>
             </div>

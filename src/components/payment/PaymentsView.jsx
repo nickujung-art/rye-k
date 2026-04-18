@@ -14,6 +14,13 @@ export default function PaymentsView({ students, teachers, currentUser, payments
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [previewStudent, setPreviewStudent] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [acctToast, setAcctToast] = useState(false);
+
+  const ACCT_MSG = "[RYE-K K-Culture Center]\n수강생 여러분의 깊은 관심에 항상 감사드립니다.\n원활한 수업 진행을 위해 수강료 납부 계좌를 안내드리오니 확인 부탁드립니다.\n\n- 카카오뱅크 3333-34-5220544 (예금주: 예케이케이컬처센터)\n\n늘 정성을 다하는 교육으로 보답하겠습니다.";
+  const copyAcct = async () => {
+    try { await navigator.clipboard.writeText(ACCT_MSG); } catch { const ta = document.createElement("textarea"); ta.value = ACCT_MSG; document.body.appendChild(ta); ta.select(); document.execCommand("copy"); document.body.removeChild(ta); }
+    setAcctToast(true); setTimeout(() => setAcctToast(false), 2500);
+  };
   const isTeacher = currentUser.role === "teacher";
 
   const visibleStudents = (filterTeacher === "all" ? students : students.filter(s => s.teacherId === filterTeacher || (s.lessons||[]).some(l=>l.teacherId===filterTeacher)))
@@ -95,6 +102,16 @@ export default function PaymentsView({ students, teachers, currentUser, payments
 
   return (
     <div>
+      {/* ── 계좌 안내 배너 ── */}
+      <div onClick={copyAcct} style={{display:"flex",alignItems:"center",gap:10,background:"#EEF2FF",border:"1px solid #C7D2FE",borderRadius:10,padding:"10px 14px",marginBottom:12,cursor:"pointer",transition:"background .15s",userSelect:"none"}} onMouseEnter={e=>e.currentTarget.style.background="#E0E7FF"} onMouseLeave={e=>e.currentTarget.style.background="#EEF2FF"}>
+        <span style={{fontSize:18,flexShrink:0}}>🏦</span>
+        <div style={{flex:1,minWidth:0}}>
+          <div style={{fontSize:12,fontWeight:600,color:"#3730A3"}}>카카오뱅크 3333-34-5220544</div>
+          <div style={{fontSize:11,color:"#6366F1",marginTop:1}}>예금주: 예케이케이컬처센터 · 클릭하여 안내 멘트 복사</div>
+        </div>
+        <span style={{fontSize:11,color:"#6366F1",flexShrink:0,fontWeight:500}}>{acctToast ? "✓ 복사됨" : "📋 복사"}</span>
+      </div>
+      {acctToast && <div style={{position:"fixed",bottom:80,left:"50%",transform:"translateX(-50%)",background:"#1E1B4B",color:"#fff",fontSize:13,fontWeight:500,padding:"10px 20px",borderRadius:24,zIndex:9999,boxShadow:"0 4px 20px rgba(0,0,0,.25)",whiteSpace:"nowrap",pointerEvents:"none"}}>안내 멘트가 복사되었습니다!</div>}
       <div className="ph"><div><h1>수납 관리</h1><div className="ph-sub">{monthLabel(month)}</div></div><div style={{display:"flex",gap:6}}>{canManageAll(currentUser.role) && <button className="btn btn-secondary btn-sm" onClick={() => { setAlimType("unpaid"); setAlimModal(true); }}>💬 알림톡</button>}{canManageAll(currentUser.role) && <button className="btn btn-secondary btn-sm" onClick={exportCSV}>📥 엑셀</button>}</div></div>
       <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
         <button className="btn btn-secondary btn-xs" onClick={prevMonth}>◀</button>
