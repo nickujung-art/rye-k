@@ -28,16 +28,36 @@ export function PublicRegisterForm() {
   const [optionalAgreed, setOptionalAgreed] = useState(false);
   const [showFullPolicy, setShowFullPolicy] = useState(false);
   const [showPhotoPolicy, setShowPhotoPolicy] = useState(false);
+  const [feePresets, setFeePresets] = useState({});
   const fileRef = useRef();
   const set = (k, v) => { setForm(f => ({ ...f, [k]: v })); setErr(""); };
+
+  // Silver UX — 고가독성 스타일 (태블릿·어르신 최적화)
+  const SILVER_CSS = `
+.silver-form .inp{min-height:56px;font-size:18px !important;padding-top:15px !important;padding-bottom:15px !important;border:2px solid #6B7280 !important;border-radius:10px !important;color:#111827 !important}
+.silver-form .inp:focus{border-color:var(--blue) !important}
+.silver-form .sel{min-height:56px;font-size:18px !important;padding-top:15px !important;padding-bottom:15px !important;border:2px solid #6B7280 !important;border-radius:10px !important;color:#111827 !important}
+.silver-form textarea.inp{min-height:120px !important;line-height:1.75 !important}
+.silver-form .fg-label{color:#111827 !important;font-size:16px !important;font-weight:700 !important;margin-bottom:10px !important;letter-spacing:0 !important}
+.silver-form .fg{margin-bottom:24px !important}
+.silver-form .btn{min-height:54px !important;font-size:17px !important;font-weight:700 !important;border-radius:10px !important}
+.silver-form .ftab{font-size:15px !important;min-height:48px !important;padding:10px 16px !important;font-weight:600 !important}
+.silver-form .inst-check{font-size:16px !important;padding:12px 14px !important}
+.silver-form .inst-check-box{width:22px !important;height:22px !important;font-size:14px !important}
+.silver-form .time-inp{min-height:56px;font-size:18px !important;padding:15px 12px !important;border:2px solid #6B7280 !important;border-radius:10px !important;color:#111827 !important}
+.silver-form .form-err{font-size:15px !important;padding:12px 16px !important}
+`;
 
   useEffect(() => {
     // Anonymous auth for Firestore access
     firebaseSignInAnon();
-    const unsub = onSnapshot(doc(db, COLLECTION, "rye-categories"), (snap) => {
+    const unsubCat = onSnapshot(doc(db, COLLECTION, "rye-categories"), (snap) => {
       if (snap.exists()) setCategories(snap.data().value || DEFAULT_CATEGORIES);
     }, () => {});
-    return () => unsub();
+    const unsubFee = onSnapshot(doc(db, COLLECTION, "rye-fee-presets"), (snap) => {
+      if (snap.exists()) setFeePresets(snap.data().value || {});
+    }, () => {});
+    return () => { unsubCat(); unsubFee(); };
   }, []);
 
   const handlePhoto = async (e) => { const file = e.target.files?.[0]; if (!file) return; try { const compressed = await compressImage(file, 360, 0.75); set("photo", compressed); } catch(err) { setErr("사진 처리 중 오류가 발생했습니다."); } };
@@ -60,24 +80,27 @@ export function PublicRegisterForm() {
   if (submitted) return (<><style>{CSS}</style><div style={{minHeight:"100vh",background:"#fff",display:"flex",alignItems:"center",justifyContent:"center",padding:20}}><div style={{maxWidth:400,width:"100%",textAlign:"center"}}><div style={{width:64,height:64,borderRadius:"50%",background:"#F0FDF4",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 20px",fontSize:28}}>✓</div><div style={{fontFamily:"'Noto Serif KR',serif",fontSize:20,fontWeight:600,marginBottom:10}}>등록이 완료되었습니다</div><div style={{fontSize:14,color:"var(--ink-60)",lineHeight:1.7,marginBottom:24}}><strong>{form.name}</strong>님의 수강 등록 신청이 정상적으로 접수되었습니다.</div><button className="btn btn-primary btn-full" onClick={() => { setSubmitted(false); setForm({name:"",birthDate:"",phone:"",guardianPhone:"",desiredInstruments:[],notes:"",photo:"",experience:"none",experienceDetail:"",purpose:"",purposeOther:"",referral:"",referralOther:"",teacherName:"",lessonType:"",lessonTypeOther:"",lessonDay:"",lessonTime:"",monthlyFee:0,startDate:TODAY_STR,pendingOneTimeCharges:[]}); setStep(1); setPrivacyAgreed(false); setOptionalAgreed(false); }}>새로운 등록</button></div></div></>);
 
   const progressPct = (step / 4) * 100;
+  // 악기 대여 프리셋 목록 (rental:XXX 키 파싱)
+  const rentalOptions = Object.entries(feePresets).filter(([k]) => k.startsWith("rental:")).map(([k, v]) => ({ name: k.replace("rental:", ""), amount: v || 0 }));
+
   return (
-    <><style>{CSS}</style>
+    <><style>{CSS}</style><style>{SILVER_CSS}</style>
     <div style={{minHeight:"100vh",background:"var(--bg)",padding:"20px 16px"}}>
-      <div style={{maxWidth:480,margin:"0 auto"}}>
-        <div style={{textAlign:"center",marginBottom:20}}>
-          <Logo size={48} />
-          <div style={{fontFamily:"'Noto Serif KR',serif",fontSize:17,fontWeight:700,color:"var(--blue)",marginTop:8}}>RYE-K K-Culture Center</div>
-          <div style={{fontSize:11,color:"var(--ink-30)",letterSpacing:1.5,marginTop:3}}>수강 등록 신청서</div>
+      <div style={{maxWidth:480,margin:"0 auto"}} className="silver-form">
+        <div style={{textAlign:"center",marginBottom:24}}>
+          <Logo size={52} />
+          <div style={{fontFamily:"'Noto Serif KR',serif",fontSize:20,fontWeight:700,color:"var(--blue)",marginTop:10}}>RYE-K K-Culture Center</div>
+          <div style={{fontSize:14,color:"var(--ink-30)",letterSpacing:1.5,marginTop:4}}>수강 등록 신청서</div>
         </div>
-        <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:20}}>
-          <div style={{flex:1,height:4,background:"var(--border)",borderRadius:2,overflow:"hidden"}}><div style={{width:`${progressPct}%`,height:"100%",background:"var(--blue)",borderRadius:2,transition:"width .3s"}} /></div>
-          <span style={{fontSize:11,color:"var(--ink-30)",flexShrink:0}}>STEP {step}/4</span>
+        <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:20}}>
+          <div style={{flex:1,height:6,background:"var(--border)",borderRadius:3,overflow:"hidden"}}><div style={{width:`${progressPct}%`,height:"100%",background:"var(--blue)",borderRadius:3,transition:"width .3s"}} /></div>
+          <span style={{fontSize:14,fontWeight:600,color:"#374151",flexShrink:0}}>STEP {step}/4</span>
         </div>
         {err && <div className="form-err" style={{marginBottom:12}}>⚠ {err}</div>}
 
         {step === 1 && (
           <div className="card" style={{padding:0,overflow:"hidden"}}>
-            <div style={{background:"linear-gradient(90deg,var(--blue),var(--blue-md))",padding:"14px 20px",color:"#fff",fontSize:14,fontWeight:500}}>기본 정보</div>
+            <div style={{background:"linear-gradient(90deg,var(--blue),var(--blue-md))",padding:"16px 20px",color:"#fff",fontSize:17,fontWeight:700}}>기본 정보</div>
             <div style={{padding:20}}>
               <div className="photo-area"><Av photo={form.photo} name={form.name} size="av-lg" /><div><button className="btn btn-secondary btn-sm" onClick={() => fileRef.current.click()}>사진 촬영/업로드</button>{form.photo && <button className="btn btn-ghost btn-sm" onClick={() => set("photo","")}>삭제</button>}<div className="photo-hint">선택사항 · 3MB 이하</div></div><input ref={fileRef} type="file" className="file-inp" accept="image/*" onChange={handlePhoto} /></div>
               <div className="fg"><label className="fg-label">이름 <span className="req">*</span></label><input className="inp" value={form.name} onChange={e => set("name",e.target.value)} placeholder="수강생 이름" /></div>
@@ -92,7 +115,7 @@ export function PublicRegisterForm() {
 
         {step === 2 && (
           <div className="card" style={{padding:0,overflow:"hidden"}}>
-            <div style={{background:"linear-gradient(90deg,var(--blue),var(--blue-md))",padding:"14px 20px",color:"#fff",fontSize:14,fontWeight:500}}>수업 정보</div>
+            <div style={{background:"linear-gradient(90deg,var(--blue),var(--blue-md))",padding:"16px 20px",color:"#fff",fontSize:17,fontWeight:700}}>수업 정보</div>
             <div style={{padding:20}}>
               <div className="fg"><label className="fg-label">희망 과목 <span className="req">*</span> <span style={{fontWeight:400,color:"var(--ink-30)",textTransform:"none",letterSpacing:0}}>(복수 선택 가능)</span></label>
                 {Object.entries(categories).map(([cat, insts]) => (<div key={cat} style={{marginBottom:10}}><div style={{fontSize:11,color:"var(--ink-30)",fontWeight:600,letterSpacing:.5,marginBottom:5}}>{cat}</div><div className="inst-select-grid">{insts.map(inst => { const checked = form.desiredInstruments.includes(inst); return (<div key={inst} className={`inst-check ${checked?"checked":""}`} onClick={()=>toggleInst(inst)}><div className="inst-check-box">{checked?"✓":""}</div>{inst}</div>); })}</div></div>))}
@@ -108,7 +131,7 @@ export function PublicRegisterForm() {
         {step === 3 && (
           <div>
             <div className="card" style={{padding:0,overflow:"hidden",marginBottom:12}}>
-              <div style={{background:"linear-gradient(90deg,var(--blue),var(--blue-md))",padding:"14px 20px",color:"#fff",fontSize:14,fontWeight:500}}>약관 동의</div>
+              <div style={{background:"linear-gradient(90deg,var(--blue),var(--blue-md))",padding:"16px 20px",color:"#fff",fontSize:17,fontWeight:700}}>약관 동의</div>
               <div style={{padding:20}}>
                 <div style={{background:"var(--bg)",border:"1px solid var(--border)",borderRadius:8,padding:14,marginBottom:12,fontSize:12.5,lineHeight:1.8,color:"var(--ink-60)"}}>
                   <div style={{fontWeight:600,color:"var(--ink)",marginBottom:5}}>개인정보 수집·이용 동의</div>
@@ -118,13 +141,13 @@ export function PublicRegisterForm() {
                 </div>
                 <button onClick={()=>setShowFullPolicy(!showFullPolicy)} style={{background:"none",border:"none",color:"var(--blue)",fontSize:12,cursor:"pointer",padding:0,textDecoration:"underline",fontFamily:"inherit",marginBottom:10,display:"block"}}>{showFullPolicy?"▲ 전문 닫기":"▼ 개인정보 처리 전문 보기"}</button>
                 {showFullPolicy && (<div style={{background:"#FAFAFA",border:"1px solid var(--border)",borderRadius:8,padding:14,marginBottom:12,fontSize:11.5,lineHeight:1.9,color:"var(--ink-60)",whiteSpace:"pre-wrap",maxHeight:220,overflowY:"auto"}}>{`[개인정보 수집·이용 동의서]\n\n「개인정보 보호법」 제15조 및 제22조에 따라 안내드립니다.\n\n1. 수집·이용 목적: 수강 등록 접수 및 상담, 수업 관리, 수강료 안내, 출결 관리\n2. 수집 항목: [필수] 이름, 연락처, 생년월일 / [선택] 보호자 연락처, 사진, 희망 과목, 특이사항\n3. 보유·이용 기간: 수강 종료 후 1년간 보유 후 파기\n4. 동의 거부 권리: 필수항목 미동의 시 수강 등록 불가. 선택항목 미동의 시 수강에 영향 없음.\n5. 만 14세 미만 아동: 법정대리인(보호자)의 동의를 받아 수집합니다.`}</div>)}
-                <div onClick={()=>setPrivacyAgreed(!privacyAgreed)} style={{display:"flex",alignItems:"flex-start",gap:10,cursor:"pointer",padding:"10px 0",userSelect:"none"}}><div style={{width:22,height:22,borderRadius:6,border:`2px solid ${privacyAgreed?"var(--blue)":"var(--border)"}`,background:privacyAgreed?"var(--blue)":"var(--paper)",display:"flex",alignItems:"center",justifyContent:"center",transition:"all .15s",flexShrink:0,marginTop:1}}>{privacyAgreed && <span style={{color:"#fff",fontSize:13,fontWeight:700}}>✓</span>}</div><div style={{fontSize:13,color:"var(--ink)",lineHeight:1.5}}><span style={{fontWeight:600}}>[필수]</span> 개인정보 수집·이용에 동의합니다.</div></div>
+                <div onClick={()=>setPrivacyAgreed(!privacyAgreed)} style={{display:"flex",alignItems:"flex-start",gap:14,cursor:"pointer",padding:"14px 0",userSelect:"none"}}><div style={{width:30,height:30,borderRadius:8,border:`2.5px solid ${privacyAgreed?"var(--blue)":"#6B7280"}`,background:privacyAgreed?"var(--blue)":"var(--paper)",display:"flex",alignItems:"center",justifyContent:"center",transition:"all .15s",flexShrink:0,marginTop:2}}>{privacyAgreed && <span style={{color:"#fff",fontSize:17,fontWeight:700}}>✓</span>}</div><div style={{fontSize:17,color:"#111827",lineHeight:1.6}}><span style={{fontWeight:700}}>[필수]</span> 개인정보 수집·이용에 동의합니다.</div></div>
                 <div className="divider" />
                 <div style={{background:"var(--gold-lt)",border:"1px solid rgba(245,168,0,.2)",borderRadius:8,padding:14,marginBottom:12,fontSize:12.5,lineHeight:1.8,color:"var(--ink-60)"}}><div style={{fontWeight:600,color:"var(--ink)",marginBottom:5}}>수업 보강 및 이월 규정</div><div>• 월 4회 기본 수업 (매월 첫 주 수강료 납입)</div><div>• 레슨 당일 무단 결석 시, 보강 및 이월이 불가합니다.</div><div>• 레슨 전 사전 고지 시, 강사와 협의하여 보강 수업을 조율할 수 있습니다.</div><div>• 단, 그룹 수업(강좌)의 경우 별도 보강은 진행되지 않습니다.</div></div>
                 <div className="divider" />
                 <button onClick={()=>setShowPhotoPolicy(!showPhotoPolicy)} style={{background:"none",border:"none",color:"var(--ink-60)",fontSize:12,cursor:"pointer",padding:0,fontFamily:"inherit",marginBottom:8,display:"block",textDecoration:"underline"}}>{showPhotoPolicy?"▲ 촬영·이용 동의 상세 닫기":"▼ 사진 및 동영상 촬영·이용 동의 상세 보기"}</button>
                 {showPhotoPolicy && (<div style={{background:"#FAFAFA",border:"1px solid var(--border)",borderRadius:8,padding:14,marginBottom:10,fontSize:11.5,lineHeight:1.9,color:"var(--ink-60)",whiteSpace:"pre-wrap",maxHeight:200,overflowY:"auto"}}>{`[선택] 사진 및 동영상 촬영·이용 및 제3자 제공 동의\n\n1. 수집 및 이용 목적: 교육·행사 기록, 기관 홍보 콘텐츠 제작 및 공식 SNS·홈페이지 게시\n2. 수집 항목: 교육·행사 중 촬영된 초상(사진, 동영상) 및 음성\n3. 제3자 제공 대상: 홍보 콘텐츠 시청자, 영상 제작 대행사, 보도 매체\n4. 보유·이용 기간: 목적 달성 후 파기 (홍보물 게시 시 철회 요청 시까지)\n5. 동의 거부 시: 촬영에서 제외되거나, 홍보물 내 블러(모자이크) 처리될 수 있습니다.`}</div>)}
-                <div onClick={()=>setOptionalAgreed(!optionalAgreed)} style={{display:"flex",alignItems:"flex-start",gap:10,cursor:"pointer",padding:"6px 0",userSelect:"none"}}><div style={{width:22,height:22,borderRadius:6,border:`2px solid ${optionalAgreed?"var(--blue)":"var(--border)"}`,background:optionalAgreed?"var(--blue)":"var(--paper)",display:"flex",alignItems:"center",justifyContent:"center",transition:"all .15s",flexShrink:0,marginTop:1}}>{optionalAgreed && <span style={{color:"#fff",fontSize:13,fontWeight:700}}>✓</span>}</div><div style={{fontSize:13,color:"var(--ink)",lineHeight:1.5}}><span style={{fontWeight:500,color:"var(--ink-30)"}}>[선택]</span> 사진·동영상 촬영·이용 및 제3자 제공에 동의합니다.<div style={{fontSize:11,color:"var(--ink-30)",marginTop:2}}>미동의 시에도 수강에 영향 없습니다.</div></div></div>
+                <div onClick={()=>setOptionalAgreed(!optionalAgreed)} style={{display:"flex",alignItems:"flex-start",gap:14,cursor:"pointer",padding:"14px 0",userSelect:"none"}}><div style={{width:30,height:30,borderRadius:8,border:`2.5px solid ${optionalAgreed?"var(--blue)":"#6B7280"}`,background:optionalAgreed?"var(--blue)":"var(--paper)",display:"flex",alignItems:"center",justifyContent:"center",transition:"all .15s",flexShrink:0,marginTop:2}}>{optionalAgreed && <span style={{color:"#fff",fontSize:17,fontWeight:700}}>✓</span>}</div><div style={{fontSize:17,color:"#111827",lineHeight:1.6}}><span style={{fontWeight:600,color:"#6B7280"}}>[선택]</span> 사진·동영상 촬영·이용 및 제3자 제공에 동의합니다.<div style={{fontSize:14,color:"#6B7280",marginTop:4}}>미동의 시에도 수강에 영향 없습니다.</div></div></div>
               </div>
             </div>
             <div style={{display:"flex",gap:8}}><button className="btn btn-secondary" style={{flex:1}} onClick={()=>setStep(2)}>이전</button><button className="btn btn-primary" style={{flex:2}} onClick={()=>{ if(!privacyAgreed){setErr("개인정보 수집·이용에 동의해주세요.");return;} setStep(4); }} disabled={!privacyAgreed}>다음</button></div>
@@ -133,8 +156,8 @@ export function PublicRegisterForm() {
 
         {step === 4 && (
           <div className="card" style={{padding:0,overflow:"hidden"}}>
-            <div style={{background:"linear-gradient(90deg,var(--gold-dk),var(--gold))",padding:"14px 20px",color:"#fff",fontSize:14,fontWeight:500}}>강사 작성란</div>
-            <div style={{padding:"6px 20px 0"}}><div style={{fontSize:11.5,color:"var(--ink-30)",lineHeight:1.6,padding:"10px 0",borderBottom:"1px solid var(--border)"}}>아래 항목은 상담 강사가 직접 작성합니다.</div></div>
+            <div style={{background:"linear-gradient(90deg,var(--gold-dk),var(--gold))",padding:"16px 20px",color:"#fff",fontSize:17,fontWeight:700}}>강사 작성란</div>
+            <div style={{padding:"6px 20px 0"}}><div style={{fontSize:14,color:"var(--ink-60)",lineHeight:1.6,padding:"10px 0",borderBottom:"1px solid var(--border)"}}>아래 항목은 상담 강사가 직접 작성합니다.</div></div>
             <div style={{padding:20}}>
               <div className="fg"><label className="fg-label">담당 강사</label><input className="inp" value={form.teacherName} onChange={e=>set("teacherName",e.target.value)} placeholder="강사 이름" /></div>
               <div className="fg"><label className="fg-label">수업 구분</label><div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:form.lessonType==="기타"?8:0}}>{["그룹 (초급반)","소그룹 (중급반)","개인 (초급)","개인 (중급)","개인 (고급)","기타"].map(t => (<button key={t} className={`ftab ${form.lessonType===t?"active":""}`} onClick={()=>set("lessonType",t)} style={{textAlign:"center",padding:"6px 10px",fontSize:11.5}}>{t}</button>))}</div>{form.lessonType==="기타" && <input className="inp" value={form.lessonTypeOther} onChange={e=>set("lessonTypeOther",e.target.value)} placeholder="직접 입력" />}</div>
@@ -152,17 +175,33 @@ export function PublicRegisterForm() {
                       : [...f.pendingOneTimeCharges, { type, name: "", amount: 0 }] };
                   });
                   return (
-                    <div key={type}>
-                      <div style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer",padding:"6px 0"}} onClick={toggle}>
-                        <div style={{width:20,height:20,border:"1.5px solid var(--border)",borderRadius:6,display:"flex",alignItems:"center",justifyContent:"center",background:checked?"var(--blue)":"var(--paper)",transition:"all .12s",flexShrink:0}}>{checked && <span style={{color:"#fff",fontSize:12,fontWeight:700}}>✓</span>}</div>
-                        <span style={{fontSize:13,color:"var(--ink-60)"}}>{type}</span>
+                    <div key={type} style={{marginBottom:4}}>
+                      <div style={{display:"flex",alignItems:"center",gap:12,cursor:"pointer",padding:"10px 0"}} onClick={toggle}>
+                        <div style={{width:28,height:28,border:`2.5px solid ${checked?"var(--blue)":"#6B7280"}`,borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center",background:checked?"var(--blue)":"var(--paper)",transition:"all .12s",flexShrink:0}}>{checked && <span style={{color:"#fff",fontSize:16,fontWeight:700}}>✓</span>}</div>
+                        <span style={{fontSize:17,color:"#111827",fontWeight:checked?600:400}}>{type}</span>
                       </div>
                       {checked && (
-                        <div style={{display:"flex",gap:6,marginLeft:28,marginBottom:6}}>
-                          <input className="inp" value={charge.name} onChange={e => setForm(f => ({...f, pendingOneTimeCharges: f.pendingOneTimeCharges.map(c => c.type===type ? {...c, name:e.target.value} : c)}))} placeholder="항목명 (예: 해금 대여)" style={{flex:2}} />
+                        <div style={{display:"flex",gap:8,marginLeft:40,marginBottom:10}}>
+                          {/* 악기 대여: 프리셋 드롭다운, 선택 시 금액 자동 입력 */}
+                          {type === "악기 대여" ? (
+                            <select className="sel" value={charge.name} style={{flex:2}} onChange={e => {
+                              const nm = e.target.value;
+                              const preset = rentalOptions.find(r => r.name === nm);
+                              setForm(f => ({...f, pendingOneTimeCharges: f.pendingOneTimeCharges.map(c =>
+                                c.type === type ? {...c, name: nm, amount: preset ? preset.amount : c.amount} : c
+                              )}));
+                            }}>
+                              <option value="">악기 선택…</option>
+                              {rentalOptions.length > 0
+                                ? rentalOptions.map(r => <option key={r.name} value={r.name}>{r.name}{r.amount > 0 ? ` (${r.amount.toLocaleString("ko-KR")}원/월)` : ""}</option>)
+                                : <option disabled>등록된 악기 없음</option>}
+                            </select>
+                          ) : (
+                            <input className="inp" value={charge.name} onChange={e => setForm(f => ({...f, pendingOneTimeCharges: f.pendingOneTimeCharges.map(c => c.type===type ? {...c, name:e.target.value} : c)}))} placeholder="항목명" style={{flex:2}} />
+                          )}
                           <div style={{position:"relative",flex:1}}>
                             <input className="inp" inputMode="numeric" value={charge.amount ? charge.amount.toLocaleString("ko-KR") : ""} onChange={e => setForm(f => ({...f, pendingOneTimeCharges: f.pendingOneTimeCharges.map(c => c.type===type ? {...c, amount: Number(e.target.value.replace(/[^\d]/g,""))||0} : c)}))} placeholder="0" style={{paddingRight:26}} />
-                            <span style={{position:"absolute",right:10,top:"50%",transform:"translateY(-50%)",fontSize:11,color:"var(--ink-30)",pointerEvents:"none"}}>원</span>
+                            <span style={{position:"absolute",right:10,top:"50%",transform:"translateY(-50%)",fontSize:13,color:"#6B7280",pointerEvents:"none"}}>원</span>
                           </div>
                         </div>
                       )}
