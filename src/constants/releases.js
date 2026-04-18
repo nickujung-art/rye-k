@@ -1,55 +1,30 @@
-export const RELEASES = [
+// src/constants/releases.js
+
+export const RELEASE_HISTORY = [
   {
     version: "14.0.0",
     date: "2026-04-18",
-    title: "다자녀 통합 관리 및 실버 UX 고도화",
-    isMajor: true,
-    target: ["admin", "manager", "teacher"],
-    tags: ["신규기능", "UX개선"],
-    description: "한 번의 로그인으로 자녀들을 전환하며 관리할 수 있는 다자녀 통합 관리 기능이 추가되었습니다. 실버 사용자를 위한 글꼴 크기·버튼 간격 등 UX도 한층 더 개선되었습니다.",
-    pmComment: "현장의 목소리를 반영하여 더욱 편리해진 RYE-K를 만나보세요!",
-  },
-  {
-    version: "13.3.0",
-    date: "2026-04-10",
-    title: "과목 및 악기 대여료 리스트 편집 기능 고도화",
-    isMajor: false,
-    target: ["admin", "manager"],
-    tags: ["기능개선"],
-    description: "관리자가 과목명과 악기 대여료 항목을 직접 추가·수정·삭제할 수 있는 편집 기능이 고도화되었습니다.",
-    pmComment: "",
-  },
-  {
-    version: "13.2.0",
-    date: "2026-04-05",
-    title: "지능형 로그인 로직 및 로그인 안내 멘트 최적화",
-    isMajor: false,
-    target: ["admin", "manager", "teacher"],
-    tags: ["UX개선"],
-    description: "로그인 실패 원인을 상황별로 안내하는 메시지가 추가되었습니다. 자동 로그인 유지 기간과 재인증 조건이 세분화되었습니다.",
-    pmComment: "",
-  },
-  {
-    version: "13.1.0",
-    date: "2026-03-28",
-    title: "다자녀 로그인 지원 및 학생 상태별 진입 제한",
-    isMajor: false,
-    target: ["admin", "manager", "teacher"],
-    tags: ["신규기능", "버그수정"],
-    description: "My RYE-K 포털에서 다자녀 보호자가 자녀별 계정으로 간편하게 전환할 수 있게 되었습니다. 휴회·퇴원 학생의 포털 접근이 상태에 따라 안내됩니다.",
-    pmComment: "",
-  },
-  {
-    version: "13.0.0",
-    date: "2026-03-10",
-    title: "자동 로그인·메모 보안·강사 권한 확대 (Phase 4.0)",
-    isMajor: true,
-    target: ["admin", "manager", "teacher"],
-    tags: ["신규기능", "버그수정"],
-    description: "30일 자동 로그인이 도입되어 매번 비밀번호를 입력할 필요가 없어졌습니다. 학생 메모는 담당 강사와 관리자만 열람할 수 있도록 권한이 강화되었습니다. iOS에서 발생하던 날짜 표시 오류도 수정되었습니다.",
-    pmComment: "이제 매일 로그인하지 않아도 됩니다!",
-  },
-];
+    title: "따뜻한 배려와 똑똑한 관리, RYE-K v14.0",
+    isMajor: true, // true면 로그인 시 팝업이 뜹니다.
+    target: ["admin", "teacher"],
+    tags: ["신규기능", "UX개선", "보안강화"],
+    description: `
+      • 👨‍👩‍👧‍👦 우리 아이들 소식을 한 번에! (다자녀 통합 로그인)
+      이제 보호자 연락처 하나로 등록된 모든 자녀를 관리할 수 있어요. 로그아웃 없이 상단의 '자녀 변경' 버튼을 눌러 형제·자매의 정보를 자유롭게 확인해 보세요!
 
-export const LATEST_RELEASE = RELEASES[0];
-export const CURRENT_VERSION = RELEASES[0].version;
+      • 👵 눈이 편안한 화면 (실버 UX 최적화)
+      가독성을 대폭 높였습니다. 더 커진 글씨와 선명한 디자인으로, 어르신들도 이제 태블릿 가입 신청과 포털 이용이 훨씬 즐거워집니다.
+
+      • ✨ 엑셀보다 쉬운 과목 관리 (마스터 데이터 고도화)
+      과목 이름이나 대여료 수정, 이제 클릭 한 번으로 끝내세요. '삭제된 과목' 안내 배지와 정리 기능까지 추가되어 데이터 관리가 훨씬 깔끔해졌습니다.
+
+      • 💳 꼼꼼한 수납 비서 (미납 알림 강화)
+      수강료 정산 시 지난달 결석 기록을 시스템이 미리 알려드려요. 붉은색 '미납' 대신 부드러운 '수납 안내' 문구와 컬러를 사용해 한결 정중하게 안내합니다.
+
+      • 🔒 보이지 않는 곳까지 안전하게 (보안 및 버그 수정)
+      강사님들만의 비밀 메모는 철저히 숨기고, 아이폰에서 화면이 잘리던 현상까지 완벽히 해결했습니다.
+    `,
+    pmComment: "현장의 소중한 목소리를 반영하여 더욱 따뜻하고 편리해진 RYE-K를 만나보세요! 🚀"
+  },
+  // ... 이전 버전들
+];
