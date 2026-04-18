@@ -98,6 +98,7 @@ export default function PaymentsView({ students, teachers, currentUser, payments
 
   const prevMonth = () => { const d = new Date(month + "-01"); d.setMonth(d.getMonth() - 1); setMonth(d.toISOString().slice(0,7)); };
   const nextMonth = () => { const d = new Date(month + "-01"); d.setMonth(d.getMonth() + 1); setMonth(d.toISOString().slice(0,7)); };
+  // prevMonthStr: 현재 선택된 month 기준 전달. 테스트 방법 — month 드롭다운을 다음 달로 변경하면 이번 달 결석 카운트 확인 가능.
   const prevMonthStr = (() => { const d = new Date(month + "-01"); d.setMonth(d.getMonth() - 1); return d.toISOString().slice(0, 7); })();
 
   return (
@@ -200,8 +201,8 @@ export default function PaymentsView({ students, teachers, currentUser, payments
                       <span style={{position:"absolute",right:12,top:"50%",transform:"translateY(-50%)",fontSize:13,color:"var(--ink-30)",pointerEvents:"none"}}>원</span>
                     </div>
                     {absenceCount > 0 && (
-                      <div style={{display:"flex",alignItems:"center",gap:6,marginTop:6,padding:"8px 12px",background:"#FFFBEB",border:"1px solid rgba(245,158,11,.25)",borderRadius:8,fontSize:12,color:"#92400E"}}>
-                        <span style={{fontSize:14}}>⚠️</span>
+                      <div style={{display:"flex",alignItems:"center",gap:8,marginTop:8,padding:"10px 14px",background:"#FEF3C7",border:"1.5px solid #F59E0B",borderRadius:10,fontSize:13,color:"#78350F",fontWeight:600}}>
+                        <span style={{fontSize:18,flexShrink:0}}>⚠️</span>
                         <span><strong>{prevMonthStr.replace("-", "년 ")}월</strong> 미보강 결석 <strong>{absenceCount}회</strong> — 수강료 수동 차감을 검토하세요.</span>
                       </div>
                     )}

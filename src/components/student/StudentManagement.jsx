@@ -271,7 +271,7 @@ export function StudentDetailModal({ student: s, teachers, currentUser, categori
             <div className="det-name">{s.name}</div>
             {s.studentCode && <div style={{fontSize:11,color:"var(--ink-30)",marginBottom:4,fontFamily:"monospace"}}>회원코드: {s.studentCode}</div>}
             {/* Password reveal for managers/admins */}
-            {s.studentCode && canManageAll(currentUser.role) && (<>
+            {s.studentCode && (canManageAll(currentUser.role) || currentUser.role === "teacher") && (<>
               <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:6}}>
                 <button onClick={()=>setShowPw(!showPw)} style={{background:"none",border:"1px solid var(--border)",borderRadius:6,padding:"2px 8px",fontSize:10,color:"var(--ink-30)",cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",gap:3}}>
                   {showPw ? "🔓" : "🔒"} {showPw ? `비밀번호: ${pw}` : "비밀번호 확인"}

@@ -297,6 +297,8 @@ textarea.inp{resize:vertical;min-height:80px;line-height:1.6}
 .loading-screen{min-height:100vh;min-height:100dvh;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#fff;gap:16px;animation:loadFadeIn .3s ease}
 .loading-logo{animation:logoBreath 1.8s ease-in-out infinite}
 .loading-text{font-size:11px;color:#A1A1AA;letter-spacing:2px;animation:loadFadeIn .5s ease .3s both}
+input[type="date"]{max-width:100%;box-sizing:border-box;-webkit-appearance:none}
+input[type="date"]::-webkit-date-and-time-value{text-align:left}
 @keyframes spin{to{transform:rotate(360deg)}}
 .spinner-sm{display:inline-block;width:12px;height:12px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite;margin-right:6px;vertical-align:middle}
 

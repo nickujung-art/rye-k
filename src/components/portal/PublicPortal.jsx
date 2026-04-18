@@ -46,6 +46,7 @@ export function PublicRegisterForm() {
 .silver-form .inst-check-box{width:22px !important;height:22px !important;font-size:14px !important}
 .silver-form .time-inp{min-height:56px;font-size:18px !important;padding:15px 12px !important;border:2px solid #6B7280 !important;border-radius:10px !important;color:#111827 !important}
 .silver-form .form-err{font-size:15px !important;padding:12px 16px !important}
+.silver-form input[type="date"]{max-width:100% !important;box-sizing:border-box !important;-webkit-appearance:none !important}
 `;
 
   useEffect(() => {
@@ -74,7 +75,10 @@ export function PublicRegisterForm() {
       const existing = snap?.exists() ? snap.data().value || [] : [];
       await sSet("rye-pending", [...existing, reg]);
       setSubmitted(true);
-    } catch (e) { setErr("등록에 실패했습니다. 다시 시도해주세요."); } finally { setSubmitting(false); }
+    } catch (e) {
+      setErr("제출에 실패했습니다. 입력하신 내용은 보존되어 있습니다 — 네트워크를 확인 후 다시 시도해주세요.");
+      try { sessionStorage.setItem("ryekRegisterDraft", JSON.stringify(form)); } catch {}
+    } finally { setSubmitting(false); }
   };
 
   if (submitted) return (<><style>{CSS}</style><div style={{minHeight:"100vh",background:"#fff",display:"flex",alignItems:"center",justifyContent:"center",padding:20}}><div style={{maxWidth:400,width:"100%",textAlign:"center"}}><div style={{width:64,height:64,borderRadius:"50%",background:"#F0FDF4",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 20px",fontSize:28}}>✓</div><div style={{fontFamily:"'Noto Serif KR',serif",fontSize:20,fontWeight:600,marginBottom:10}}>등록이 완료되었습니다</div><div style={{fontSize:14,color:"var(--ink-60)",lineHeight:1.7,marginBottom:24}}><strong>{form.name}</strong>님의 수강 등록 신청이 정상적으로 접수되었습니다.</div><button className="btn btn-primary btn-full" onClick={() => { setSubmitted(false); setForm({name:"",birthDate:"",phone:"",guardianPhone:"",desiredInstruments:[],notes:"",photo:"",experience:"none",experienceDetail:"",purpose:"",purposeOther:"",referral:"",referralOther:"",teacherName:"",lessonType:"",lessonTypeOther:"",lessonDay:"",lessonTime:"",monthlyFee:0,startDate:TODAY_STR,pendingOneTimeCharges:[]}); setStep(1); setPrivacyAgreed(false); setOptionalAgreed(false); }}>새로운 등록</button></div></div></>);
@@ -314,7 +318,7 @@ export function PublicParentView() {
   useEffect(() => {
     if (!loading && students.length > 0 && !loggedIn) {
       try {
-        const saved = JSON.parse(sessionStorage.getItem("ryekPortal") || "null");
+        const saved = JSON.parse(localStorage.getItem("ryekPortal") || "null");
         if (saved?.code && saved?.pw) {
           const found = students.find(s => s.studentCode === saved.code);
           if (found && getBirthPassword(found.birthDate) === saved.pw) {
@@ -337,6 +341,7 @@ export function PublicParentView() {
   const handleLogin = () => {
     setLoginErr("");
     if (!loginCode.trim() || !loginPw.trim()) { setLoginErr("회원코드와 비밀번호를 입력하세요."); return; }
+    // 식별자: studentCode (연락처 중복 형제·자매 문제 방지 — phone은 사용하지 않음)
     const found = students.find(s => s.studentCode === loginCode.trim().toUpperCase());
     if (!found) { setLoginErr("회원코드를 찾을 수 없습니다."); return; }
     const expectedPw = getBirthPassword(found.birthDate);
@@ -344,7 +349,7 @@ export function PublicParentView() {
     setStudent(found);
     setLoggedIn(true);
     try {
-      sessionStorage.setItem("ryekPortal", JSON.stringify({ code: found.studentCode, pw: loginPw }));
+      localStorage.setItem("ryekPortal", JSON.stringify({ code: found.studentCode, pw: loginPw }));
       if (saveCode) localStorage.setItem("ryekSavedCode", found.studentCode);
       else localStorage.removeItem("ryekSavedCode");
     } catch {}
@@ -445,11 +450,12 @@ export function PublicParentView() {
           <div style={{flex:1}}>
             <div style={{fontFamily:"'Noto Serif KR',serif",fontSize:15,fontWeight:700,color:"var(--blue)"}}>My RYE-K</div>
           </div>
-          <button onClick={()=>{setLoggedIn(false);setStudent(null);setLoginCode("");setLoginPw("");setTab("home");try{sessionStorage.removeItem("ryekPortal");}catch{}}} style={{background:"#F5F5F5",border:"none",color:"#999",fontSize:11,padding:"6px 14px",borderRadius:8,cursor:"pointer",fontFamily:"inherit"}}>로그아웃</button>
+          <button onClick={()=>{setLoggedIn(false);setStudent(null);setLoginCode("");setLoginPw("");setTab("home");try{localStorage.removeItem("ryekPortal");}catch{}}} style={{background:"#F5F5F5",border:"none",color:"#999",fontSize:11,padding:"6px 14px",borderRadius:8,cursor:"pointer",fontFamily:"inherit"}}>로그아웃</button>
         </div>
       </div>
 
       {/* Student Info Card */}
+      {/* ⛔ student.notes는 강사/매니저 전용 내부 메모 — 절대 렌더링 금지 */}
       <div style={{padding:"16px 16px 0",maxWidth:640,margin:"0 auto"}}>
         <div style={{background:"#fff",borderRadius:16,padding:"20px",boxShadow:"0 1px 8px rgba(0,0,0,.04)",border:"1px solid #F0F0F0"}}>
           <div style={{display:"flex",alignItems:"center",gap:14}}>
