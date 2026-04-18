@@ -40,7 +40,7 @@ export function UpdatePopup({ user }) {
               ))}
             </div>
           )}
-          <p className="up-desc">{description}</p>
+          <p className="up-desc" style={{ whiteSpace: "pre-wrap" }}>{description}</p>
           {pmComment && (
             <div className="up-pm">
               <div className="up-pm-badge">PM NOTE</div>
