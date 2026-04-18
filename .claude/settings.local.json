@@ -1,0 +1,23 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run:*)",
+      "Bash(npx vite:*)",
+      "Bash(node:*)",
+      "Bash(python:*)",
+      "Bash(where python:*)",
+      "Bash(where python3:*)",
+      "Bash(where node:*)",
+      "Bash(./node_modules/.bin/vite build:*)",
+      "Bash(ls node_modules/.bin/vite*)",
+      "Bash(npm install:*)",
+      "Bash(awk -F: '$2 >= 884 && $2 <= 2277')",
+      "Bash(awk 'NR>=884 && NR<=2278' C:/Users/GIGABYTE/Coding/rye-k/src/App.jsx)",
+      "Bash(awk 'NR>=884 && NR<=2278 {print NR\": \"$0}' C:/Users/GIGABYTE/Coding/rye-k/src/App.jsx)",
+      "Bash(awk 'NR>=884 && NR<=1118' C:/Users/GIGABYTE/Coding/rye-k/src/App.jsx)",
+      "Bash(awk 'NR>=1129 && NR<=1492' C:/Users/GIGABYTE/Coding/rye-k/src/App.jsx)",
+      "Bash(awk 'NR>=2128 && NR<=2278' C:/Users/GIGABYTE/Coding/rye-k/src/App.jsx)",
+      "Bash(python3 *)"
+    ]
+  }
+}

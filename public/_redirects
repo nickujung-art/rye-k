@@ -1,0 +1,13 @@
+# Redirect non-slash to slash for PWA entry points (helps iOS Safari)
+/myryk     /myryk/      301
+/register  /register/   301
+
+# ★ v12.2: 서브 경로는 전용 index.html 서빙 (iOS PWA 아이콘 분리용)
+# 이 규칙들은 SPA fallback보다 먼저 와야 함
+/myryk/         /myryk/index.html      200
+/myryk/*        /myryk/index.html      200
+/register/      /register/index.html   200
+/register/*     /register/index.html   200
+
+# SPA fallback for unknown paths (must be last)
+/*         /index.html  200
