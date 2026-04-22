@@ -255,6 +255,7 @@ export function PublicParentView() {
   // 자녀 전환 (로그인 후)
   const [showSiblingModal, setShowSiblingModal] = useState(false);
   const [switchErr, setSwitchErr] = useState("");
+  const [textLarge, setTextLarge] = useState(() => { try { return localStorage.getItem("rye-text-large") === "1"; } catch { return false; } });
   // 읽음 추적 — localStorage에 학생별 저장
   const [lastNoteRead, setLastNoteRead] = useState(0);       // 강사 댓글 마지막 읽은 시각
   const [readNoticeIds, setReadNoticeIds] = useState(new Set()); // 읽은 공지 ID set
@@ -603,7 +604,7 @@ export function PublicParentView() {
   const visibleNotices = studentNotices
     .filter(n => !n.hidden)
     .filter(n => !n.expireAt || n.expireAt > Date.now())
-    .filter(n => !n.targetTeacherId || n.targetTeacherId === student.teacherId)
+    .filter(n => !n.targetTeacherId || n.targetTeacherId === student.teacherId || (student.lessons||[]).some(l => l.teacherId === n.targetTeacherId))
     .sort((a,b) => { if(a.pinned&&!b.pinned)return -1; if(!a.pinned&&b.pinned)return 1; return b.createdAt-a.createdAt; });
 
   // 미읽음 배지 계산
@@ -613,7 +614,7 @@ export function PublicParentView() {
 
   return (
     <><style>{CSS}</style>
-    <div style={{minHeight:"100vh",minHeight:"100dvh",background:"#FAFAFA"}}>
+    <div className={textLarge ? "text-large" : ""} style={{minHeight:"100vh",minHeight:"100dvh",background:"#FAFAFA"}}>
       {/* Clean white header */}
       <UpdatePopup user={{ role: "member", id: student.id }} />
       <div style={{background:"#fff",padding:"14px 20px",paddingTop:"calc(14px + env(safe-area-inset-top,0px))",borderBottom:"1px solid #F0F0F0"}}>
@@ -629,6 +630,7 @@ export function PublicParentView() {
                 자녀 변경 🔄
               </button>
             )}
+            <button onClick={() => { const v = !textLarge; setTextLarge(v); localStorage.setItem("rye-text-large", v ? "1" : "0"); }} style={{background:textLarge?"var(--blue-lt)":"#F5F5F5",border:textLarge?"1px solid rgba(43,58,159,.2)":"none",color:textLarge?"var(--blue)":"#999",fontSize:11,padding:"6px 10px",borderRadius:8,cursor:"pointer",fontFamily:"inherit",fontWeight:700,transition:"all .15s"}}>Aa</button>
             <button onClick={()=>{setLoggedIn(false);setStudent(null);setLoginCode("");setLoginPw("");setLoginStep("id");setPendingStudent(null);setTab("home");try{localStorage.removeItem("ryekPortal");}catch{}}} style={{background:"#F5F5F5",border:"none",color:"#999",fontSize:11,padding:"6px 14px",borderRadius:8,cursor:"pointer",fontFamily:"inherit"}}>로그아웃</button>
           </div>
         </div>
@@ -636,7 +638,7 @@ export function PublicParentView() {
 
       {/* Student Info Card */}
       {/* ⛔ student.notes는 강사/매니저 전용 내부 메모 — 절대 렌더링 금지 */}
-      <div style={{padding:"16px 16px 0",maxWidth:640,margin:"0 auto"}}>
+      <div className="portal-body" style={{padding:"16px 16px 0",maxWidth:640,margin:"0 auto"}}>
         <div style={{background:"#fff",borderRadius:16,padding:"20px",boxShadow:"0 1px 8px rgba(0,0,0,.04)",border:"1px solid #F0F0F0"}}>
           <div style={{display:"flex",alignItems:"center",gap:14}}>
             <Av photo={student.photo} name={student.name} size="av-lg" />
@@ -698,7 +700,7 @@ export function PublicParentView() {
         ))}
       </div>
 
-      <div style={{padding:16,maxWidth:640,margin:"0 auto"}}>
+      <div className="portal-body" style={{padding:16,maxWidth:640,margin:"0 auto"}}>
         {/* Home Tab */}
         {tab === "home" && (
           <div>

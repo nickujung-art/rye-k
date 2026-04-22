@@ -71,6 +71,13 @@ export default function Dashboard({ students, teachers, currentUser, notices, ca
   if (canManageAll(currentUser.role) && pending && pending.length > 0) {
     notifications.push({ type: "blue", text: <><strong>등록 대기 {pending.length}건</strong> — 승인이 필요합니다</>, key: "pending", onClick: () => nav("pending") });
   }
+  // 4.5. 강사 비용 청구 요청 알림
+  if (canManageAll(currentUser.role)) {
+    const pendingChargeCount = students.reduce((n, s) => n + (s.pendingOneTimeCharges||[]).length, 0);
+    if (pendingChargeCount > 0) {
+      notifications.push({ type: "gold", text: <><strong>💡 강사 비용 청구 요청 {pendingChargeCount}건</strong> — 수납 관리에서 확인 후 승인하세요</>, key: "charge-req", onClick: () => nav("payments") });
+    }
+  }
   // 5. 강사 기념일 (임용 기념일)
   teachers.forEach(t => {
     if (!t.startDate) return;

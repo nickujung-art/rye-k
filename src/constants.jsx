@@ -566,4 +566,43 @@ input[type="date"]::-webkit-date-and-time-value{text-align:left}
 .news-desc{font-size:13px;color:var(--ink-60);line-height:1.65}
 .news-pm{background:var(--blue-lt);border-left:3px solid var(--blue);border-radius:var(--radius-sm);padding:10px 12px;margin-top:10px;font-size:13px;color:var(--blue);font-style:italic}
 .news-tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+/* ── 텍스트 크기 토글 ─────────────────────────────────────── */
+.btn-aa{background:none;border:1.5px solid var(--border);border-radius:8px;padding:3px 9px;font-size:13px;font-weight:700;cursor:pointer;color:var(--ink-60);transition:all .12s;margin-left:auto;flex-shrink:0;font-family:inherit}
+.btn-aa.active{background:var(--blue-lt);border-color:var(--blue);color:var(--blue)}
+.btn-aa:hover{border-color:var(--blue-md);color:var(--blue)}
+/* ── .text-large: 본문 컨텐츠 영역 확대 ─── */
+/* 공지사항 */
+.text-large .notice-title{font-size:16px;line-height:1.5}
+.text-large .notice-body{font-size:15px;line-height:1.75}
+.text-large .notice-meta{font-size:12px}
+/* 레슨노트 */
+.text-large .lesson-note-content,.text-large .ln-text,.text-large .ln-body{font-size:15px;line-height:1.75}
+.text-large .ln-title{font-size:14px}
+/* 회원 상세 */
+.text-large .det-name{font-size:21px}
+.text-large .ii-val{font-size:14px;line-height:1.6}
+.text-large .notes-box{font-size:14px;line-height:1.7}
+.text-large .lesson-detail-inst{font-size:14px}
+.text-large .sched-chip{font-size:13px}
+/* 출석·결제 목록 본문 */
+.text-large .att-stat{font-size:13px}
+.text-large .pay-status{font-size:13px}
+/* 시스템 소식 */
+.text-large .news-desc{font-size:14.5px;line-height:1.75}
+.text-large .news-title{font-size:16px}
+.text-large .news-pm{font-size:13.5px}
+/* 모달 본문 */
+.text-large .modal-b .fg-label{font-size:12px}
+.text-large .modal-b .ii-val{font-size:14px}
+/* 회원 포털 본문 */
+.text-large .portal-body{font-size:15px;line-height:1.65}
+.text-large .portal-body .tab-content-text{font-size:15px;line-height:1.75}
+/* ── 레이아웃 고정 영역 — 크기 고정 ─── */
+.text-large .topbar,.text-large .topbar *,
+.text-large .bnav,.text-large .bnav *,
+.text-large .sidebar,.text-large .sidebar *,
+.text-large table,.text-large table td,.text-large table th,
+.text-large .cal-grid,.text-large .cal-grid *,
+.text-large .ftab,.text-large .s-card,.text-large .s-card *,
+.text-large .pay-row .pay-amount{font-size:unset!important}
 `;

@@ -2,6 +2,8 @@ import { useState } from "react";
 import { PAY_METHODS, IC, TODAY_STR, THIS_MONTH } from "../../constants.jsx";
 import { canManageAll, monthLabel, fmtMoney, fmtDateShort, fmtDate, calcAge, isMinor, instTypeLabel, uid, sendAligoMessage } from "../../utils.js";
 import { Av } from "../shared/CommonUI.jsx";
+import AlimtalkModal from "../shared/AlimtalkModal.jsx";
+import { ChargeRequestModal } from "../student/StudentManagement.jsx";
 
 export default function PaymentsView({ students, teachers, currentUser, payments, onSavePayments, onLog, attendance = [], onSaveStudents }) {
   const [month, setMonth] = useState(THIS_MONTH);
@@ -15,6 +17,12 @@ export default function PaymentsView({ students, teachers, currentUser, payments
   const [previewStudent, setPreviewStudent] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [acctToast, setAcctToast] = useState(false);
+  const [requestsModal, setRequestsModal] = useState(false);
+  const [approvingId, setApprovingId] = useState(null);
+  const [alimtalkModal, setAlimtalkModal] = useState(null); // null | "monthly_fee" | "unpaid_reminder"
+  const [payChargeStudent, setPayChargeStudent] = useState(null);
+
+  const pendingRequestStudents = students.filter(s => (s.pendingOneTimeCharges||[]).length > 0);
 
   const ACCT_MSG = "[RYE-K K-Culture Center]\n수강생 여러분의 깊은 관심에 항상 감사드립니다.\n원활한 수업 진행을 위해 수강료 납부 계좌를 안내드리오니 확인 부탁드립니다.\n\n- 카카오뱅크 3333-34-5220544 (예금주: 예케이케이컬처센터)\n\n늘 정성을 다하는 교육으로 보답하겠습니다.";
   const copyAcct = async () => {
@@ -113,7 +121,17 @@ export default function PaymentsView({ students, teachers, currentUser, payments
         <span style={{fontSize:11,color:"#6366F1",flexShrink:0,fontWeight:500}}>{acctToast ? "✓ 복사됨" : "📋 복사"}</span>
       </div>
       {acctToast && <div style={{position:"fixed",bottom:80,left:"50%",transform:"translateX(-50%)",background:"#1E1B4B",color:"#fff",fontSize:13,fontWeight:500,padding:"10px 20px",borderRadius:24,zIndex:9999,boxShadow:"0 4px 20px rgba(0,0,0,.25)",whiteSpace:"nowrap",pointerEvents:"none"}}>안내 멘트가 복사되었습니다!</div>}
-      <div className="ph"><div><h1>수납 관리</h1><div className="ph-sub">{monthLabel(month)}</div></div><div style={{display:"flex",gap:6}}>{canManageAll(currentUser.role) && <button className="btn btn-secondary btn-sm" onClick={() => { setAlimType("unpaid"); setAlimModal(true); }}>💬 알림톡</button>}{canManageAll(currentUser.role) && <button className="btn btn-secondary btn-sm" onClick={exportCSV}>📥 엑셀</button>}</div></div>
+      <div className="ph"><div><h1>수납 관리</h1><div className="ph-sub">{monthLabel(month)}</div></div><div style={{display:"flex",gap:6,flexWrap:"wrap",justifyContent:"flex-end"}}>
+        {canManageAll(currentUser.role) && pendingRequestStudents.length > 0 && (
+          <button className="btn btn-sm" style={{background:"var(--gold-lt)",border:"1.5px solid var(--gold-dk)",color:"var(--gold-dk)",fontWeight:700,position:"relative"}} onClick={() => setRequestsModal(true)}>
+            강사 청구 요청
+            <span style={{marginLeft:6,background:"var(--gold-dk)",color:"#fff",borderRadius:99,padding:"1px 7px",fontSize:11,fontWeight:700}}>{pendingRequestStudents.reduce((n,s)=>n+(s.pendingOneTimeCharges||[]).length,0)}</span>
+          </button>
+        )}
+        {canManageAll(currentUser.role) && <button className="btn btn-secondary btn-sm" onClick={() => setAlimtalkModal("monthly_fee")} title="이달의 수강료 일괄 안내">📨 수강료 안내</button>}
+        {canManageAll(currentUser.role) && <button className="btn btn-secondary btn-sm" onClick={() => { setAlimType("unpaid"); setAlimModal(true); }}>💬 알림톡</button>}
+        {canManageAll(currentUser.role) && <button className="btn btn-secondary btn-sm" onClick={exportCSV}>📥 엑셀</button>}
+      </div></div>
       <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
         <button className="btn btn-secondary btn-xs" onClick={prevMonth}>◀</button>
         <input className="inp" type="month" value={month} onChange={e => setMonth(e.target.value)} style={{flex:1,maxWidth:180,textAlign:"center"}} />
@@ -321,6 +339,16 @@ export default function PaymentsView({ students, teachers, currentUser, payments
                 )}
 
                 <div className="fg"><label className="fg-label">메모</label><input className="inp" value={editForm.note} onChange={e => setEditForm(f => ({...f, note: e.target.value}))} placeholder="비고" /></div>
+                {isTeacher && (
+                  <div style={{borderTop:"1px dashed var(--border)",paddingTop:10,marginTop:4}}>
+                    <button className="btn btn-secondary btn-sm" style={{width:"100%"}} onClick={() => setPayChargeStudent(s)}>+ 비용 청구 요청</button>
+                    {(s?.pendingOneTimeCharges||[]).length > 0 && (
+                      <div style={{fontSize:11,color:"var(--gold-dk)",background:"var(--gold-lt)",borderRadius:8,padding:"5px 10px",marginTop:6}}>
+                        승인 대기: {(s.pendingOneTimeCharges||[]).map(c=>`${c.title||c.type} ${(c.amount||0).toLocaleString()}원`).join(" · ")}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
               <div className="modal-f">
                 <button className="btn btn-secondary" onClick={() => setEditingId(null)}>취소</button>
@@ -397,6 +425,81 @@ export default function PaymentsView({ students, teachers, currentUser, payments
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── 비용 청구 요청 모달 (수납 관리 내) ── */}
+      {payChargeStudent && (
+        <ChargeRequestModal
+          student={payChargeStudent}
+          onClose={() => setPayChargeStudent(null)}
+          onSave={async (updStudent) => {
+            const updStudents = students.map(st => st.id === updStudent.id ? updStudent : st);
+            await onSaveStudents(updStudents);
+          }}
+        />
+      )}
+
+      {/* ── 수강료 일괄 알림톡 모달 ── */}
+      {alimtalkModal && (
+        <AlimtalkModal
+          type={alimtalkModal}
+          students={visibleStudents}
+          month={month}
+          getPayment={getPayment}
+          onClose={() => setAlimtalkModal(null)}
+          onSend={async (type, targets) => {
+            await sendAligoMessage(type, targets);
+          }}
+        />
+      )}
+
+      {/* ── 강사 청구 요청 승인 모달 ── */}
+      {requestsModal && (
+        <div className="modal-overlay" onClick={() => setRequestsModal(false)}>
+          <div className="modal" onClick={e => e.stopPropagation()} style={{maxWidth:480}}>
+            <div className="modal-h"><h2>강사 청구 요청</h2><button className="modal-close" onClick={() => setRequestsModal(false)}>{IC.x}</button></div>
+            <div className="modal-b">
+              {pendingRequestStudents.length === 0 ? (
+                <div style={{textAlign:"center",color:"var(--ink-30)",padding:"20px 0"}}>처리할 요청이 없습니다.</div>
+              ) : pendingRequestStudents.map(s => (
+                <div key={s.id} style={{marginBottom:16,borderBottom:"1px solid var(--border)",paddingBottom:12}}>
+                  <div style={{fontWeight:700,fontSize:14,marginBottom:8,display:"flex",alignItems:"center",gap:6}}>
+                    {s.name}
+                    <span style={{fontSize:12,color:"var(--ink-60)",fontWeight:400}}>
+                      {(s.lessons||[]).map(l=>l.instrument).join(" · ")}
+                    </span>
+                  </div>
+                  {(s.pendingOneTimeCharges||[]).map(charge => (
+                    <div key={charge.id} style={{display:"flex",alignItems:"center",gap:8,padding:"7px 10px",background:"var(--gold-lt)",borderRadius:8,marginBottom:6,transition:"opacity .25s",opacity:approvingId===charge.id?0.4:1}}>
+                      <div style={{flex:1}}>
+                        <div style={{fontWeight:600,fontSize:13}}>{charge.title}</div>
+                        <div style={{fontSize:11,color:"var(--ink-60)"}}>요청: {charge.requestedBy} · {fmtMoney(charge.amount)}</div>
+                      </div>
+                      <button className="btn btn-sm" style={{background:"var(--green-lt)",border:"1px solid var(--green)",color:"var(--green)",fontWeight:700}} disabled={!!approvingId} onClick={async () => {
+                        setApprovingId(charge.id);
+                        // 1. student에서 해당 pendingCharge 제거
+                        const updStudent = { ...s, pendingOneTimeCharges: (s.pendingOneTimeCharges||[]).filter(c => c.id !== charge.id) };
+                        const updStudents = students.map(st => st.id === s.id ? updStudent : st);
+                        await onSaveStudents(updStudents);
+                        // 2. 해당 월 payment에 extraCharge 추가
+                        const p = payments.find(p => p.studentId === s.id && p.month === month);
+                        const newExtra = { title: charge.title ? `${charge.type||"기타"} - ${charge.title}` : (charge.type||"기타"), amount: charge.amount };
+                        const existing = p?.extraCharges || [];
+                        const newExtras = [...existing, newExtra];
+                        const newAmt = (p?.amount ?? autoFee(s)) + charge.amount;
+                        const record = { ...(p||{}), id: p?.id || uid(), studentId: s.id, month, amount: newAmt, extraCharges: newExtras, paid: p?.paid||false, paidAmount: p?.paidAmount||0, paidDate: p?.paidDate||"", method: p?.method||"", note: p?.note||"", createdAt: p?.createdAt||Date.now(), updatedAt: Date.now() };
+                        const updPay = p ? payments.map(px => px.id === p.id ? record : px) : [...payments, record];
+                        await onSavePayments(updPay);
+                        setApprovingId(null);
+                      }}>승인</button>
+                    </div>
+                  ))}
+                </div>
+              ))}
+            </div>
+            <div className="modal-f"><button className="btn btn-secondary" onClick={() => setRequestsModal(false)}>닫기</button></div>
           </div>
         </div>
       )}

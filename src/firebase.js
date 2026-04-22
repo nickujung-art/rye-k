@@ -1,5 +1,5 @@
 import { initializeApp } from "firebase/app";
-import { getFirestore, doc, setDoc, onSnapshot } from "firebase/firestore";
+import { getFirestore, doc, setDoc, onSnapshot, runTransaction } from "firebase/firestore";
 import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signInAnonymously, signOut, onAuthStateChanged } from "firebase/auth";
 
 const firebaseConfig = {
@@ -59,4 +59,4 @@ async function firebaseLogout() {
   try { await signOut(auth); } catch (e) { console.error("Sign out error:", e); }
 }
 
-export { db, auth, doc, setDoc, onSnapshot, firebaseSignIn, firebaseSignInAnon, firebaseLogout, onAuthStateChanged };
+export { db, auth, doc, setDoc, onSnapshot, runTransaction, firebaseSignIn, firebaseSignInAnon, firebaseLogout, onAuthStateChanged };

@@ -8,6 +8,56 @@
 - **배포**: GitHub (nickujung-art/rye-k) → Cloudflare Pages (자동 빌드/배포)
 - **Firebase**: rye-k-center 프로젝트 (Auth + Firestore 실시간 동기화, Storage 미사용)
 
+## ⚠ v14.1+ 최신 변경 이력 (운영자 필독)
+
+### Round 6 (2026-04-22) — 데이터 안전성 전면 재설계 (CRITICAL)
+
+**배경**: 스테일 세션(role 누락) → canManageAll=false → visible=[2명] → onSaveStudents가 전체를 2명으로 덮어써 77명 데이터 손실. 재발 방지를 위해 아키텍처 수준에서 차단.
+
+**`saveStudents` 하드락** (`App.jsx`):
+- `saveStudents()` 는 즉시 `Error` throw — 배열 전체 덮어쓰기 영구 금지
+- 대신 4개 per-op 트랜잭션 함수만 사용:
+
+```js
+addStudentDoc(student)           // 신규 추가
+updateStudentDoc(student)        // ID 기준 단건 수정
+deleteStudentDoc(studentId)      // ID 기준 단건 삭제
+batchStudentDocs(updates[])      // 여러 건 ID map 수정 (수강료 일괄 등)
+```
+
+- 모든 함수는 `runTransaction(db, ...)` 기반 → Firestore를 직접 읽어 덮어씀 (React state 기준 X)
+- `firebase.js`: `runTransaction` import/export 추가
+
+**1회 데이터 복구** (`App.jsx` `checkAllLoaded`):
+- `localStorage["rye-recovery-v1"]` 미설정 시 1회 실행
+- `generateSeedData().seedStudents` (77명) + 현재 Firestore를 ID 기준 병합 (현재 데이터 우선)
+- 실행 후 플래그 설정 → 재실행 없음
+- 앱을 열면 자동 복구됨 (별도 조작 불필요)
+
+**선행 Round 수정 사항** (이전 세션들):
+- `ChargeRequestModal`: type select(악기구매/교재비/악세사리) + title + amount 행 추가/삭제 + 저장 버튼
+- `StudentDetailModal` 악기 대여: 자동저장(onSaveStudent 즉시 호출), 드롭다운은 `feePresets` `rental:` prefix 키 사용
+- 강사 전용 "비용 청구 요청" 버튼 (`currentUser.role === "teacher"` 만 노출)
+- Admin double-guard: `isAdmin = canManageAll(user?.role) || user?.id === ADMIN.id`
+- Admin 세션 role 정규화: `useState` init에서 admin id/username 감지 시 `role:"admin"` 강제 주입
+- `onSaveStudents` inst member 오염 수정: `upd.filter(s => !s.isInstitution)` → batchStudentDocs
+- Dashboard: admin/manager에게 `pendingOneTimeCharges` 건수 배너 알림 (수납 관리 바로가기)
+- PaymentsView: 강사 청구 요청 N건 배지 버튼 + 승인 모달
+
+### ⚠ 학생 CRUD 규칙 (Round 6 이후 필독)
+```js
+// ✅ 올바른 방법
+await addStudentDoc(newStudent);
+await updateStudentDoc({ ...student, field: value });
+await deleteStudentDoc(student.id);
+await batchStudentDocs(arrayOfUpdatedStudents);
+
+// 🚫 절대 금지 (즉시 throw)
+await saveStudents([...]);
+```
+
+---
+
 ## ⚠ v14.1 최신 변경 이력 (운영자 필독)
 
 ### Phase 4.5 (2026-04-18) — 지능형 자가 업데이트 공지 시스템
@@ -298,6 +348,7 @@ comments: [{
 | `ryekPwResetV12Done` | 강사 비밀번호 마이그레이션 가드 | localStorage |
 | `ryekPortal` | 포털 자동 로그인 (새로고침 유지) | sessionStorage |
 | `ryek_lastSeenVersion` | 업데이트 팝업 마지막 확인 버전 | localStorage |
+| `rye-recovery-v1` | 77명 1회 데이터 복구 완료 플래그 | localStorage |
 
 ## 강사 필터링 로직
 ```js
@@ -306,8 +357,8 @@ students.filter(s =>
   s.teacherId === user.id ||
   (s.lessons||[]).some(l => l.teacherId === user.id)
 )
-// 기관 가상회원
-allInstMembers.filter(m => m.teacherId === user.id)
+// 기관 가상회원 (Round 6: lesson-level teacherId도 포함)
+allInstMembers.filter(m => m.teacherId === user.id || (m.lessons||[]).some(l => l.teacherId === user.id))
 ```
 
 ## 그룹 레슨 감지 로직
@@ -364,6 +415,8 @@ allInstMembers.filter(m => m.teacherId === user.id)
 - v13.0: App.jsx 파일 분리 리팩토링 완료 (5,700+ → 690줄)
 - v14.0 Beta: 수납/공지/알림톡 고도화 + 포털 개선 (Phase 4.0~4.4)
 - v14.1: 지능형 자가 업데이트 공지 시스템 (UpdatePopup + SystemNewsView + releases.js)
+- v14.1+: 강사 비용 청구 요청 시스템 (ChargeRequestModal + pendingOneTimeCharges + 관리자 승인 모달)
+- v14.1+ Round 6: saveStudents 하드락 + runTransaction per-op CRUD + 77명 데이터 복구
 
 ### v14.x (다음 릴리즈 후보)
 - 기관 월별 정산 리포트 PDF

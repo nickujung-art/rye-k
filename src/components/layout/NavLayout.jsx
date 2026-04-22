@@ -68,7 +68,7 @@ function SidebarShareBtn({ label, url, title, text }) {
 }
 
 // ── SIDEBAR (Desktop) ─────────────────────────────────────────────────────────
-export function Sidebar({ view, setView, user, onLogout, counts, pendingCount, darkMode, setDarkMode, newCommentCount }) {
+export function Sidebar({ view, setView, user, onLogout, counts, pendingCount, darkMode, setDarkMode, newCommentCount, textLarge, setTextLarge }) {
   const nav = [
     { id: "dashboard", label: "대시보드", icon: "▦" },
     { id: "students", label: "회원 관리", icon: "♪", badge: counts.students },
@@ -126,6 +126,12 @@ export function Sidebar({ view, setView, user, onLogout, counts, pendingCount, d
             <div style={{width:12,height:12,borderRadius:"50%",background:"#fff",position:"absolute",top:2,left:isDark?16:2,transition:"left .2s"}} />
           </div>
         </div>
+        {setTextLarge && (
+          <button onClick={() => { const v = !textLarge; setTextLarge(v); localStorage.setItem("rye-text-large", v ? "1" : "0"); }} style={{width:"100%",background:textLarge?"rgba(43,58,159,.25)":"rgba(255,255,255,.06)",border:`1px solid ${textLarge?"rgba(43,58,159,.5)":"rgba(255,255,255,.1)"}`,borderRadius:6,padding:"5px 10px",color:textLarge?"#a5b4fc":"rgba(255,255,255,.45)",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit",marginBottom:8,transition:"all .15s",textAlign:"left",display:"flex",alignItems:"center",gap:6}}>
+            <span style={{fontSize:13}}>Aa</span>
+            <span style={{fontWeight:400,fontSize:11}}>{textLarge ? "큰 글씨 ON" : "글씨 크기"}</span>
+          </button>
+        )}
         <button className="sb-logout" onClick={onLogout}>로그아웃</button>
       </div>
     </aside>
