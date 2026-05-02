@@ -1,7 +1,7 @@
 {
   "name": "rye-k-center",
   "private": true,
-  "version": "12.1.0",
+  "version": "15.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",

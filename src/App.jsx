@@ -1,15 +1,13 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, lazy, Suspense } from "react";
 import { db, auth, doc, setDoc, onSnapshot, runTransaction, firebaseSignIn, firebaseSignInAnon, firebaseLogout, onAuthStateChanged } from "./firebase.js";
 import { DEFAULT_CATEGORIES, DAYS, ADMIN, TODAY_STR, THIS_MONTH, TODAY_DAY, ATT_STATUS, PAY_METHODS, INST_TYPES, IC, CSS } from "./constants.jsx";
 import { calcAge, isMinor, getCat, fmtDate, fmtDateShort, fmtDateTime, uid, fmtPhone, fmtMoney, allLessonInsts, allLessonDays, canManageAll, monthLabel, generateStudentCode, getBirthPassword, getPhoneInitialPassword, instTypeLabel, expandInstitutionsToMembers, getContractDaysLeft, formatLessonNoteSummary } from "./utils.js";
-import ScheduleView from "./components/ScheduleView.jsx";
 import { InstitutionFormModal, InstitutionDetailModal, InstitutionsView } from "./components/institution/Institutions.jsx";
 import { Logo } from "./components/shared/CommonUI.jsx";
 import { AttendanceView, LessonNotesView, NoteCommentsPanel } from "./components/attendance/Attendance.jsx";
 import PaymentsView from "./components/payment/PaymentsView.jsx";
 import { LessonEditor, StudentFormModal, StudentDetailModal, StudentsView } from "./components/student/StudentManagement.jsx";
 import { TeacherFormModal, TeacherDetailModal, TeachersView } from "./components/teacher/TeacherManagement.jsx";
-import AnalyticsView from "./components/analytics/AnalyticsView.jsx";
 import { NoticeFormModal, NoticesView, StudentNoticeManager } from "./components/notice/NoticeManagement.jsx";
 import { ActivityView, PendingView, TrashView, CategoriesView } from "./components/admin/AdminTools.jsx";
 import Dashboard from "./components/dashboard/Dashboard.jsx";
@@ -17,11 +15,15 @@ import { PublicParentView, PublicRegisterForm } from "./components/portal/Public
 import { LoginScreen, ProfileView } from "./components/auth/UserAuth.jsx";
 import { BottomNav, Sidebar, MoreMenu } from "./components/layout/NavLayout.jsx";
 import { UpdatePopup } from "./components/updates/UpdatePopup.jsx";
-import { SystemNewsView } from "./components/updates/SystemNewsView.jsx";
+
+// ── Lazy-loaded views (code-split) ────────────────────────────────────────────
+const AnalyticsView  = lazy(() => import("./components/analytics/AnalyticsView.jsx"));
+const ScheduleView   = lazy(() => import("./components/ScheduleView.jsx"));
+const SystemNewsView = lazy(() => import("./components/updates/SystemNewsView.jsx").then(m => ({ default: m.SystemNewsView })));
 
 // ── Storage (Firestore — 실시간 크로스플랫폼 동기화) ─────────────────────────
 const COLLECTION = "appData";
-async function sSet(k,v){try{await setDoc(doc(db,COLLECTION,k),{value:v,updatedAt:Date.now()});}catch(e){console.error("sSet error:",k,e);}}
+async function sSet(k,v){try{await setDoc(doc(db,COLLECTION,k),{value:v,updatedAt:Date.now()});}catch(e){console.error("sSet error:",k,e);throw e;}}
 
 
 // ── SAMPLE DATA SEED ──────────────────────────────────────────────────────────
@@ -417,8 +419,8 @@ function MainApp() {
     };
   }, []);
 
-  const showToast = msg => { setToast(msg); setTimeout(() => setToast(null), 2400); };
-  const saveTeachers = async u => { setTeachers(u); await sSet("rye-teachers", u); };
+  const showToast = (msg, isError = false) => { setToast({msg, isError}); setTimeout(() => setToast(null), 2400); };
+  const saveTeachers = async u => { setTeachers(u); try { await sSet("rye-teachers", u); } catch { showToast("저장에 실패했습니다. 네트워크를 확인해주세요.", true); } };
   // 배열 전체 덮어쓰기 금지 — 아래 per-op 함수만 사용
   const saveStudents = () => { throw new Error("saveStudents 직접 호출 금지 — addStudentDoc/updateStudentDoc/deleteStudentDoc/batchStudentDocs 사용"); };
   const _studentsRef = doc(db, COLLECTION, "rye-students");
@@ -431,6 +433,7 @@ function MainApp() {
     setStudents(prev => [...prev, student]);
   };
   const updateStudentDoc = async (student) => {
+    if (!student?.id) throw new Error("updateStudentDoc: id 없음");
     await runTransaction(db, async (tx) => {
       const snap = await tx.get(_studentsRef);
       const cur = snap.exists() ? (snap.data().value || []) : [];
@@ -439,6 +442,7 @@ function MainApp() {
     setStudents(prev => prev.map(s => s.id === student.id ? student : s));
   };
   const deleteStudentDoc = async (studentId) => {
+    if (!studentId) throw new Error("deleteStudentDoc: id 없음");
     await runTransaction(db, async (tx) => {
       const snap = await tx.get(_studentsRef);
       const cur = snap.exists() ? (snap.data().value || []) : [];
@@ -459,14 +463,14 @@ function MainApp() {
       return prev.map(s => updMap[s.id] || s);
     });
   };
-  const saveNotices = async u => { setNotices(u); await sSet("rye-notices", u); };
-  const saveCategories = async u => { setCategories(u); await sSet("rye-categories", u); };
-  const saveAttendance = async u => { setAttendance(u); await sSet("rye-attendance", u); };
-  const savePayments = async u => { setPayments(u); await sSet("rye-payments", u); };
-  const saveScheduleOverrides = async u => { setScheduleOverrides(u); await sSet("rye-schedule-overrides", u); };
-  const saveTrash = async u => { setTrash(u); await sSet("rye-trash", u); };
-  const saveStudentNotices = async u => { setStudentNotices(u); await sSet("rye-student-notices", u); };
-  const saveInstitutions = async u => { setInstitutions(u); await sSet("rye-institutions", u); };
+  const saveNotices = async u => { setNotices(u); try { await sSet("rye-notices", u); } catch { showToast("저장에 실패했습니다. 네트워크를 확인해주세요.", true); } };
+  const saveCategories = async u => { setCategories(u); try { await sSet("rye-categories", u); } catch { showToast("저장에 실패했습니다. 네트워크를 확인해주세요.", true); } };
+  const saveAttendance = async u => { setAttendance(u); try { await sSet("rye-attendance", u); } catch { showToast("저장에 실패했습니다. 네트워크를 확인해주세요.", true); } };
+  const savePayments = async u => { setPayments(u); try { await sSet("rye-payments", u); } catch (e) { showToast("저장에 실패했습니다. 네트워크를 확인해주세요.", true); throw e; } };
+  const saveScheduleOverrides = async u => { setScheduleOverrides(u); try { await sSet("rye-schedule-overrides", u); } catch { showToast("저장에 실패했습니다. 네트워크를 확인해주세요.", true); } };
+  const saveTrash = async u => { setTrash(u); try { await sSet("rye-trash", u); } catch (e) { showToast("저장에 실패했습니다. 네트워크를 확인해주세요.", true); throw e; } };
+  const saveStudentNotices = async u => { setStudentNotices(u); try { await sSet("rye-student-notices", u); } catch { showToast("저장에 실패했습니다. 네트워크를 확인해주세요.", true); } };
+  const saveInstitutions = async u => { setInstitutions(u); try { await sSet("rye-institutions", u); } catch { showToast("저장에 실패했습니다. 네트워크를 확인해주세요.", true); } };
 
   // Auto-purge trash after 7 days
   useEffect(() => {
@@ -474,19 +478,72 @@ function MainApp() {
     const now = Date.now();
     const sevenDays = 7 * 24 * 60 * 60 * 1000;
     const filtered = trash.filter(t => (now - (t.deletedAt || 0)) < sevenDays);
-    if (filtered.length < trash.length) saveTrash(filtered);
+    if (filtered.length < trash.length) saveTrash(filtered).catch(() => {});
   }, [trash]);
+
+  // Monthly payment record auto-seed: 매월 초 활성 회원 수납 레코드 자동 생성
+  // runTransaction으로 Firestore 직접 읽어 중복 방지 (다중 기기 동시 로그인 안전)
+  useEffect(() => {
+    if (!user || !canManageAll(user.role)) return;
+    if (students.length === 0) return;
+    const seedKey = "ryek_payment_seed_v2";
+    if (localStorage.getItem(seedKey) === THIS_MONTH) return;
+    localStorage.setItem(seedKey, THIS_MONTH); // 동일 세션 재실행 방지 (정확성은 트랜잭션이 보장)
+
+    const activeStudents = students.filter(s => (s.status || "active") === "active");
+    const activeInstMembers = expandInstitutionsToMembers(institutions).filter(m => (m.status || "active") === "active");
+    const allActive = [...activeStudents, ...activeInstMembers];
+    if (allActive.length === 0) return;
+
+    const _paymentsRef = doc(db, "appData", "rye-payments");
+    runTransaction(db, async (tx) => {
+      const snap = await tx.get(_paymentsRef);
+      const cur = snap.exists() ? (snap.data().value || []) : [];
+      const newRecords = allActive
+        .filter(s => !cur.some(p => p.studentId === s.id && p.month === THIS_MONTH))
+        .map(s => ({ id: uid(), studentId: s.id, month: THIS_MONTH, amount: (s.monthlyFee || 0) + (s.instrumentRental ? (s.rentalFee || 0) : 0), paid: false, createdAt: Date.now() }));
+      if (newRecords.length === 0) return;
+      tx.set(_paymentsRef, { value: [...cur, ...newRecords], updatedAt: Date.now() });
+    }).catch(() => {});
+  }, [user?.id, students.length, institutions.length]); // payments.length 제거 — seed 후 재트리거 방지
+
+  // 1회 마이그레이션: 악기대여료 누락된 미납 레코드 자동 보정
+  useEffect(() => {
+    if (!user || !canManageAll(user.role)) return;
+    if (students.length === 0 || payments.length === 0) return;
+    const migKey = "ryek_rental_migration_v1";
+    if (localStorage.getItem(migKey)) return;
+
+    const toFix = payments.filter(p => {
+      if (p.paid) return false;
+      const s = students.find(st => st.id === p.studentId);
+      if (!s || !s.instrumentRental || !(s.rentalFee > 0)) return false;
+      return (p.amount || 0) === (s.monthlyFee || 0);
+    });
+
+    if (toFix.length === 0) { localStorage.setItem(migKey, "done"); return; }
+
+    const updated = payments.map(p => {
+      if (!toFix.find(f => f.id === p.id)) return p;
+      const s = students.find(st => st.id === p.studentId);
+      return { ...p, amount: (s.monthlyFee || 0) + (s.rentalFee || 0), updatedAt: Date.now() };
+    });
+
+    savePayments(updated)
+      .then(() => localStorage.setItem(migKey, "done"))
+      .catch(() => {});
+  }, [user?.id, students.length, payments.length]);
 
   const softDeleteStudent = async (student) => {
     const trashItem = { ...student, type: "student", deletedAt: Date.now(), deletedBy: user?.name };
-    await saveTrash([...trash, trashItem]);
+    try { await saveTrash([...trash, trashItem]); } catch { return; }
     await deleteStudentDoc(student.id);
     addLog(`${student.name} 회원 삭제 (7일간 복원 가능)`);
   };
 
   const softDeleteTeacher = async (teacher) => {
     const trashItem = { ...teacher, type: "teacher", deletedAt: Date.now(), deletedBy: user?.name };
-    await saveTrash([...trash, trashItem]);
+    try { await saveTrash([...trash, trashItem]); } catch { return; }
     await saveTeachers(teachers.filter(t => t.id !== teacher.id));
     addLog(`${teacher.name} 삭제 (7일간 복원 가능)`);
   };
@@ -494,11 +551,20 @@ function MainApp() {
   const restoreFromTrash = async (trashItem) => {
     const { type, deletedAt, deletedBy, ...original } = trashItem;
     if (type === "student") {
-      await addStudentDoc(original);
+      if (!students.some(s => s.id === original.id)) {
+        await addStudentDoc(original);
+      }
       addLog(`${original.name} 회원 복원`);
     } else if (type === "teacher") {
-      await saveTeachers([...teachers, original]);
+      if (!teachers.some(t => t.id === original.id)) {
+        await saveTeachers([...teachers, original]);
+      }
       addLog(`${original.name} 복원`);
+    } else if (type === "institution") {
+      if (!institutions.some(i => i.id === original.id)) {
+        await saveInstitutions([...institutions, original]);
+      }
+      addLog(`${original.name} 기관 복원`);
     }
     await saveTrash(trash.filter(t => !(t.id === trashItem.id && t.type === trashItem.type && t.deletedAt === trashItem.deletedAt)));
     showToast(`${original.name} 복원되었습니다.`);
@@ -512,7 +578,8 @@ function MainApp() {
   const addLog = async (action) => {
     const log = { id: uid(), userId: user?.id, userName: user?.name || "?", action, timestamp: Date.now() };
     const upd = [log, ...activity].slice(0, 200);
-    setActivity(upd); await sSet("rye-activity", upd);
+    setActivity(upd);
+    try { await sSet("rye-activity", upd); } catch {}
   };
 
   const resetSeed = async () => {
@@ -601,6 +668,7 @@ function MainApp() {
     if (username === ADMIN.username && password === ADMIN.password) {
       appUser = ADMIN;
     } else {
+      if (!teachers.length) return "loading";
       const t = teachers.find(t => t.username === username && t.password === password);
       if (t) appUser = { ...t, role: t.role || "teacher" };
     }
@@ -678,7 +746,7 @@ function MainApp() {
   return (
     <>
       <style>{CSS}</style>
-      {toast && <div className="toast">✓ {toast}</div>}
+      {toast && <div className={`toast${toast.isError ? " toast-error" : ""}`}>{toast.isError ? "⚠" : "✓"} {toast.msg}</div>}
       <div className={`app-wrap${textLarge ? " text-large" : ""}`}>
         <Sidebar view={view} setView={navigate} user={user} onLogout={handleLogout} counts={{ students: visible.length, teachers: teachers.length }} pendingCount={pendingCount} darkMode={darkMode} setDarkMode={setDarkMode} newCommentCount={newCommentCount} textLarge={textLarge} setTextLarge={setTextLarge} />
         <div className="main-scroll">
@@ -687,19 +755,20 @@ function MainApp() {
             <span className="topbar-title">{topTitle}</span>
             <button className={`btn-aa${textLarge ? " active" : ""}`} onClick={() => { const v = !textLarge; setTextLarge(v); localStorage.setItem("rye-text-large", v ? "1" : "0"); }} title="글씨 크기 조절">Aa</button>
           </div>
+          <Suspense fallback={null}>
           <div className="main-content">
             {view === "dashboard" && <Dashboard students={visible} teachers={teachers} currentUser={user} notices={notices} categories={categories} attendance={attendance} payments={payments} pending={pending} institutions={institutions} nav={navigate} />}
-            {view === "students" && <StudentsView students={filtered} allStudents={visible} teachers={teachers} categories={categories} filter={filter} setFilter={setFilter} search={search} setSearch={setSearch} onAdd={() => { setSelected(null); setModal("sForm"); }} onSelect={s => { setSelected(s); setModal("sDetail"); }} currentUser={user} onBulkFeeUpdate={async (updatedStudents) => { await batchStudentDocs(updatedStudents); addLog("수강료 일괄 설정"); showToast("수강료가 일괄 변경되었습니다."); }} />}
+            {view === "students" && <StudentsView students={filtered} allStudents={visible} teachers={teachers} categories={categories} filter={filter} setFilter={setFilter} search={search} setSearch={setSearch} onAdd={() => { setSelected(null); setModal("sForm"); }} onSelect={s => { setSelected(s); setModal("sDetail"); }} currentUser={user} onBulkFeeUpdate={async (updatedStudents) => { await batchStudentDocs(updatedStudents); addLog("수강료 일괄 설정"); showToast("수강료가 일괄 변경되었습니다."); }} payments={payments} />}
             {view === "attendance" && <AttendanceView students={allMembers} teachers={teachers} currentUser={user} attendance={attendance} onSaveAttendance={async (upd) => { await saveAttendance(upd); }} categories={categories} scheduleOverrides={scheduleOverrides} onSaveScheduleOverride={saveScheduleOverrides} />}
             {view === "payments" && <PaymentsView students={allMembers} teachers={teachers} currentUser={user} payments={payments} attendance={attendance} onSavePayments={async (upd) => { await savePayments(upd); showToast("수납 정보가 저장되었습니다."); }} onSaveStudents={async (upd) => {
                 // inst 가상회원 제외 후 트랜잭션으로 개별 업데이트
                 const realUpd = upd.filter(s => !s.isInstitution);
                 await batchStudentDocs(realUpd);
               }} onLog={addLog} />}
-            {view === "teachers" && canManageAll(user.role) && <TeachersView teachers={teachers} students={students} onAdd={() => { setSelected(null); setModal("tForm"); }} onSelect={t => { setSelected(t); setModal("tDetail"); }} />}
+            {view === "teachers" && canManageAll(user.role) && <TeachersView teachers={teachers} students={students} onAdd={() => { setSelected(null); setModal("tForm"); }} onSelect={t => { setSelected(t); setModal("tDetail"); }} attendance={attendance} />}
             {view === "institutions" && <InstitutionsView institutions={institutions} teachers={teachers} currentUser={user} onAdd={() => { setSelected(null); setModal("instForm"); }} onSelect={i => { setSelected(i); setModal("instDetail"); }} />}
             {view === "notices" && <NoticesView notices={notices} currentUser={user} onAdd={() => { setSelected(null); setModal("nForm"); }} onEdit={n => { setSelected(n); setModal("nForm"); }} onDelete={async id => { const upd = notices.filter(n => n.id !== id); await saveNotices(upd); addLog("공지 삭제"); showToast("공지가 삭제되었습니다."); }} />}
-            {view === "categories" && user.role === "admin" && <CategoriesView categories={categories} onSave={async c => { await saveCategories(c); addLog("과목 카테고리 수정"); showToast("저장되었습니다."); }} feePresets={feePresets} onSaveFees={async f => { setFeePresets(f); await sSet("rye-fee-presets", f); }} />}
+            {view === "categories" && user.role === "admin" && <CategoriesView categories={categories} onSave={async c => { await saveCategories(c); addLog("과목 카테고리 수정"); showToast("저장되었습니다."); }} feePresets={feePresets} onSaveFees={async f => { setFeePresets(f); try { await sSet("rye-fee-presets", f); showToast("저장되었습니다."); } catch { showToast("저장에 실패했습니다. 네트워크를 확인해주세요.", true); } }} />}
             {view === "analytics" && user.role === "admin" && <AnalyticsView students={students} teachers={teachers} attendance={attendance} payments={payments} categories={categories} institutions={institutions} />}
             {view === "profile" && <ProfileView currentUser={user} teachers={teachers} students={visible} categories={categories} onProfileSave={async form => { const upd = teachers.map(t => t.id === user.id ? { ...t, ...form } : t); await saveTeachers(upd); setUserPersist({ ...user, name: form.name || user.name }); addLog("프로필 수정"); showToast("프로필이 수정되었습니다."); }} />}
             {view === "activity" && canManageAll(user.role) && <ActivityView activity={activity} />}
@@ -711,6 +780,7 @@ function MainApp() {
             {view === "systemNews" && <SystemNewsView user={user} navigate={navigate} />}
             {view === "more" && <MoreMenu user={user} setView={navigate} onLogout={handleLogout} onResetSeed={resetSeed} counts={{ teachers: teachers.length }} pendingCount={pendingCount} darkMode={darkMode} setDarkMode={setDarkMode} trash={trash} newCommentCount={newCommentCount} />}
           </div>
+          </Suspense>
         </div>
         <BottomNav view={view} setView={navigate} unpaidCount={unpaidCount} pendingCount={pendingCount} newCommentCount={newCommentCount} />
       </div>
@@ -754,11 +824,11 @@ function MainApp() {
         setModal(null); showToast(isNew ? "기관이 등록되었습니다." : "기관 정보가 수정되었습니다.");
       }} />}
       {modal === "instDetail" && selected && <InstitutionDetailModal institution={selected} teachers={teachers} currentUser={user} attendance={attendance} payments={payments} onClose={() => setModal(null)} onEdit={() => setModal("instForm")} onDelete={async () => {
-        // 기관은 단순 삭제 (휴지통 미적용 — MVP). 관련 출석/수납 레코드는 보존.
-        const upd = institutions.filter(i => i.id !== selected.id);
-        await saveInstitutions(upd);
-        addLog(`${selected.name} 기관 삭제`);
-        setModal(null); showToast(`${selected.name} 기관이 삭제되었습니다.`);
+        const trashItem = { ...selected, type: "institution", deletedAt: Date.now(), deletedBy: user?.name };
+        try { await saveTrash([...trash, trashItem]); } catch { return; }
+        await saveInstitutions(institutions.filter(i => i.id !== selected.id));
+        addLog(`${selected.name} 기관 삭제 (7일간 복원 가능)`);
+        setModal(null); showToast(`${selected.name} 삭제되었습니다. (7일간 복원 가능)`);
       }} />}
     </>
   );

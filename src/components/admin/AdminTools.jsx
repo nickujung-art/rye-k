@@ -6,14 +6,24 @@ import { LessonEditor } from "../student/StudentManagement.jsx";
 
 // ── ACTIVITY LOG ──────────────────────────────────────────────────────────────
 export function ActivityView({ activity }) {
+  const [searchQuery, setSearchQuery] = useState("");
+  const sq = searchQuery.trim();
+  const filtered = sq
+    ? activity.filter(a => a.userName?.includes(sq) || a.action?.includes(sq))
+    : activity;
   return (
     <div>
-      <div className="ph"><div><h1>활동 기록</h1><div className="ph-sub">최근 50건</div></div></div>
-      {activity.length === 0 ? (
-        <div className="empty"><div className="empty-icon">◷</div><div className="empty-txt">활동 기록이 없습니다.</div></div>
+      <div className="ph"><div><h1>활동 기록</h1><div className="ph-sub">최근 {filtered.length}건</div></div></div>
+      <div className="srch-wrap" style={{marginBottom:10}}>
+        <span className="srch-icon">{IC.search}</span>
+        <input className="srch-inp" placeholder="이름 또는 내용 검색" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
+        {sq && <button className="srch-clr" onClick={() => setSearchQuery("")}>{IC.x}</button>}
+      </div>
+      {filtered.length === 0 ? (
+        <div className="empty"><div className="empty-icon">◷</div><div className="empty-txt">{sq ? "검색 결과가 없습니다." : "활동 기록이 없습니다."}</div></div>
       ) : (
         <div className="card" style={{padding:16}}>
-          {activity.slice(0, 50).map(a => (
+          {filtered.slice(0, 100).map(a => (
             <div key={a.id} className="log-item">
               <div className="log-dot" />
               <div className="log-msg"><strong>{a.userName}</strong> — {a.action}</div>
@@ -250,6 +260,8 @@ export function CategoriesView({ categories, onSave, feePresets, onSaveFees }) {
   const [editingRental, setEditingRental] = useState(null); // rental key
   const [editingRentalVal, setEditingRentalVal] = useState("");
   const [savedFlash, setSavedFlash] = useState("");
+  const [errMsg, setErrMsg] = useState("");
+  const showErr = (msg) => { setErrMsg(msg); setTimeout(() => setErrMsg(""), 2500); };
 
   const flashSaved = (msg = "저장됨 ✓") => { setSavedFlash(msg); setTimeout(() => setSavedFlash(""), 1800); };
 
@@ -257,14 +269,14 @@ export function CategoriesView({ categories, onSave, feePresets, onSaveFees }) {
   const addCat = () => {
     const v = newCat.trim();
     if (!v) return;
-    if (cats[v]) { alert("이미 존재하는 카테고리명입니다."); return; }
+    if (cats[v]) { showErr("이미 존재하는 카테고리명입니다."); return; }
     setCats(c => ({ ...c, [v]: [] })); setNewCat(""); setDirty(true);
   };
   const rmCat = cat => { const next = { ...cats }; delete next[cat]; setCats(next); setDirty(true); };
   const addInst = cat => {
     const v = (newInst[cat] || "").trim();
     if (!v) return;
-    if (cats[cat].includes(v)) { alert("이미 존재하는 과목명입니다."); return; }
+    if (cats[cat].includes(v)) { showErr("이미 존재하는 과목명입니다."); return; }
     setCats(c => ({ ...c, [cat]: [...c[cat], v] })); setNewInst(x => ({ ...x, [cat]: "" })); setDirty(true);
   };
   const rmInst = (cat, inst) => { setCats(c => ({ ...c, [cat]: c[cat].filter(x => x !== inst) })); setDirty(true); };
@@ -272,7 +284,7 @@ export function CategoriesView({ categories, onSave, feePresets, onSaveFees }) {
     const name = newRentalName.trim();
     if (!name) return;
     const key = "rental:" + name;
-    if (fees[key] !== undefined) { alert("이미 존재하는 악기명입니다."); return; }
+    if (fees[key] !== undefined) { showErr("이미 존재하는 악기명입니다."); return; }
     const next = { ...fees, [key]: parseInt(newRentalFee) || 0 };
     setFees(next); setNewRentalName(""); setNewRentalFee(""); setDirty(true);
     onSaveFees(next); flashSaved("악기 추가됨 ✓");
@@ -287,7 +299,7 @@ export function CategoriesView({ categories, onSave, feePresets, onSaveFees }) {
   const confirmEditCat = oldCat => {
     const trimmed = editingCatVal.trim();
     if (!trimmed) { setEditingCat(null); return; }
-    if (trimmed !== oldCat && cats[trimmed]) { alert("이미 존재하는 카테고리명입니다."); return; }
+    if (trimmed !== oldCat && cats[trimmed]) { showErr("이미 존재하는 카테고리명입니다."); return; }
     if (trimmed !== oldCat) {
       const next = {};
       Object.entries(cats).forEach(([k, v]) => { next[k === oldCat ? trimmed : k] = v; });
@@ -302,7 +314,7 @@ export function CategoriesView({ categories, onSave, feePresets, onSaveFees }) {
     const { cat, inst: oldInst } = editingInst;
     const trimmed = editingInstVal.trim();
     if (!trimmed) { setEditingInst(null); return; }
-    if (trimmed !== oldInst && cats[cat].includes(trimmed)) { alert("이미 존재하는 과목명입니다."); return; }
+    if (trimmed !== oldInst && cats[cat].includes(trimmed)) { showErr("이미 존재하는 과목명입니다."); return; }
     if (trimmed !== oldInst) {
       setCats(c => ({ ...c, [cat]: c[cat].map(x => x === oldInst ? trimmed : x) }));
       setFees(f => {
@@ -322,7 +334,7 @@ export function CategoriesView({ categories, onSave, feePresets, onSaveFees }) {
     if (!trimmed) { setEditingRental(null); return; }
     const newKey = "rental:" + trimmed;
     if (newKey === oldKey) { setEditingRental(null); return; }
-    if (fees[newKey] !== undefined) { alert("이미 존재하는 악기명입니다."); return; }
+    if (fees[newKey] !== undefined) { showErr("이미 존재하는 악기명입니다."); return; }
     setFees(f => {
       const next = { ...f, [newKey]: f[oldKey] };
       delete next[oldKey];
@@ -352,6 +364,7 @@ export function CategoriesView({ categories, onSave, feePresets, onSaveFees }) {
           {dirty && <button className="btn btn-primary btn-sm" onClick={handleSaveAll}>저장</button>}
         </div>
       </div>
+      {errMsg && <div style={{margin:"0 0 10px",padding:"10px 14px",background:"var(--red-lt)",border:"1px solid rgba(232,40,28,.2)",borderRadius:8,fontSize:13,color:"var(--red)",fontWeight:500}}>⚠ {errMsg}</div>}
 
       {/* ── 카테고리 목록 (가나다순) ── */}
       {Object.entries(cats).sort(([a],[b]) => a.localeCompare(b,"ko")).map(([cat, insts]) => (
@@ -514,7 +527,7 @@ export function TrashView({ trash, onRestore, onPermanentDelete }) {
               <div style={{flex:1}}>
                 <div style={{fontSize:14,fontWeight:600}}>{item.name}</div>
                 <div style={{fontSize:11,color:"var(--ink-30)"}}>
-                  {item.type === "student" ? "회원" : "강사/매니저"} · 삭제: {fmtDateTime(item.deletedAt)}
+                  {item.type === "student" ? "회원" : item.type === "institution" ? "기관" : "강사/매니저"} · 삭제: {fmtDateTime(item.deletedAt)}
                   {item.deletedBy && ` · ${item.deletedBy}`}
                 </div>
                 <div style={{fontSize:11,color: remaining <= 2 ? "var(--red)" : "var(--gold-dk)", marginTop:2, fontWeight:500}}>

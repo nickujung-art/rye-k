@@ -20,7 +20,8 @@ export function LoginScreen({ onLogin }) {
     if (!u.trim() || !p.trim()) { setErr("아이디와 비밀번호를 입력하세요."); return; }
     setLoading(true); setErr("");
     const ok = await onLogin(u.trim(), p);
-    if (!ok) { setErr("아이디 또는 비밀번호가 올바르지 않습니다."); setLoading(false); }
+    if (ok === "loading") { setErr("데이터를 불러오는 중입니다. 잠시 후 다시 시도해주세요."); setLoading(false); }
+    else if (!ok) { setErr("아이디 또는 비밀번호가 올바르지 않습니다."); setLoading(false); }
     else {
       try {
         if (saveId) localStorage.setItem("ryekSavedId", u.trim());

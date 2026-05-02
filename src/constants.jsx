@@ -283,6 +283,7 @@ textarea.inp{resize:vertical;min-height:80px;line-height:1.6}
 
 /* ── Toast ─────────────────────────────────────────────── */
 .toast{position:fixed;top:calc(var(--topbar-h) + 8px);left:50%;transform:translateX(-50%);background:var(--blue-dk);color:#fff;padding:10px 20px;font-size:13px;z-index:9999;animation:toastIn .25s ease;border-radius:var(--radius-sm);box-shadow:var(--shadow-md);white-space:nowrap;max-width:90vw}
+.toast.toast-error{background:var(--red);}
 @keyframes toastIn{from{opacity:0;transform:translateX(-50%) translateY(-8px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
 @keyframes logoPulse{0%{opacity:.4;transform:scale(.92)}50%{opacity:1;transform:scale(1)}100%{opacity:.4;transform:scale(.92)}}
 @keyframes logoLine{0%{width:0}50%{width:100%}100%{width:0}}
@@ -505,6 +506,11 @@ input[type="date"]::-webkit-date-and-time-value{text-align:left}
   #analytics-report .stat-card{box-shadow:none!important;border:1px solid #ccc!important;background:#fff!important}
   #analytics-report .ph h1{font-size:22px!important}
   .fab,.sidebar,.bottom-nav,nav,header,.sched-toolbar{display:none!important}
+  .settlement-paper,.settlement-paper *{visibility:visible!important}
+  .settlement-paper{position:absolute!important;left:0;top:0;width:100%;padding:24px 28px!important;background:#fff!important;color:#000!important}
+  .settlement-controls{display:none!important}
+  .settlement-table th{background:#f4f4f4!important;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
+  .settlement-table tfoot td{background:#f9f9f9!important;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
 }
 
 /* ── 휴강 버튼 ───────────────────────────────────────────── */
@@ -605,4 +611,14 @@ input[type="date"]::-webkit-date-and-time-value{text-align:left}
 .text-large .cal-grid,.text-large .cal-grid *,
 .text-large .ftab,.text-large .s-card,.text-large .s-card *,
 .text-large .pay-row .pay-amount{font-size:unset!important}
+
+/* ── 정산서 ─────────────────────────────────────────── */
+.settlement-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:600;overflow-y:auto;padding:20px;display:flex;align-items:flex-start;justify-content:center}
+.settlement-doc{background:#fff;width:100%;max-width:800px;border-radius:12px;overflow:hidden;margin:auto}
+.settlement-controls{display:flex;justify-content:space-between;align-items:center;padding:12px 20px;background:var(--paper);border-bottom:1px solid var(--border);gap:8px;flex-wrap:wrap}
+.settlement-paper{padding:32px 38px;font-size:13px;line-height:1.6;color:#1a1a1a}
+.settlement-table{width:100%;border-collapse:collapse;margin-top:4px;font-size:12px}
+.settlement-table th{background:#f4f4f4;padding:8px 10px;text-align:left;font-size:11px;font-weight:600;color:#444;border:1px solid #ddd}
+.settlement-table td{padding:9px 10px;border:1px solid #eee;vertical-align:middle}
+.settlement-table tfoot td{background:#f9f9f9;border-top:2px solid #333;font-size:13.5px}
 `;

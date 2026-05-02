@@ -1,6 +1,6 @@
 import { UpdatePopup } from "../updates/UpdatePopup";
 import { useState, useEffect, useRef } from "react";
-import { db, doc, setDoc, onSnapshot, firebaseSignInAnon } from "../../firebase.js";
+import { db, doc, setDoc, onSnapshot, firebaseSignInAnon, runTransaction } from "../../firebase.js";
 import { DEFAULT_CATEGORIES, TODAY_STR, CSS, DAYS, THIS_MONTH } from "../../constants.jsx";
 import { compressImage, fmtPhone, uid, fmtDate, fmtDateShort, fmtDateTime, fmtMoney, monthLabel, allLessonInsts, allLessonDays, getBirthPassword } from "../../utils.js";
 import { Logo, Av } from "../shared/CommonUI.jsx";
@@ -72,9 +72,12 @@ export function PublicRegisterForm() {
     setSubmitting(true);
     try {
       const reg = { id: uid(), name: form.name.trim(), birthDate: form.birthDate, phone: form.phone, guardianPhone: form.guardianPhone, desiredInstruments: form.desiredInstruments, notes: form.notes.trim(), photo: form.photo, experience: form.experience === "yes" ? form.experienceDetail : "없음", purpose: form.purpose === "기타" ? form.purposeOther : form.purpose, referral: form.referral === "기타" ? form.referralOther : form.referral, optionalConsent: optionalAgreed, consent: { privacy: { agreed: true, agreedAt: Date.now(), ip: null }, photo: { agreed: optionalAgreed, agreedAt: optionalAgreed ? Date.now() : null } }, teacherName: form.teacherName, lessonType: form.lessonType === "기타" ? form.lessonTypeOther : form.lessonType, lessonDay: form.lessonDay, lessonTime: form.lessonTime, monthlyFee: form.monthlyFee, instrumentRental: form.pendingOneTimeCharges.some(c => c.type === "악기 대여"), pendingOneTimeCharges: form.pendingOneTimeCharges.filter(c => c.name.trim() || c.amount > 0), startDate: form.startDate, status: "pending", createdAt: Date.now() };
-      const snap = await new Promise((resolve) => { const unsub = onSnapshot(doc(db, COLLECTION, "rye-pending"), (s) => { unsub(); resolve(s); }, () => resolve(null)); });
-      const existing = snap?.exists() ? snap.data().value || [] : [];
-      await sSet("rye-pending", [...existing, reg]);
+      const pendingRef = doc(db, COLLECTION, "rye-pending");
+      await runTransaction(db, async (tx) => {
+        const snap = await tx.get(pendingRef);
+        const existing = snap.exists() ? (snap.data().value || []) : [];
+        tx.set(pendingRef, { value: [...existing, reg], updatedAt: Date.now() });
+      });
       setSubmitted(true);
     } catch (e) {
       setErr("제출에 실패했습니다. 입력하신 내용은 보존되어 있습니다 — 네트워크를 확인 후 다시 시도해주세요.");
@@ -225,6 +228,49 @@ export function PublicRegisterForm() {
 }
 
 // ── MY RYE-K (수강생 전용 포털) ──────────────────────────────────────────────
+function PortalHeatmap({ sAtt }) {
+  const WEEKS = 26;
+  const today = new Date();
+  const toStr = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+  const todayStr = toStr(today);
+  const colorMap = { present:"var(--green)", late:"#86EFAC", absent:"var(--red)", excused:"var(--blue)" };
+  const attMap = {};
+  sAtt.forEach(a => { if (a.date && a.status) attMap[a.date] = a.status; });
+  const start = new Date(today);
+  const dow = (start.getDay() + 6) % 7;
+  start.setDate(start.getDate() - dow - (WEEKS - 1) * 7);
+  const weeks = Array.from({length: WEEKS}, (_, w) =>
+    Array.from({length: 7}, (_, d) => {
+      const dt = new Date(start); dt.setDate(start.getDate() + w * 7 + d);
+      const ds = toStr(dt);
+      return { ds, status: attMap[ds], isFuture: ds > todayStr };
+    })
+  );
+  return (
+    <div style={{marginBottom:16}}>
+      <div style={{overflowX:"auto",WebkitOverflowScrolling:"touch",paddingBottom:4}}>
+        <div style={{display:"flex",gap:2,width:"fit-content"}}>
+          {weeks.map((week,wi) => (
+            <div key={wi} style={{display:"flex",flexDirection:"column",gap:2}}>
+              {week.map(({ds,status,isFuture}) => (
+                <div key={ds} style={{width:12,height:12,borderRadius:3,background:isFuture?"transparent":status?colorMap[status]||"#E5E7EB":"#F3F4F6",opacity:isFuture?0:1}} title={ds} />
+              ))}
+            </div>
+          ))}
+        </div>
+      </div>
+      <div style={{display:"flex",gap:10,marginTop:6,flexWrap:"wrap"}}>
+        {[["var(--green)","출석"],["#86EFAC","지각"],["var(--red)","결석"],["var(--blue)","보강"]].map(([c,l]) => (
+          <div key={l} style={{display:"flex",alignItems:"center",gap:4}}>
+            <div style={{width:10,height:10,borderRadius:2,background:c}} />
+            <span style={{fontSize:10,color:"#999"}}>{l}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function PublicParentView() {
   const [students, setStudents] = useState([]);
   const [attendance, setAttendance] = useState([]);
@@ -260,7 +306,6 @@ export function PublicParentView() {
   const [lastNoteRead, setLastNoteRead] = useState(0);       // 강사 댓글 마지막 읽은 시각
   const [readNoticeIds, setReadNoticeIds] = useState(new Set()); // 읽은 공지 ID set
   const [expandedNotice, setExpandedNotice] = useState(null);  // 공지 상세 열기
-
   const saveAttendance = async (upd) => { setAttendance(upd); await sSet("rye-attendance", upd); };
 
   // 읽음 상태 localStorage에서 복원 (로그인 후 호출)
@@ -831,32 +876,49 @@ export function PublicParentView() {
           </div>
         )}
 
-        {/* Attendance Tab */}
-        {tab === "att" && (
-          <div>
-            <div style={{fontSize:13,fontWeight:600,color:"var(--ink)",marginBottom:10}}>출석 이력</div>
-            <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:12}}>
-              <div style={{background:"#F0FDF4",color:"#22C55E",padding:"6px 12px",borderRadius:8,fontSize:12,fontWeight:600}}>출석 {presentCount}</div>
-              <div style={{background:"#FEF2F2",color:"#EF4444",padding:"6px 12px",borderRadius:8,fontSize:12,fontWeight:600}}>결석 {absentCount}</div>
-              <div style={{background:"#FFFBEB",color:"#F59E0B",padding:"6px 12px",borderRadius:8,fontSize:12,fontWeight:600}}>지각 {lateCount}</div>
-            </div>
-            {sAtt.length === 0 ? <div className="empty"><div className="empty-icon">📋</div><div className="empty-txt">출석 기록이 없습니다.</div></div> :
-              sAtt.slice(0, 40).map((a, i) => {
-                const st = attStatusStyle[a.status] || { color:"#999", bg:"#F5F5F5", icon:"·", text: a.status };
+        {/* Attendance Tab — 월별 도트 뷰 */}
+        {tab === "att" && (() => {
+          const byMonth = {};
+          sAtt.forEach(a => {
+            const m = a.date?.slice(0, 7);
+            if (m) { if (!byMonth[m]) byMonth[m] = []; byMonth[m].push(a); }
+          });
+          const months = Object.keys(byMonth).sort().reverse().slice(0, 6);
+          const DOT = {
+            present: { color:"#22C55E", sym:"●" },
+            absent:  { color:"#EF4444", sym:"✕" },
+            late:    { color:"#F59E0B", sym:"△" },
+            excused: { color:"#3B82F6", sym:"○" },
+          };
+          return (
+            <div>
+              <div style={{fontSize:13,fontWeight:600,color:"var(--ink)",marginBottom:10}}>월별 출석 현황</div>
+              {months.length === 0 ? (
+                <div className="empty"><div className="empty-icon">📋</div><div className="empty-txt">출석 기록이 없습니다.</div></div>
+              ) : months.map(m => {
+                const recs = byMonth[m].slice().sort((a,b)=>a.date.localeCompare(b.date));
+                const okN = recs.filter(a=>a.status==="present"||a.status==="late").length;
+                const abN = recs.filter(a=>a.status==="absent").length;
                 return (
-                  <div key={i} style={{display:"flex",alignItems:"flex-start",gap:10,padding:"12px 14px",background:"#fff",borderRadius:12,marginBottom:6,boxShadow:"0 1px 3px rgba(0,0,0,.02)",border:"1px solid #F0F0F0"}}>
-                    <div style={{width:55,flexShrink:0}}><div style={{fontSize:12,color:"#888",fontWeight:500}}>{fmtDateShort(a.date)}</div></div>
-                    <div style={{width:34,flexShrink:0}}><span style={{background:st.bg,color:st.color,fontSize:11,fontWeight:600,padding:"2px 8px",borderRadius:6,display:"inline-block"}}>{st.icon}</span></div>
-                    <div style={{flex:1,minWidth:0}}>
-                      <span style={{fontSize:12,fontWeight:500,color:st.color}}>{st.text}</span>
-                      {a.note && typeof a.note === "string" && <div style={{fontSize:12,color:"#888",marginTop:4,lineHeight:1.5}}>{a.note}</div>}
+                  <div key={m} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",background:"#fff",borderRadius:12,marginBottom:6,border:"1px solid #F0F0F0"}}>
+                    <div style={{width:28,flexShrink:0,fontSize:12,fontWeight:700,color:"#888"}}>{parseInt(m.slice(5))}월</div>
+                    <div style={{display:"flex",gap:6,flex:1,flexWrap:"wrap",alignItems:"center"}}>
+                      {recs.map((a,i) => {
+                        const d = DOT[a.status] || { color:"#999", sym:"·" };
+                        return <span key={i} title={fmtDateShort(a.date)} style={{fontSize:15,color:d.color,fontWeight:700,cursor:"default",lineHeight:1}}>{d.sym}</span>;
+                      })}
+                    </div>
+                    <div style={{fontSize:11,color:"#aaa",flexShrink:0,textAlign:"right"}}>
+                      <span style={{color:"#22C55E",fontWeight:600}}>{okN}출</span>
+                      {abN>0 && <span style={{color:"#EF4444",fontWeight:600}}> {abN}결</span>}
                     </div>
                   </div>
                 );
-              })
-            }
-          </div>
-        )}
+              })}
+              <div style={{fontSize:10.5,color:"#bbb",textAlign:"center",marginTop:4}}>● 출석 ✕ 결석 △ 지각 ○ 보강</div>
+            </div>
+          );
+        })()}
 
         {/* Lesson Notes Tab */}
         {tab === "notes" && (

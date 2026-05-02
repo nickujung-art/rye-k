@@ -3,6 +3,43 @@ import { THIS_MONTH, TODAY_DAY, TODAY_STR, ATT_STATUS, IC } from "../../constant
 import { canManageAll, fmtDateTime, fmtDateShort, isMinor, monthLabel, getContractDaysLeft, allLessonInsts } from "../../utils.js";
 import { Av } from "../shared/CommonUI.jsx";
 
+function DonutChart({ paid, total }) {
+  const r = 28, cx = 38, cy = 38;
+  const circ = 2 * Math.PI * r;
+  const paidDash = total > 0 ? (paid / total) * circ : 0;
+  const pct = total > 0 ? Math.round(paid / total * 100) : 0;
+  return (
+    <svg width="76" height="76" viewBox="0 0 76 76" style={{flexShrink:0}}>
+      <circle cx={cx} cy={cy} r={r} fill="none" stroke="var(--ink-10)" strokeWidth="11" />
+      {paid > 0 && (
+        <circle cx={cx} cy={cy} r={r} fill="none" stroke="var(--green)" strokeWidth="11"
+          strokeDasharray={`${paidDash.toFixed(2)} ${circ.toFixed(2)}`}
+          strokeLinecap="round"
+          transform={`rotate(-90 ${cx} ${cy})`} />
+      )}
+      <text x={cx} y={cy} textAnchor="middle" dominantBaseline="middle" fontSize="14" fontWeight="700" fill="var(--ink)" fontFamily="inherit">{pct}%</text>
+    </svg>
+  );
+}
+
+function Sparkline({ data }) {
+  if (data.length < 2) return null;
+  const W = 100, H = 32, pad = 3;
+  const w = W - pad * 2, h = H - pad * 2;
+  const points = data.map((v, i) => ({
+    x: pad + (i / (data.length - 1)) * w,
+    y: pad + (1 - v / 100) * h
+  }));
+  const pts = points.map(p => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ");
+  const last = points[points.length - 1];
+  return (
+    <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`}>
+      <polyline points={pts} fill="none" stroke="var(--blue)" strokeWidth="1.8" strokeLinejoin="round" strokeLinecap="round" />
+      <circle cx={last.x.toFixed(1)} cy={last.y.toFixed(1)} r="2.5" fill="var(--blue)" />
+    </svg>
+  );
+}
+
 export default function Dashboard({ students, teachers, currentUser, notices, categories, attendance, payments, pending, institutions, nav }) {
   const [todayListModal, setTodayListModal] = useState(false);
   const [expandedNotices, setExpandedNotices] = useState(new Set());
@@ -14,6 +51,8 @@ export default function Dashboard({ students, teachers, currentUser, notices, ca
   const pinnedNotices = notices.filter(n => n.pinned).slice(0, 2);
   const monthPayments = payments.filter(p => p.month === THIS_MONTH);
   const unpaidThisMonth = students.filter(s => !monthPayments.find(p => p.studentId === s.id && p.paid)).length;
+  const thisMonthStart = new Date(THIS_MONTH + "-01").getTime();
+  const newStudents = students.filter(s => s.createdAt && s.createdAt >= thisMonthStart).sort((a, b) => b.createdAt - a.createdAt);
 
   // ── KST 날짜 ──────────────────────────────────────────────────────────────
   const nowKST = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Seoul" }));
@@ -128,12 +167,53 @@ export default function Dashboard({ students, teachers, currentUser, notices, ca
         {canManageAll(currentUser.role) && <div className="stat-card"><div className="stat-num">{teachers.length}</div><div className="stat-label">강사/매니저</div></div>}
       </div>
 
-      {canManageAll(currentUser.role) && (
-        <div style={{display:"flex",alignItems:"center",gap:8,padding:"10px 14px",background:"var(--paper)",border:"1px solid var(--border)",borderRadius:"var(--radius)",marginBottom:12,fontSize:12}}>
-          <span style={{fontSize:16}}>💬</span>
-          <span style={{color:"var(--ink-60)"}}>알림톡 잔액</span>
-          <span style={{fontWeight:700,color:"var(--ink)",fontFamily:"'Noto Serif KR',serif",marginLeft:"auto"}}>₩45,000</span>
-          <span style={{fontSize:10,color:"var(--ink-30)"}}>(목업)</span>
+      {canManageAll(currentUser.role) && students.length > 0 && (() => {
+        const paidCount = students.filter(s => monthPayments.find(p => p.studentId === s.id && p.paid)).length;
+        const unpaidCount = students.length - paidCount;
+        return (
+          <div className="dash-card" style={{marginBottom:12}}>
+            <div className="dash-card-title">이번달 수납 현황 <span style={{fontSize:11,color:"var(--ink-30)",fontWeight:400}}>{monthLabel(THIS_MONTH)}</span></div>
+            <div style={{display:"flex",alignItems:"center",gap:16}}>
+              <DonutChart paid={paidCount} total={students.length} />
+              <div style={{flex:1}}>
+                <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
+                  <div style={{width:8,height:8,borderRadius:"50%",background:"var(--green)",flexShrink:0}} />
+                  <span style={{fontSize:12.5,color:"var(--ink-60)"}}>납부 완료</span>
+                  <span style={{fontSize:15,fontWeight:700,color:"var(--green)",marginLeft:"auto"}}>{paidCount}명</span>
+                </div>
+                <div style={{display:"flex",alignItems:"center",gap:8}}>
+                  <div style={{width:8,height:8,borderRadius:"50%",background:"var(--ink-10)",flexShrink:0}} />
+                  <span style={{fontSize:12.5,color:"var(--ink-60)"}}>미납</span>
+                  <span style={{fontSize:15,fontWeight:700,color: unpaidCount > 0 ? "var(--red)" : "var(--ink-30)",marginLeft:"auto"}}>{unpaidCount}명</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {canManageAll(currentUser.role) && newStudents.length > 0 && (
+        <div className="dash-card" style={{marginBottom:12}}>
+          <div className="dash-card-title">
+            이달 신규 등록
+            <span style={{fontSize:11,color:"var(--blue)",background:"var(--blue-lt)",padding:"2px 8px",borderRadius:10,fontWeight:700}}>{newStudents.length}명</span>
+          </div>
+          <div style={{display:"flex",flexDirection:"column",gap:8}}>
+            {newStudents.map(s => {
+              const t = teachers.find(t => t.id === s.teacherId);
+              const insts = (s.lessons || []).map(l => l.instrument).filter(Boolean);
+              return (
+                <div key={s.id} onClick={() => nav("students")} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 10px",background:"var(--bg)",borderRadius:8,border:"1px solid var(--border)",cursor:"pointer",transition:"background .12s"}} onMouseEnter={e=>e.currentTarget.style.background="var(--blue-lt)"} onMouseLeave={e=>e.currentTarget.style.background="var(--bg)"}>
+                  <Av photo={s.photo} name={s.name} size="av-sm" />
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontSize:13,fontWeight:600,color:"var(--ink)"}}>{s.name}</div>
+                    <div style={{fontSize:11,color:"var(--ink-60)"}}>{insts.join(" · ")}{t ? ` · ${t.name}` : ""}</div>
+                  </div>
+                  <span style={{fontSize:10,color:"var(--ink-30)",flexShrink:0}}>{fmtDateShort(new Date(s.createdAt).toISOString().slice(0,10))}</span>
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
 
@@ -284,6 +364,17 @@ export default function Dashboard({ students, teachers, currentUser, notices, ca
             const absentCounts = {};
             monthAtt.filter(a => a.status === "absent").forEach(a => { absentCounts[a.studentId] = (absentCounts[a.studentId] || 0) + 1; });
             const frequentAbsent = Object.entries(absentCounts).filter(([,c]) => c >= 2).map(([sid, c]) => ({ student: students.find(s => s.id === sid), count: c })).filter(x => x.student);
+            const [sYr, sMo] = THIS_MONTH.split("-").map(Number);
+            const daysInMo = new Date(sYr, sMo, 0).getDate();
+            const weeklyRates = [];
+            for (let wk = 0; wk < 5; wk++) {
+              const d1 = wk * 7 + 1;
+              if (d1 > daysInMo) break;
+              const d2 = Math.min(d1 + 6, daysInMo);
+              const wAtt = monthAtt.filter(a => { const d = parseInt(a.date?.slice(8) || "0", 10); return d >= d1 && d <= d2; });
+              if (wAtt.length === 0) continue;
+              weeklyRates.push(Math.round(wAtt.filter(a => a.status === "present" || a.status === "late").length / wAtt.length * 100));
+            }
             return (
               <>
                 <div style={{display:"flex",gap:12,marginBottom:12,flexWrap:"wrap"}}>
@@ -297,6 +388,13 @@ export default function Dashboard({ students, teachers, currentUser, notices, ca
                     <div className="att-stat" style={{background:"var(--gold-lt)",color:"var(--gold-dk)"}}>지각 {mLate}</div>
                   </div>
                 </div>
+                {weeklyRates.length >= 2 && (
+                  <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:12}}>
+                    <span style={{fontSize:10,color:"var(--ink-30)"}}>주차별 출석률</span>
+                    <Sparkline data={weeklyRates} />
+                    <span style={{fontSize:11,fontWeight:600,color:"var(--blue)"}}>{weeklyRates[weeklyRates.length-1]}%</span>
+                  </div>
+                )}
                 {frequentAbsent.length > 0 && (
                   <div style={{background:"var(--red-lt)",border:"1px solid rgba(232,40,28,.15)",borderRadius:8,padding:"10px 12px",fontSize:12,color:"var(--red)"}}>
                     <div style={{fontWeight:600,marginBottom:4}}>⚠ 결석 2회 이상</div>

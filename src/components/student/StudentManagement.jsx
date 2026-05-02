@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { IC, TODAY_STR, DAYS, ATT_STATUS } from "../../constants.jsx";
+import { IC, TODAY_STR, THIS_MONTH, DAYS, ATT_STATUS } from "../../constants.jsx";
 import { uid, calcAge, isMinor, getCat, fmtDate, fmtDateShort, fmtMoney, canManageAll, monthLabel, allLessonInsts, allLessonDays, getBirthPassword, formatLessonNoteSummary, compressImage, fmtPhone } from "../../utils.js";
 import { Av, PhotoUpload, DeleteConfirmFooter } from "../shared/CommonUI.jsx";
 
@@ -293,6 +293,63 @@ export function ChargeRequestModal({ student, onClose, onSave }) {
   );
 }
 
+// ── ATTENDANCE HEATMAP (GitHub contribution style) ────────────────────────────
+function AttHeatmap({ sAtt }) {
+  const WEEKS = 26;
+  const attMap = {};
+  sAtt.forEach(a => { if (a.date) attMap[a.date] = a.status; });
+  if (!Object.keys(attMap).length) return null;
+
+  const toStr = d => d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0");
+  const todayDate = new Date(TODAY_STR + "T12:00:00");
+  const startDate = new Date(todayDate);
+  startDate.setDate(startDate.getDate() - WEEKS * 7);
+  const dow = startDate.getDay();
+  startDate.setDate(startDate.getDate() - (dow === 0 ? 6 : dow - 1));
+
+  const weeks = [];
+  const cur = new Date(startDate);
+  for (let w = 0; w < WEEKS; w++) {
+    const week = [];
+    for (let d = 0; d < 7; d++) {
+      const dateStr = toStr(cur);
+      week.push({ dateStr, future: dateStr > TODAY_STR });
+      cur.setDate(cur.getDate() + 1);
+    }
+    weeks.push(week);
+  }
+
+  const clr = { present: "var(--green)", late: "var(--green)", absent: "var(--red)", excused: "var(--blue)" };
+
+  return (
+    <div style={{ overflowX: "auto", marginBottom: 6 }}>
+      <div style={{ display: "flex", gap: 2, width: "fit-content" }}>
+        {weeks.map((week, wi) => (
+          <div key={wi} style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+            {week.map(({ dateStr, future }) => {
+              const st = attMap[dateStr];
+              return (
+                <div key={dateStr} title={dateStr + (st ? ` · ${ATT_STATUS[st]}` : "")}
+                  style={{ width: 9, height: 9, borderRadius: 2, flexShrink: 0,
+                    background: future ? "transparent" : st ? clr[st] : "var(--ink-10)",
+                    opacity: future ? 0 : 1 }} />
+              );
+            })}
+          </div>
+        ))}
+      </div>
+      <div style={{ display: "flex", gap: 10, marginTop: 5, fontSize: 10, color: "var(--ink-30)", alignItems: "center", flexWrap: "wrap" }}>
+        {[["var(--green)", "출석/지각"], ["var(--red)", "결석"], ["var(--blue)", "보강"]].map(([bg, lbl]) => (
+          <span key={lbl} style={{ display: "flex", alignItems: "center", gap: 3 }}>
+            <span style={{ display: "inline-block", width: 8, height: 8, borderRadius: 2, background: bg }} />
+            {lbl}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ── STUDENT DETAIL ────────────────────────────────────────────────────────────
 export function StudentDetailModal({ student: s, teachers, currentUser, categories, feePresets, attendance, payments, onClose, onEdit, onDelete, onPhotoUpdate, onSaveStudent }) {
   const teacher = teachers.find(t => t.id === s.teacherId);
@@ -308,7 +365,13 @@ export function StudentDetailModal({ student: s, teachers, currentUser, categori
   const attRate = attTotal > 0 ? Math.round((attPresent + attLate) / attTotal * 100) : null;
   // Payment history
   const sPay = (payments || []).filter(p => p.studentId === s.id).sort((a,b) => (b.month||"").localeCompare(a.month||""));
+  const sNotes = sAtt.filter(a => {
+    if (!a.lessonNote || typeof a.lessonNote !== "object") return false;
+    const ln = a.lessonNote;
+    return ln.progress || ln.content || ln.assignment || ln.memo || ln.managerReport || (ln.condition && ln.condition !== "good");
+  });
   const [showAttAll, setShowAttAll] = useState(false);
+  const [showNoteAll, setShowNoteAll] = useState(false);
   const [showPw, setShowPw] = useState(false);
   const [copyMsg, setCopyMsg] = useState("");
   const [chargeModal, setChargeModal] = useState(false);
@@ -402,7 +465,9 @@ export function StudentDetailModal({ student: s, teachers, currentUser, categori
               <div className="att-stat" style={{background:"var(--blue-lt)",color:"var(--blue)"}}>보강 {attExcused}</div>
               {attRate !== null && <div className="att-stat" style={{background:"var(--ink-10)",color: attRate >= 80 ? "var(--green)" : attRate >= 60 ? "var(--gold-dk)" : "var(--red)"}}>{attRate}%</div>}
             </div>
-            <div style={{fontSize:11,color:"var(--ink-30)",marginBottom:6}}>최근 기록</div>
+            <div style={{fontSize:11,color:"var(--ink-30)",marginBottom:4}}>최근 6개월</div>
+            <AttHeatmap sAtt={sAtt} />
+            <div style={{fontSize:11,color:"var(--ink-30)",marginBottom:6,marginTop:8}}>최근 기록</div>
             {sAtt.slice(0, showAttAll ? 30 : 5).map(a => (
               <div key={a.id} style={{padding:"5px 0",fontSize:12,borderBottom:"1px solid var(--ink-10)"}}>
                 <div style={{display:"flex",alignItems:"center",gap:8}}>
@@ -416,6 +481,55 @@ export function StudentDetailModal({ student: s, teachers, currentUser, categori
             {sAtt.length > 5 && <button className="btn btn-ghost btn-xs" style={{marginTop:6}} onClick={() => setShowAttAll(!showAttAll)}>{showAttAll ? "접기" : `전체 ${sAtt.length}건 보기`}</button>}
           </div>
         )}
+
+        {/* Learning Progress — 학습 진도 */}
+        {sNotes.length > 0 && (() => {
+          const condMeta = {
+            excellent: { label: "매우 좋음", color: "var(--green)",   bg: "var(--green-lt)" },
+            good:      { label: "좋음",     color: "var(--blue)",    bg: "var(--blue-lt)"  },
+            normal:    { label: "보통",     color: "var(--gold-dk)", bg: "var(--gold-lt)"  },
+            poor:      { label: "부진",     color: "var(--red)",     bg: "var(--red-lt)"   },
+          };
+          return (
+            <div style={{ padding: "12px 20px" }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+                <div className="ii-label">학습 진도</div>
+                <span style={{ fontSize: 10, color: "var(--ink-30)" }}>최근 {Math.min(sNotes.length, 12)}회</span>
+              </div>
+              {/* Condition dot trail */}
+              <div style={{ display: "flex", gap: 4, marginBottom: 10, flexWrap: "wrap" }}>
+                {sNotes.slice(0, 12).reverse().map(a => {
+                  const cm = condMeta[a.lessonNote.condition || "good"] || condMeta.good;
+                  return (
+                    <div key={a.id} title={`${a.date} · ${cm.label}`}
+                      style={{ width: 12, height: 12, borderRadius: "50%", background: cm.color, flexShrink: 0 }} />
+                  );
+                })}
+              </div>
+              {/* Progress timeline */}
+              {sNotes.slice(0, showNoteAll ? 20 : 4).map(a => {
+                const ln = a.lessonNote;
+                const cm = condMeta[ln.condition || "good"] || condMeta.good;
+                return (
+                  <div key={a.id} style={{ padding: "7px 0", borderBottom: "1px solid var(--ink-10)" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: (ln.progress || ln.content || ln.assignment) ? 4 : 0 }}>
+                      <span style={{ fontSize: 11, color: "var(--ink-30)", width: 70, flexShrink: 0 }}>{fmtDateShort(a.date)}</span>
+                      <span style={{ fontSize: 10, padding: "1px 8px", borderRadius: 10, background: cm.bg, color: cm.color, fontWeight: 600 }}>{cm.label}</span>
+                    </div>
+                    {ln.progress && <div style={{ fontSize: 12, color: "var(--ink)", paddingLeft: 76, marginBottom: 2 }}>🎵 {ln.progress}</div>}
+                    {ln.content  && <div style={{ fontSize: 11, color: "var(--ink-60)", paddingLeft: 76, marginBottom: 2, whiteSpace: "pre-wrap" }}>{ln.content}</div>}
+                    {ln.assignment && <div style={{ fontSize: 11, color: "var(--blue)", paddingLeft: 76 }}>📝 과제: {ln.assignment}</div>}
+                  </div>
+                );
+              })}
+              {sNotes.length > 4 && (
+                <button className="btn btn-ghost btn-xs" style={{ marginTop: 6 }} onClick={() => setShowNoteAll(v => !v)}>
+                  {showNoteAll ? "접기" : `전체 ${sNotes.length}건 보기`}
+                </button>
+              )}
+            </div>
+          );
+        })()}
 
         {/* Payment History — admin/manager only */}
         {canManageAll(currentUser.role) && sPay.length > 0 && (
@@ -642,7 +756,7 @@ export function BulkFeeModal({ allStudents, teachers, categories, onClose, onApp
 }
 
 // ── STUDENT CARD & VIEW ───────────────────────────────────────────────────────
-function StudentCard({ student: s, teachers, onClick }) {
+function StudentCard({ student: s, teachers, onClick, payStatus }) {
   const teacher = teachers.find(t => t.id === s.teacherId);
   const minor = isMinor(s.birthDate); const age = calcAge(s.birthDate);
   const insts = allLessonInsts(s); const days = allLessonDays(s);
@@ -657,6 +771,8 @@ function StudentCard({ student: s, teachers, onClick }) {
           {teacher && <span style={{color:"var(--gold-dk)",fontSize:11,fontWeight:500}}>{teacher.name}</span>}
           {s.status === "paused" && <span className="tag" style={{background:"var(--gold-lt)",color:"var(--gold-dk)",padding:"1px 6px",fontSize:10}}>휴원</span>}
           {s.status === "withdrawn" && <span className="tag" style={{background:"var(--ink-10)",color:"var(--ink-30)",padding:"1px 6px",fontSize:10}}>퇴원</span>}
+          {payStatus === "unpaid" && <span style={{background:"#FEF3C7",color:"#B45309",padding:"1px 6px",fontSize:10,borderRadius:4,fontWeight:700}}>미납</span>}
+          {payStatus === "paid" && <span style={{background:"#DCFCE7",color:"var(--green)",padding:"1px 6px",fontSize:10,borderRadius:4,fontWeight:600}}>✓</span>}
         </div>
       </div>
       {days.length > 0 && (
@@ -669,11 +785,18 @@ function StudentCard({ student: s, teachers, onClick }) {
   );
 }
 
-export function StudentsView({ students, allStudents, teachers, categories, filter, setFilter, search, setSearch, onAdd, onSelect, currentUser, onBulkFeeUpdate }) {
+export function StudentsView({ students, allStudents, teachers, categories, filter, setFilter, search, setSearch, onAdd, onSelect, currentUser, onBulkFeeUpdate, payments = [] }) {
   const [statusFilter, setStatusFilter] = useState("active");
   const [showBulkFee, setShowBulkFee] = useState(false);
   const cats = ["전체", ...Object.keys(categories)];
   const statusFiltered = statusFilter === "all" ? students : students.filter(s => (s.status || "active") === statusFilter);
+  const showPay = canManageAll(currentUser?.role);
+  const getPayStatus = (studentId) => {
+    if (!showPay) return null;
+    const p = payments.find(pp => pp.studentId === studentId && pp.month === THIS_MONTH);
+    if (!p) return null;
+    return p.paid ? "paid" : "unpaid";
+  };
   const grouped = filter === "전체"
     ? Object.entries(categories).map(([cat, insts]) => ({ cat, items: statusFiltered.filter(s => (s.lessons || []).some(l => insts.includes(l.instrument))) })).filter(g => g.items.length > 0)
     : [{ cat: filter, items: statusFiltered }];
@@ -715,11 +838,11 @@ export function StudentsView({ students, allStudents, teachers, categories, filt
         grouped.map(({ cat, items }) => (
           <div key={cat}>
             <div className="cat-hd"><div className="cat-hd-line" /><span className="cat-title">{cat}</span><span className="cat-count">{items.length}명</span></div>
-            <div className="s-grid">{items.map(s => <StudentCard key={s.id} student={s} teachers={teachers} onClick={() => onSelect(s)} />)}</div>
+            <div className="s-grid">{items.map(s => <StudentCard key={s.id} student={s} teachers={teachers} onClick={() => onSelect(s)} payStatus={getPayStatus(s.id)} />)}</div>
           </div>
         ))
       ) : (
-        <div className="s-grid">{statusFiltered.map(s => <StudentCard key={s.id} student={s} teachers={teachers} onClick={() => onSelect(s)} />)}</div>
+        <div className="s-grid">{statusFiltered.map(s => <StudentCard key={s.id} student={s} teachers={teachers} onClick={() => onSelect(s)} payStatus={getPayStatus(s.id)} />)}</div>
       )}
       <button className="fab" onClick={onAdd}>{IC.plus}</button>
     </div>

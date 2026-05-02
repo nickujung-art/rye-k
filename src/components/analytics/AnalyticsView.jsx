@@ -86,6 +86,20 @@ export default function AnalyticsView({ students, teachers, attendance, payments
   }
   const maxEnroll = Math.max(...monthlyEnroll.map(m=>m.count), 1);
 
+  // Monthly revenue + payment rate trend (last 12 months)
+  const monthlyRevenue = [];
+  for (let i = 11; i >= 0; i--) {
+    const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - i);
+    const ym = d.toISOString().slice(0, 7);
+    const monthPays = payments.filter(p => p.month === ym);
+    const paidPays = monthPays.filter(p => p.paid);
+    const revenue = paidPays.reduce((s, p) => s + (p.paidAmount || p.amount || 0), 0);
+    const rate = monthPays.length > 0 ? Math.round(paidPays.length / monthPays.length * 100) : -1;
+    monthlyRevenue.push({ label: `${d.getMonth()+1}월`, ym, revenue, paidCount: paidPays.length, totalCount: monthPays.length, rate });
+  }
+  const maxRevenue = Math.max(...monthlyRevenue.map(m => m.revenue), 1);
+  const totalRevenue12 = monthlyRevenue.reduce((s, m) => s + m.revenue, 0);
+
   const BarChart = ({ data, max, colorFn }) => (
     <div style={{display:"flex",flexDirection:"column",gap:6}}>
       {data.map(([label, count], i) => (
@@ -197,6 +211,53 @@ export default function AnalyticsView({ students, teachers, attendance, payments
               <div style={{fontSize:10,color:"var(--ink-30)"}}>{m.label}</div>
             </div>
           ))}
+        </div>
+      </div>
+
+      {/* Monthly Revenue Trend */}
+      <div className="dash-card">
+        <div className="dash-card-title">월별 매출 추이 <span style={{fontSize:11,color:"var(--ink-30)",fontWeight:400,fontFamily:"inherit"}}>— 최근 12개월</span></div>
+        <div style={{display:"flex",alignItems:"flex-end",gap:3,height:120,padding:"0 2px",overflowX:"auto"}}>
+          {monthlyRevenue.map((m, i) => (
+            <div key={i} style={{flex:"0 0 auto",minWidth:34,display:"flex",flexDirection:"column",alignItems:"center",gap:3}}>
+              <div style={{fontSize:9.5,fontWeight:600,color:m.revenue>0?"var(--green)":"var(--ink-30)",whiteSpace:"nowrap",textAlign:"center"}}>
+                {m.revenue > 0 ? (m.revenue >= 1000000 ? `${Math.round(m.revenue/10000)}만` : `${Math.round(m.revenue/1000)}천`) : ""}
+              </div>
+              <div style={{
+                width:24,
+                background: m.revenue > 0 ? (m.ym === selectedMonth ? "var(--blue)" : "var(--green)") : "var(--ink-10)",
+                borderRadius:"3px 3px 0 0",
+                height:`${Math.max(3, (m.revenue/maxRevenue)*72)}px`,
+                transition:"height .3s",
+                flexShrink:0,
+              }} />
+              <div style={{fontSize:9.5,color:m.ym===selectedMonth?"var(--blue)":"var(--ink-30)",fontWeight:m.ym===selectedMonth?700:400}}>{m.label}</div>
+            </div>
+          ))}
+        </div>
+        <div style={{fontSize:11,color:"var(--ink-30)",marginTop:8}}>
+          12개월 누계: <strong style={{color:"var(--green)",fontFamily:"'Noto Serif KR',serif"}}>{fmtMoney(totalRevenue12)}</strong>
+          <span style={{marginLeft:12}}>월평균: <strong style={{color:"var(--ink)"}}>{fmtMoney(Math.round(totalRevenue12 / Math.max(monthlyRevenue.filter(m=>m.revenue>0).length,1)))}</strong></span>
+        </div>
+      </div>
+
+      {/* Monthly Payment Rate Trend */}
+      <div className="dash-card">
+        <div className="dash-card-title">월별 수납율 <span style={{fontSize:11,color:"var(--ink-30)",fontWeight:400,fontFamily:"inherit"}}>— 최근 12개월</span></div>
+        <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+          {monthlyRevenue.map((m, i) => {
+            const noData = m.rate === -1;
+            const bg = noData ? "var(--bg)" : m.rate >= 80 ? "var(--green-lt)" : m.rate >= 50 ? "var(--gold-lt)" : "var(--red-lt)";
+            const col = noData ? "var(--ink-30)" : m.rate >= 80 ? "var(--green)" : m.rate >= 50 ? "var(--gold-dk)" : "var(--red)";
+            const brd = noData ? "var(--border)" : m.rate >= 80 ? "rgba(26,122,64,.25)" : m.rate >= 50 ? "rgba(200,136,0,.25)" : "rgba(232,40,28,.25)";
+            return (
+              <div key={i} style={{background:bg,border:`1.5px solid ${m.ym===selectedMonth?"var(--blue)":brd}`,borderRadius:8,padding:"7px 10px",textAlign:"center",minWidth:48,transition:"background .2s"}}>
+                <div style={{fontSize:15,fontWeight:700,color:m.ym===selectedMonth?"var(--blue)":col,fontFamily:"'Noto Serif KR',serif"}}>{noData ? "—" : `${m.rate}%`}</div>
+                <div style={{fontSize:9.5,color:"var(--ink-30)",marginTop:1,fontWeight:m.ym===selectedMonth?700:400}}>{m.label}</div>
+                {!noData && <div style={{fontSize:9,color:"var(--ink-30)"}}>{m.paidCount}/{m.totalCount}</div>}
+              </div>
+            );
+          })}
         </div>
       </div>
 

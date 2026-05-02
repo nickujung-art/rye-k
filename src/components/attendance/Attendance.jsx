@@ -270,6 +270,7 @@ function AttendanceView({ students, teachers, currentUser, attendance, onSaveAtt
   const [rescheduleModal, setRescheduleModal] = useState(null);
   const [rescheduleForm, setRescheduleForm] = useState({ newDate: "", newTime: "" });
   const [collapsedGroups, setCollapsedGroups] = useState({});
+  const [markingAll, setMarkingAll] = useState(false);
   const dayName = ["일","월","화","수","목","금","토"][new Date(date + "T00:00:00").getDay()];
 
   const dayStudents = students.filter(s => {
@@ -341,6 +342,22 @@ function AttendanceView({ students, teachers, currentUser, attendance, onSaveAtt
 
   const toggleGroupCollapse = (key) => setCollapsedGroups(prev => ({ ...prev, [key]: !prev[key] }));
 
+  const markAllPresent = async () => {
+    if (markingAll) return;
+    setMarkingAll(true);
+    const unchecked = dayStudents.filter(s => !getStatus(s.id));
+    let updated = [...attendance];
+    for (const s of unchecked) {
+      const existing = updated.find(a => a.studentId === s.id && a.date === date);
+      if (existing) {
+        updated = updated.map(a => a.id === existing.id ? { ...a, status: "present", updatedAt: Date.now() } : a);
+      } else {
+        updated = [...updated, { id: uid(), studentId: s.id, teacherId: currentUser.id, date, status: "present", createdAt: Date.now() }];
+      }
+    }
+    try { await onSaveAttendance(updated); } finally { setMarkingAll(false); }
+  };
+
   // ★ v12.1: 기관 가상회원 출석 레코드의 참석 인원 업데이트
   const updateParticipantCount = async (studentId, count) => {
     const existing = attendance.find(a => a.studentId === studentId && a.date === date);
@@ -381,8 +398,20 @@ function AttendanceView({ students, teachers, currentUser, attendance, onSaveAtt
         <div className="att-stat" style={{background:"var(--red-lt)",color:"var(--red)"}}>✗ {daySummary.absent}</div>
         <div className="att-stat" style={{background:"var(--gold-lt)",color:"var(--gold-dk)"}}>△ {daySummary.late}</div>
         <div className="att-stat" style={{background:"var(--blue-lt)",color:"var(--blue)"}}>○ {daySummary.excused}</div>
-        {daySummary.none > 0 && <div className="att-stat" style={{background:"var(--ink-10)",color:"var(--ink-30)"}}>미체크 {daySummary.none}</div>}
+        {daySummary.none > 0 && <div className="att-stat" style={{background:"#FEF3C7",color:"#B45309",fontWeight:700,border:"1px solid #FDE68A"}}>미체크 {daySummary.none}</div>}
       </div>
+      {daySummary.none > 0 && dayStudents.length > 0 && (
+        <div style={{display:"flex",justifyContent:"flex-end",marginBottom:10}}>
+          <button
+            onClick={markAllPresent}
+            disabled={markingAll}
+            style={{background:"var(--green)",color:"#fff",border:"none",borderRadius:8,padding:"8px 16px",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit",opacity:markingAll?0.6:1,transition:"opacity .1s",display:"flex",alignItems:"center",gap:6}}
+          >
+            <span style={{fontSize:14}}>✓</span>
+            {markingAll ? "처리 중…" : `전체 출석 처리 (${daySummary.none}명)`}
+          </button>
+        </div>
+      )}
       {dayStudents.length === 0 ? (
         <div className="empty"><div className="empty-icon">✓</div><div className="empty-txt">{dayName}요일 수업이 없습니다.</div></div>
       ) : (
@@ -608,6 +637,8 @@ function LessonNotesView({ students, teachers, currentUser, attendance, onSaveAt
   const [filterTeacher, setFilterTeacher] = useState(currentUser.role === "teacher" ? currentUser.id : "all");
   const [filterMonth, setFilterMonth] = useState(THIS_MONTH);
   const [expandedId, setExpandedId] = useState(null); // 펼쳐진 레슨노트 id
+  const [searchQuery, setSearchQuery] = useState("");
+  const [newNoteTarget, setNewNoteTarget] = useState(null); // { student, date } — 미작성 배너 클릭 시 노트 작성
 
   // 내 학생 ID 집합
   const myStudentIds = new Set(
@@ -621,11 +652,29 @@ function LessonNotesView({ students, teachers, currentUser, attendance, onSaveAt
     ? new Set(students.filter(s => s.teacherId === filterTeacher || (s.lessons||[]).some(l => l.teacherId === filterTeacher)).map(s => s.id))
     : myStudentIds;
 
-  // 레슨노트가 있는 출석 레코드 — 월 필터 + 학생 필터
+  // 미답변 포털 문의 (월 필터 없음): type:"inquiry" 댓글이 있고 강사 답변이 없는 레코드
+  const pendingInquiries = attendance
+    .filter(a => {
+      if (!filteredStudentIds.has(a.studentId)) return false;
+      const comments = a.comments || [];
+      const hasInquiry = comments.some(c => c.type === "inquiry" && c.authorType === "student" && !c.deletedAt);
+      if (!hasInquiry) return false;
+      return !comments.some(c => c.authorType !== "student" && !c.deletedAt);
+    })
+    .sort((a, b) => {
+      // 가장 최근 문의 댓글 기준 정렬
+      const lastA = Math.max(...(a.comments||[]).filter(c => c.type === "inquiry").map(c => c.createdAt || 0));
+      const lastB = Math.max(...(b.comments||[]).filter(c => c.type === "inquiry").map(c => c.createdAt || 0));
+      return lastB - lastA;
+    });
+
+  // 레슨노트가 있거나 회원 댓글이 있는 출석 레코드 — 월 필터 + 학생 필터 (pending 인박스 제외)
+  const pendingIds = new Set(pendingInquiries.map(a => a.id));
   const noteRecords = attendance
     .filter(a =>
       filteredStudentIds.has(a.studentId) &&
-      (a.lessonNote || a.note) &&
+      !pendingIds.has(a.id) &&
+      (a.lessonNote || a.note || (a.comments||[]).some(c => c.authorType === "student" && !c.deletedAt)) &&
       a.date && a.date.startsWith(filterMonth)
     )
     .sort((a, b) => (b.date || "").localeCompare(a.date || "") || b.createdAt - a.createdAt);
@@ -633,6 +682,22 @@ function LessonNotesView({ students, teachers, currentUser, attendance, onSaveAt
   // 새 댓글이 있는 레코드 (회원 댓글 — 삭제된 것 제외)
   const withNewComments = noteRecords.filter(a => (a.comments||[]).some(c => c.authorType === "student" && !c.deletedAt));
   const withoutComments = noteRecords.filter(a => !(a.comments||[]).some(c => c.authorType === "student" && !c.deletedAt));
+
+  // 이달 미작성 현황: 출석(present/late) 기록은 있으나 해당 날짜에 노트가 없는 레코드 (날짜 단위)
+  const noteRecordKeys = new Set(noteRecords.map(a => `${a.studentId}_${a.date}`));
+  const missingNoteRecords = attendance
+    .filter(a =>
+      filteredStudentIds.has(a.studentId) &&
+      a.date && a.date.startsWith(filterMonth) &&
+      (a.status === "present" || a.status === "late") &&
+      !noteRecordKeys.has(`${a.studentId}_${a.date}`)
+    )
+    .sort((a, b) => (a.date||"").localeCompare(b.date||"")); // 날짜 오름차순
+
+  // 검색 필터 적용
+  const sq = searchQuery.trim();
+  const filteredNew = sq ? withNewComments.filter(a => students.find(s => s.id === a.studentId)?.name?.includes(sq)) : withNewComments;
+  const filteredRest = sq ? withoutComments.filter(a => students.find(s => s.id === a.studentId)?.name?.includes(sq)) : withoutComments;
 
   const addComment = async (attId, comment) => {
     const upd = attendance.map(a => a.id === attId ? { ...a, comments: [...(a.comments||[]), comment] } : a);
@@ -649,6 +714,22 @@ function LessonNotesView({ students, teachers, currentUser, attendance, onSaveAt
 
   const prevMonth = () => { const d = new Date(filterMonth + "-01"); d.setMonth(d.getMonth()-1); setFilterMonth(d.toISOString().slice(0,7)); };
   const nextMonth = () => { const d = new Date(filterMonth + "-01"); d.setMonth(d.getMonth()+1); setFilterMonth(d.toISOString().slice(0,7)); };
+
+  const openMissingNote = (attRec) => {
+    const s = students.find(x => x.id === attRec.studentId);
+    if (s) setNewNoteTarget({ student: s, date: attRec.date });
+  };
+
+  const saveLessonNoteInView = async (studentId, noteData) => {
+    const noteDate = newNoteTarget?.date || TODAY_STR;
+    const existing = attendance.find(a => a.studentId === studentId && a.date === noteDate);
+    if (existing) {
+      await onSaveAttendance(attendance.map(a => a.id === existing.id ? { ...a, lessonNote: noteData, note: formatLessonNoteSummary(noteData), updatedAt: Date.now() } : a));
+    } else {
+      await onSaveAttendance([...attendance, { id: uid(), studentId, teacherId: currentUser.id, date: noteDate, status: "present", lessonNote: noteData, note: formatLessonNoteSummary(noteData), createdAt: Date.now() }]);
+    }
+    setNewNoteTarget(null);
+  };
 
   const renderNoteCard = (a, highlight) => {
     const s = students.find(x => x.id === a.studentId);
@@ -717,7 +798,7 @@ function LessonNotesView({ students, teachers, currentUser, attendance, onSaveAt
       </div>
 
       {/* 필터 행 */}
-      <div style={{display:"flex",gap:8,marginBottom:12,flexWrap:"wrap"}}>
+      <div style={{display:"flex",gap:8,marginBottom:8,flexWrap:"wrap"}}>
         <button className="btn btn-secondary btn-xs" onClick={prevMonth}>◀</button>
         <input className="inp" type="month" value={filterMonth} onChange={e => setFilterMonth(e.target.value)} style={{flex:1,maxWidth:180,textAlign:"center"}} />
         <button className="btn btn-secondary btn-xs" onClick={nextMonth}>▶</button>
@@ -728,26 +809,94 @@ function LessonNotesView({ students, teachers, currentUser, attendance, onSaveAt
           </select>
         )}
       </div>
+      <div className="srch-wrap" style={{marginBottom:12}}>
+        <span className="srch-icon">{IC.search}</span>
+        <input className="srch-inp" placeholder="회원 이름 검색" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
+      </div>
+
+      {/* 📨 포털 문의 인박스 — 월 무관, 미답변만, 항상 최상단 */}
+      {!sq && pendingInquiries.length > 0 && (
+        <div style={{marginBottom:16,borderRadius:10,border:"1.5px solid var(--blue)",overflow:"hidden"}}>
+          <div style={{background:"var(--blue-lt)",padding:"10px 14px",display:"flex",alignItems:"center",gap:8}}>
+            <span style={{fontSize:14}}>📨</span>
+            <span style={{fontSize:13,fontWeight:700,color:"var(--blue)"}}>포털 문의 미답변 {pendingInquiries.length}건</span>
+            <span style={{fontSize:10,color:"var(--blue)",marginLeft:"auto"}}>답변하면 자동으로 사라집니다</span>
+          </div>
+          {pendingInquiries.map(a => {
+            const s = students.find(x => x.id === a.studentId);
+            const latestInquiry = [...(a.comments||[])].filter(c => c.type === "inquiry" && !c.deletedAt).sort((x,y) => y.createdAt - x.createdAt)[0];
+            return (
+              <div key={a.id} onClick={() => { setFilterMonth(a.date?.slice(0,7) || filterMonth); setExpandedId(a.id); }} style={{display:"flex",alignItems:"flex-start",gap:10,padding:"12px 14px",borderTop:"1px solid rgba(43,58,159,.12)",cursor:"pointer",background:"#fff",transition:"background .1s"}} onMouseEnter={e=>e.currentTarget.style.background="var(--blue-lt)"} onMouseLeave={e=>e.currentTarget.style.background="#fff"}>
+                <Av photo={s?.photo} name={s?.name||"?"} size="av-sm" />
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:3}}>
+                    <span style={{fontSize:13,fontWeight:600,color:"var(--ink)"}}>{s?.name}</span>
+                    <span style={{fontSize:10,color:"var(--ink-30)"}}>{fmtDateShort(a.date)}</span>
+                  </div>
+                  {latestInquiry && <div style={{fontSize:12,color:"var(--ink-60)",lineHeight:1.5,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{latestInquiry.text}</div>}
+                </div>
+                <span style={{fontSize:11,color:"var(--blue)",fontWeight:600,flexShrink:0,marginTop:2}}>답변하기 →</span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* 이달 미작성 현황 — 날짜 단위 */}
+      {!sq && missingNoteRecords.length > 0 && (
+        <div style={{marginBottom:14,padding:"11px 14px",background:"#FFFBEB",border:"1px solid #FDE68A",borderRadius:10}}>
+          <div style={{fontSize:12,fontWeight:700,color:"#B45309",marginBottom:8}}>✏️ 레슨노트 미작성 {missingNoteRecords.length}건 <span style={{fontWeight:400,fontSize:10,color:"#92400E"}}>— 클릭 시 바로 작성</span></div>
+          <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+            {missingNoteRecords.map(a => {
+              const s = students.find(x => x.id === a.studentId);
+              if (!s) return null;
+              return (
+                <button key={a.id} onClick={() => openMissingNote(a)} style={{background:"#FEF3C7",color:"#78350F",fontSize:11,padding:"4px 11px",borderRadius:6,fontWeight:600,border:"1px solid #FCD34D",cursor:"pointer",fontFamily:"inherit",transition:"background .1s"}} onMouseEnter={e=>e.currentTarget.style.background="#FDE68A"} onMouseLeave={e=>e.currentTarget.style.background="#FEF3C7"}>
+                  ✏️ {s.name} · {fmtDateShort(a.date)}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* 미작성 배너에서 클릭한 경우 노트 작성 모달 */}
+      {newNoteTarget && (
+        <LessonNoteModal
+          student={newNoteTarget.student}
+          teacher={teachers.find(t => t.id === newNoteTarget.student.teacherId || t.id === currentUser.id)}
+          date={newNoteTarget.date}
+          existingNote={attendance.find(a => a.studentId === newNoteTarget.student.id && a.date === newNoteTarget.date)?.lessonNote}
+          comments={[]}
+          onAddComment={() => {}}
+          onDeleteComment={() => {}}
+          currentUserType={currentUser.role}
+          currentUserName={currentUser.name}
+          currentUserId={currentUser.id}
+          onSave={async (noteData) => { await saveLessonNoteInView(newNoteTarget.student.id, noteData); }}
+          onClose={() => setNewNoteTarget(null)}
+        />
+      )}
 
       {/* 새 댓글 섹션 */}
-      {withNewComments.length > 0 && (
+      {filteredNew.length > 0 && (
         <div style={{marginBottom:16}}>
           <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:8}}>
             <span style={{width:8,height:8,borderRadius:4,background:"var(--blue)",display:"inline-block"}} />
-            <span style={{fontSize:12,fontWeight:700,color:"var(--blue)"}}>새 댓글 {withNewComments.length}건</span>
+            <span style={{fontSize:12,fontWeight:700,color:"var(--blue)"}}>새 댓글 {filteredNew.length}건</span>
           </div>
-          {withNewComments.map(a => renderNoteCard(a, true))}
+          {filteredNew.map(a => renderNoteCard(a, true))}
         </div>
       )}
 
       {/* 전체 레슨노트 */}
-      {withNewComments.length > 0 && withoutComments.length > 0 && (
+      {filteredNew.length > 0 && filteredRest.length > 0 && (
         <div style={{fontSize:11,fontWeight:600,color:"var(--ink-30)",letterSpacing:.5,marginBottom:8,paddingBottom:6,borderBottom:"1px solid var(--border)"}}>전체 레슨노트</div>
       )}
-      {withoutComments.length === 0 && withNewComments.length === 0 ? (
-        <div className="empty"><div className="empty-icon">📝</div><div className="empty-txt">{monthLabel(filterMonth)} 레슨노트가 없습니다.</div></div>
+      {filteredRest.length === 0 && filteredNew.length === 0 ? (
+        <div className="empty"><div className="empty-icon">📝</div><div className="empty-txt">{sq ? "검색 결과가 없습니다." : `${monthLabel(filterMonth)} 레슨노트가 없습니다.`}</div></div>
       ) : (
-        withoutComments.map(a => renderNoteCard(a, false))
+        filteredRest.map(a => renderNoteCard(a, false))
       )}
     </div>
   );

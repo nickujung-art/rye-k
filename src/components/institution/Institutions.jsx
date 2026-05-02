@@ -179,7 +179,113 @@ export function InstitutionFormModal({ institution, teachers, categories, onClos
   );
 }
 
+function SettlementModal({ inst, teachers, attendance, payments, onClose }) {
+  const [month, setMonth] = useState(THIS_MONTH);
+  const [mYr, mMo] = month.split("-");
+  const monthStr = `${mYr}년 ${parseInt(mMo)}월`;
+  const todayStr = new Date().toLocaleDateString("ko-KR", { year: "numeric", month: "long", day: "numeric" });
+
+  const classRows = (inst.classes || []).map(cls => {
+    const memberId = `inst_${inst.id}_${cls.id}`;
+    const clsAtt = attendance.filter(a => a.studentId === memberId && a.date?.startsWith(month));
+    const present = clsAtt.filter(a => a.status === "present" || a.status === "late").length;
+    const absent = clsAtt.filter(a => a.status === "absent").length;
+    const clsPay = payments.find(p => p.studentId === memberId && p.month === month);
+    const teacher = teachers.find(t => t.id === cls.teacherId);
+    return { cls, present, absent, sessions: clsAtt.length, clsPay, teacher };
+  });
+
+  const totalFee = classRows.reduce((s, r) => s + (r.cls.monthlyFee || 0), 0);
+
+  return (
+    <div className="settlement-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="settlement-doc">
+        <div className="settlement-controls">
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span style={{ fontSize: 12, color: "var(--ink-60)" }}>정산 기간</span>
+            <input type="month" className="inp" value={month} onChange={e => setMonth(e.target.value)} style={{ width: "auto", padding: "4px 10px" }} />
+          </div>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button className="btn btn-secondary btn-sm" onClick={onClose}>닫기</button>
+            <button className="btn btn-primary btn-sm" onClick={() => window.print()}>🖨 인쇄 / PDF 저장</button>
+          </div>
+        </div>
+        <div className="settlement-paper">
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 }}>
+            <div>
+              <div style={{ fontSize: 17, fontWeight: 700, fontFamily: "'Noto Serif KR',serif" }}>RYE-K K-Culture Center</div>
+              <div style={{ fontSize: 11, color: "#888", marginTop: 2 }}>국악 교육 디렉토리 시스템</div>
+            </div>
+            <div style={{ textAlign: "right" }}>
+              <div style={{ fontSize: 22, fontWeight: 700, fontFamily: "'Noto Serif KR',serif", letterSpacing: -0.5 }}>수강료 정산서</div>
+              <div style={{ fontSize: 11, color: "#888", marginTop: 2 }}>발행일: {todayStr}</div>
+            </div>
+          </div>
+          <div style={{ borderTop: "2px solid #1a1a1a", borderBottom: "1px solid #ccc", padding: "12px 0", marginBottom: 20 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px 16px", fontSize: 12.5 }}>
+              <div><span style={{ color: "#888" }}>수신: </span><strong>{inst.name}</strong></div>
+              <div><span style={{ color: "#888" }}>정산 기간: </span><strong>{monthStr}</strong></div>
+              {inst.contactName && <div><span style={{ color: "#888" }}>담당자: </span>{inst.contactName}{inst.contactPhone && ` · ${inst.contactPhone}`}</div>}
+              {inst.bizNumber && <div><span style={{ color: "#888" }}>사업자번호: </span>{inst.bizNumber}</div>}
+              {inst.address && <div style={{ gridColumn: "1 / -1" }}><span style={{ color: "#888" }}>주소: </span>{inst.address}</div>}
+            </div>
+          </div>
+          <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 8 }}>수업 내역</div>
+          <table className="settlement-table">
+            <thead>
+              <tr>
+                <th>반 이름</th>
+                <th>과목</th>
+                <th>담당강사</th>
+                <th style={{ textAlign: "center" }}>수강인원</th>
+                <th style={{ textAlign: "center" }}>출석현황</th>
+                <th style={{ textAlign: "center" }}>납부</th>
+                <th style={{ textAlign: "right" }}>청구금액</th>
+              </tr>
+            </thead>
+            <tbody>
+              {classRows.map(({ cls, present, absent, sessions, clsPay, teacher }) => (
+                <tr key={cls.id}>
+                  <td style={{ fontWeight: 500 }}>{cls.name || cls.instrument}</td>
+                  <td style={{ color: "#555" }}>{cls.instrument}</td>
+                  <td>{teacher?.name || "—"}</td>
+                  <td style={{ textAlign: "center" }}>{cls.participantCount > 0 ? `${cls.participantCount}명` : "—"}</td>
+                  <td style={{ textAlign: "center", fontSize: 11, color: "#555" }}>
+                    {sessions > 0 ? `출석 ${present} / 결석 ${absent}` : "—"}
+                  </td>
+                  <td style={{ textAlign: "center" }}>
+                    {clsPay?.paid ? <span style={{ color: "#22c55e", fontWeight: 600 }}>완료</span> : <span style={{ color: "#ef4444", fontWeight: 600 }}>미납</span>}
+                  </td>
+                  <td style={{ textAlign: "right", fontWeight: 600 }}>
+                    {cls.monthlyFee > 0 ? fmtMoney(cls.monthlyFee) : "—"}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+            <tfoot>
+              <tr>
+                <td colSpan={6} style={{ textAlign: "right", fontWeight: 700, paddingRight: 12 }}>합계 청구금액</td>
+                <td style={{ textAlign: "right", fontWeight: 700 }}>{fmtMoney(totalFee)}</td>
+              </tr>
+            </tfoot>
+          </table>
+          {inst.notes && (
+            <div style={{ marginTop: 16, padding: "10px 14px", background: "#f8f8f8", borderRadius: 6, fontSize: 12 }}>
+              <div style={{ fontWeight: 600, marginBottom: 4, color: "#555" }}>특이사항</div>
+              <div style={{ color: "#666", whiteSpace: "pre-wrap" }}>{inst.notes}</div>
+            </div>
+          )}
+          <div style={{ marginTop: 24, paddingTop: 12, borderTop: "1px solid #ccc", fontSize: 11, color: "#888", textAlign: "right" }}>
+            발신: RYE-K K-Culture Center 국악 교육 디렉토리 시스템
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function InstitutionDetailModal({ institution: inst, teachers, currentUser, attendance, payments, onClose, onEdit, onDelete }) {
+  const [showSettlement, setShowSettlement] = useState(false);
   const isTeacher = currentUser.role === "teacher";
   const daysLeft = getContractDaysLeft(inst);
   const totalParticipants = (inst.classes || []).reduce((s, c) => s + (c.participantCount || 0), 0);
@@ -190,9 +296,18 @@ export function InstitutionDetailModal({ institution: inst, teachers, currentUse
   const thisMonthPay = payments.filter(p => p.month === THIS_MONTH && memberIds.includes(p.studentId));
   const paidCount = thisMonthPay.filter(p => p.paid).length;
   return (
+    <>
     <div className="mb" onClick={e => e.target === e.currentTarget && onClose()}>
       <div className="modal">
-        <div className="modal-h"><h2>기관 정보</h2><button className="modal-close" onClick={onClose}>{IC.x}</button></div>
+        <div className="modal-h">
+          <h2>기관 정보</h2>
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            {canManageAll(currentUser.role) && (inst.classes || []).length > 0 && (
+              <button className="btn btn-secondary btn-sm" onClick={() => setShowSettlement(true)}>📄 정산서</button>
+            )}
+            <button className="modal-close" onClick={onClose}>{IC.x}</button>
+          </div>
+        </div>
         <div className="det-head">
           <Av photo={inst.photo} name={inst.name} size="av-lg" />
           <div style={{ flex: 1 }}>
@@ -248,6 +363,10 @@ export function InstitutionDetailModal({ institution: inst, teachers, currentUse
         <DeleteConfirmFooter label={`${inst.name}을(를)`} canDelete={canManageAll(currentUser.role)} onDelete={onDelete} onClose={onClose} onEdit={canManageAll(currentUser.role) ? onEdit : null} />
       </div>
     </div>
+    {showSettlement && (
+      <SettlementModal inst={inst} teachers={teachers} attendance={attendance} payments={payments} onClose={() => setShowSettlement(false)} />
+    )}
+    </>
   );
 }
 

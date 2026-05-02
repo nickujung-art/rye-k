@@ -11,9 +11,6 @@ export default function PaymentsView({ students, teachers, currentUser, payments
   const [editForm, setEditForm] = useState({});
   const [filterTeacher, setFilterTeacher] = useState(currentUser.role === "teacher" ? currentUser.id : "all");
   const [filterUnpaid, setFilterUnpaid] = useState(false);
-  const [alimModal, setAlimModal] = useState(false);
-  const [alimType, setAlimType] = useState("unpaid");
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [previewStudent, setPreviewStudent] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [acctToast, setAcctToast] = useState(false);
@@ -21,6 +18,10 @@ export default function PaymentsView({ students, teachers, currentUser, payments
   const [approvingId, setApprovingId] = useState(null);
   const [alimtalkModal, setAlimtalkModal] = useState(null); // null | "monthly_fee" | "unpaid_reminder"
   const [payChargeStudent, setPayChargeStudent] = useState(null);
+  const [quickPayingId, setQuickPayingId] = useState(null);
+  const [bulkPrepModal, setBulkPrepModal] = useState(false);
+  const [bulkPrepData, setBulkPrepData] = useState({});
+  const [bulkSaving, setBulkSaving] = useState(false);
 
   const pendingRequestStudents = students.filter(s => (s.pendingOneTimeCharges||[]).length > 0);
 
@@ -46,6 +47,8 @@ export default function PaymentsView({ students, teachers, currentUser, payments
   }, 0);
   const totalPaid = visibleStudents.reduce((sum, s) => { const p = getPayment(s.id); return sum + (p?.paid ? (p.paidAmount || p.amount) : 0); }, 0);
   const unpaidCount = visibleStudents.filter(s => { const p = getPayment(s.id); return !p?.paid; }).length;
+  const paidCount = visibleStudents.length - unpaidCount;
+  const paidRate = visibleStudents.length > 0 ? Math.round(paidCount / visibleStudents.length * 100) : 0;
 
   const exportCSV = () => {
     const header = "회원명,수강료,납부여부,입금액,입금일,입금방법,메모\n";
@@ -98,16 +101,90 @@ export default function PaymentsView({ students, teachers, currentUser, payments
       updatedAt: Date.now(),
     };
     const upd = existing ? payments.map(p => p.id === existing.id ? record : p) : [...payments, record];
-    await onSavePayments(upd);
-    const sName = visibleStudents.find(s => s.id === editForm.studentId)?.name;
-    if (editForm.paid && !existing?.paid) onLog(`${sName} 회원 ${monthLabel(month)} 수강료 입금 확인`);
-    setEditingId(null);
+    try {
+      await onSavePayments(upd);
+      const sName = visibleStudents.find(s => s.id === editForm.studentId)?.name;
+      if (editForm.paid && !existing?.paid) onLog(`${sName} 회원 ${monthLabel(month)} 수강료 입금 확인`);
+      setEditingId(null);
+    } catch {}
   };
 
   const prevMonth = () => { const d = new Date(month + "-01"); d.setMonth(d.getMonth() - 1); setMonth(d.toISOString().slice(0,7)); };
   const nextMonth = () => { const d = new Date(month + "-01"); d.setMonth(d.getMonth() + 1); setMonth(d.toISOString().slice(0,7)); };
   // prevMonthStr: 현재 선택된 month 기준 전달. 테스트 방법 — month 드롭다운을 다음 달로 변경하면 이번 달 결석 카운트 확인 가능.
   const prevMonthStr = (() => { const d = new Date(month + "-01"); d.setMonth(d.getMonth() - 1); return d.toISOString().slice(0, 7); })();
+
+  // ── 수강료 일괄 확정 ────────────────────────────────────────────────────────
+  const setBulkField = (sid, key, val) =>
+    setBulkPrepData(d => ({...d, [sid]: {...(d[sid]||{}), [key]: val}}));
+
+  const addBulkExtra = (sid) => {
+    setBulkPrepData(d => {
+      const item = d[sid] || {};
+      const title = (item.newTitle || "").trim();
+      const amt = parseInt(item.newAmt || "0") || 0;
+      if (!title) return d;
+      return {...d, [sid]: {...item, extras:[...(item.extras||[]), {title, amount:amt}], amount:(item.amount||0)+amt, newTitle:"", newAmt:""}};
+    });
+  };
+
+  const removeBulkExtra = (sid, idx) => {
+    setBulkPrepData(d => {
+      const item = d[sid] || {};
+      const removed = (item.extras||[])[idx];
+      const extras = (item.extras||[]).filter((_,i)=>i!==idx);
+      return {...d, [sid]: {...item, extras, amount: Math.max(0, (item.amount||0)-(removed?.amount||0))}};
+    });
+  };
+
+  const openBulkPrep = () => {
+    const allActive = students.filter(s => (s.status||"active")==="active" && !s.isInstitution);
+    const data = {};
+    allActive.forEach(s => {
+      const p = payments.find(py => py.studentId === s.id && py.month === month);
+      data[s.id] = {
+        amount: p?.amount ?? autoFee(s),
+        extras: [...(p?.extraCharges || [])],
+        newTitle: "",
+        newAmt: "",
+      };
+    });
+    setBulkPrepData(data);
+    setBulkPrepModal(true);
+  };
+
+  const confirmBulkPrep = async () => {
+    setBulkSaving(true);
+    try {
+      const allActive = students.filter(s => (s.status||"active")==="active" && !s.isInstitution);
+      let updated = [...payments];
+      for (const s of allActive) {
+        const d = bulkPrepData[s.id];
+        if (!d) continue;
+        const existing = updated.find(p => p.studentId === s.id && p.month === month);
+        const record = {
+          ...(existing || {}),
+          id: existing?.id || uid(),
+          studentId: s.id,
+          month,
+          amount: d.amount,
+          extraCharges: d.extras,
+          paid: existing?.paid ?? false,
+          paidAmount: existing?.paidAmount ?? 0,
+          paidDate: existing?.paidDate ?? "",
+          method: existing?.method ?? "",
+          note: existing?.note ?? "",
+          createdAt: existing?.createdAt || Date.now(),
+          updatedAt: Date.now(),
+        };
+        updated = existing
+          ? updated.map(p => p.id === existing.id ? record : p)
+          : [...updated, record];
+      }
+      await onSavePayments(updated);
+      setBulkPrepModal(false);
+    } catch {} finally { setBulkSaving(false); }
+  };
 
   return (
     <div>
@@ -128,8 +205,8 @@ export default function PaymentsView({ students, teachers, currentUser, payments
             <span style={{marginLeft:6,background:"var(--gold-dk)",color:"#fff",borderRadius:99,padding:"1px 7px",fontSize:11,fontWeight:700}}>{pendingRequestStudents.reduce((n,s)=>n+(s.pendingOneTimeCharges||[]).length,0)}</span>
           </button>
         )}
-        {canManageAll(currentUser.role) && <button className="btn btn-secondary btn-sm" onClick={() => setAlimtalkModal("monthly_fee")} title="이달의 수강료 일괄 안내">📨 수강료 안내</button>}
-        {canManageAll(currentUser.role) && <button className="btn btn-secondary btn-sm" onClick={() => { setAlimType("unpaid"); setAlimModal(true); }}>💬 알림톡</button>}
+        {canManageAll(currentUser.role) && <button className="btn btn-secondary btn-sm" onClick={openBulkPrep} title="전체 수강료 일괄 확인 및 확정">📋 수강료 확정</button>}
+        {canManageAll(currentUser.role) && <button className="btn btn-secondary btn-sm" onClick={() => setAlimtalkModal("monthly_fee")} title="이달의 수강료 알림톡 발송">💬 수강료 알림톡</button>}
         {canManageAll(currentUser.role) && <button className="btn btn-secondary btn-sm" onClick={exportCSV}>📥 엑셀</button>}
       </div></div>
       <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
@@ -160,6 +237,19 @@ export default function PaymentsView({ students, teachers, currentUser, payments
           <div className="pay-summary-card" style={{cursor:"pointer",outline:filterUnpaid?"2px solid var(--red)":""}} onClick={() => setFilterUnpaid(f=>!f)}><div className="pay-summary-num" style={{color:"var(--red)"}}>{unpaidCount}명</div><div className="pay-summary-label">미납</div></div>
         </>)}
       </div>
+      {/* 수납률 프로그레스 바 — 관리자/매니저 전용 */}
+      {!isTeacher && visibleStudents.length > 0 && (
+        <div style={{marginBottom:10,padding:"10px 14px",background:"#fff",borderRadius:10,border:"1px solid #F0F0F0"}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+            <span style={{fontSize:12,color:"var(--ink-60)"}}>수납률</span>
+            <span style={{fontSize:13,fontWeight:700,color:paidCount===visibleStudents.length?"var(--green)":"var(--ink)"}}>{paidRate}%</span>
+          </div>
+          <div style={{height:6,borderRadius:3,background:"#F0F0F0",overflow:"hidden"}}>
+            <div style={{height:"100%",borderRadius:3,background:"var(--green)",width:`${paidRate}%`,transition:"width .4s ease"}} />
+          </div>
+          <div style={{fontSize:11,color:"#B0B0B0",marginTop:4}}>{paidCount}명 납부 / {visibleStudents.length}명 전체</div>
+        </div>
+      )}
       {visibleStudents.length === 0 ? (
         <div className="empty"><div className="empty-icon">₩</div><div className="empty-txt">{filterUnpaid ? "미납 회원이 없습니다." : searchQuery ? "검색 결과가 없습니다." : "회원이 없습니다."}</div></div>
       ) : visibleStudents.map(s => {
@@ -182,6 +272,23 @@ export default function PaymentsView({ students, teachers, currentUser, payments
             </div>
             {/* 강사: 금액 숨김 */}
             {!isTeacher && <div className="pay-amount" style={{color: isPaid ? "var(--green)" : "var(--ink)"}}>{fmtMoney(amt)}</div>}
+            {canManageAll(currentUser.role) && !isPaid && (
+              <button
+                onClick={async (e) => {
+                  e.stopPropagation();
+                  if (quickPayingId) return;
+                  setQuickPayingId(s.id);
+                  const base = p?.amount ?? autoFee(s);
+                  const record = { ...(p||{}), id: p?.id||uid(), studentId: s.id, month, amount: base, paid: true, paidAmount: base, paidDate: TODAY_STR, method: "transfer", note: p?.note||"", extraCharges: p?.extraCharges||[], createdAt: p?.createdAt||Date.now(), updatedAt: Date.now() };
+                  const upd = p ? payments.map(pp => pp.id === p.id ? record : pp) : [...payments, record];
+                  try { await onSavePayments(upd); onLog(`${s.name} 회원 ${monthLabel(month)} 수강료 입금 확인`); } catch {}
+                  setQuickPayingId(null);
+                }}
+                style={{background:"var(--green)",color:"#fff",border:"none",borderRadius:8,padding:"6px 11px",fontSize:11,fontWeight:700,flexShrink:0,cursor:"pointer",fontFamily:"inherit",opacity:quickPayingId===s.id?0.5:1,transition:"opacity .1s",whiteSpace:"nowrap"}}
+              >
+                {quickPayingId === s.id ? "…" : "✓ 입금"}
+              </button>
+            )}
           </div>
         );
       })}
@@ -393,42 +500,6 @@ export default function PaymentsView({ students, teachers, currentUser, payments
           </div>
         </div>
       )}
-      {alimModal && (
-        <div className="modal-overlay" onClick={() => !isSubmitting && setAlimModal(false)}>
-          <div className="modal" onClick={e => e.stopPropagation()} style={{maxWidth:360}}>
-            <div className="modal-h"><h2>💬 알림톡 발송</h2></div>
-            <div className="modal-b">
-              <div className="fg">
-                <label className="fg-label">발송 대상</label>
-                <div style={{display:"flex",gap:8}}>
-                  <button className={`btn btn-sm ${alimType === "unpaid" ? "btn-primary" : "btn-secondary"}`} onClick={() => setAlimType("unpaid")}>미납자만 ({unpaidCount}명)</button>
-                  <button className={`btn btn-sm ${alimType === "all" ? "btn-primary" : "btn-secondary"}`} onClick={() => setAlimType("all")}>전체 ({visibleStudents.length}명)</button>
-                </div>
-              </div>
-              <div style={{fontSize:12,color:"var(--ink-60)",padding:"8px 0",lineHeight:1.6}}>
-                {alimType === "unpaid"
-                  ? `미납 ${unpaidCount}명에게 수강료 납부 안내 메시지를 발송합니다.`
-                  : `전체 ${visibleStudents.length}명에게 수강료 안내 메시지를 발송합니다.`}
-              </div>
-              <div style={{display:"flex",gap:8,justifyContent:"flex-end",marginTop:8}}>
-                <button className="btn btn-secondary" onClick={() => setAlimModal(false)} disabled={isSubmitting}>취소</button>
-                <button className="btn btn-primary" disabled={isSubmitting} onClick={async () => {
-                  setIsSubmitting(true);
-                  const targets = alimType === "unpaid"
-                    ? visibleStudents.filter(s => !getPayment(s.id)?.paid)
-                    : visibleStudents;
-                  await sendAligoMessage(alimType, targets);
-                  setIsSubmitting(false);
-                  setAlimModal(false);
-                }}>
-                  {isSubmitting ? <><span className="spinner-sm" /> 발송 중…</> : "발송하기"}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* ── 비용 청구 요청 모달 (수납 관리 내) ── */}
       {payChargeStudent && (
         <ChargeRequestModal
@@ -455,10 +526,91 @@ export default function PaymentsView({ students, teachers, currentUser, payments
         />
       )}
 
+      {/* ── 수강료 일괄 확정 모달 ── */}
+      {bulkPrepModal && (() => {
+        const allActive = students.filter(s => (s.status||"active")==="active" && !s.isInstitution);
+        const zeroCount = allActive.filter(s => (bulkPrepData[s.id]?.amount ?? 0) === 0).length;
+        return (
+          <div style={{position:"fixed",top:0,left:0,width:"100vw",height:"100vh",zIndex:10000,display:"flex",alignItems:"center",justifyContent:"center",background:"rgba(0,0,0,.5)"}} onClick={e => e.target===e.currentTarget && !bulkSaving && setBulkPrepModal(false)}>
+            <div style={{width:"96%",maxWidth:560,height:"90vh",background:"var(--paper)",borderRadius:16,boxShadow:"0 8px 40px rgba(0,0,0,.18)",display:"flex",flexDirection:"column",overflow:"hidden"}}>
+              <div className="modal-h">
+                <h2>📋 {monthLabel(month)} 수강료 확정</h2>
+                <button className="modal-close" onClick={() => setBulkPrepModal(false)} disabled={bulkSaving}>{IC.x}</button>
+              </div>
+              {/* 요약 배너 */}
+              <div style={{padding:"8px 16px",background:"var(--bg)",borderBottom:"1px solid var(--border)",fontSize:12,color:"var(--ink-60)",display:"flex",gap:12,alignItems:"center"}}>
+                <span>재원생 <strong>{allActive.length}명</strong></span>
+                {zeroCount > 0
+                  ? <span style={{color:"var(--red)",fontWeight:600}}>⚠ 0원 {zeroCount}명 — 확인 필요</span>
+                  : <span style={{color:"var(--green)",fontWeight:600}}>✓ 전원 수강료 입력됨</span>}
+              </div>
+              {/* 회원 리스트 */}
+              <div style={{flex:1,overflowY:"auto"}}>
+                {allActive.map(s => {
+                  const d = bulkPrepData[s.id] || {amount:0,extras:[],newTitle:"",newAmt:""};
+                  const t = teachers.find(t=>t.id===s.teacherId);
+                  const refAmt = autoFee(s);
+                  const isZero = d.amount === 0;
+                  return (
+                    <div key={s.id} style={{padding:"10px 14px",borderBottom:"1px solid var(--border)",background:isZero?"var(--red-lt)":"transparent"}}>
+                      <div style={{display:"flex",alignItems:"center",gap:8}}>
+                        <Av photo={s.photo} name={s.name} size="av-sm" />
+                        <div style={{flex:1,minWidth:0}}>
+                          <div style={{fontSize:13,fontWeight:600,display:"flex",alignItems:"center",gap:4,overflow:"hidden"}}>
+                            <span style={{whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{s.name}</span>
+                            {s.instrumentRental && <span style={{fontSize:9,background:"var(--blue-lt)",color:"var(--blue)",borderRadius:4,padding:"1px 5px",fontWeight:700,flexShrink:0}}>대여</span>}
+                          </div>
+                          <div style={{fontSize:10.5,color:"var(--ink-30)"}}>{t ? `${t.name} 강사` : ""}{refAmt>0 ? ` · 기준 ${fmtMoney(refAmt)}` : ""}</div>
+                        </div>
+                        {/* 이달 청구 금액 */}
+                        <div style={{position:"relative",width:108,flexShrink:0}}>
+                          <input className="inp" inputMode="numeric"
+                            value={d.amount ? d.amount.toLocaleString("ko-KR") : ""}
+                            onChange={e => setBulkField(s.id,"amount",parseInt(e.target.value.replace(/[^\d]/g,""))||0)}
+                            style={{paddingRight:22,fontSize:13,height:34,borderColor:isZero?"var(--red)":undefined}}
+                          />
+                          <span style={{position:"absolute",right:7,top:"50%",transform:"translateY(-50%)",fontSize:11,color:"var(--ink-30)",pointerEvents:"none"}}>원</span>
+                        </div>
+                      </div>
+                      {/* 추가 항목 chips */}
+                      {d.extras.length > 0 && (
+                        <div style={{display:"flex",gap:4,flexWrap:"wrap",marginTop:5,paddingLeft:32}}>
+                          {d.extras.map((ex,i) => (
+                            <span key={i} style={{fontSize:11,background:"var(--gold-lt)",border:"1px solid var(--gold)",borderRadius:6,padding:"2px 7px",color:"var(--gold-dk)",display:"inline-flex",alignItems:"center",gap:3}}>
+                              {ex.title} {fmtMoney(ex.amount)}
+                              <button onClick={() => removeBulkExtra(s.id,i)} style={{background:"none",border:"none",color:"var(--red)",fontSize:13,cursor:"pointer",padding:0,lineHeight:1,marginLeft:1}}>×</button>
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                      {/* 추가 항목 입력 */}
+                      <div style={{display:"flex",gap:4,alignItems:"center",marginTop:5,paddingLeft:32}}>
+                        <input className="inp" placeholder="항목명" value={d.newTitle||""} onChange={e => setBulkField(s.id,"newTitle",e.target.value)} style={{flex:2,height:30,fontSize:11}} />
+                        <div style={{position:"relative",flex:1}}>
+                          <input className="inp" inputMode="numeric" placeholder="0" value={d.newAmt||""} onChange={e => setBulkField(s.id,"newAmt",e.target.value.replace(/[^\d]/g,""))} style={{paddingRight:14,height:30,fontSize:11}} />
+                          <span style={{position:"absolute",right:5,top:"50%",transform:"translateY(-50%)",fontSize:10,color:"var(--ink-30)",pointerEvents:"none"}}>원</span>
+                        </div>
+                        <button onClick={() => addBulkExtra(s.id)} className="btn btn-secondary btn-xs" style={{flexShrink:0,height:30}}>+추가</button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="modal-f">
+                <button className="btn btn-secondary" onClick={() => setBulkPrepModal(false)} disabled={bulkSaving}>취소</button>
+                <button className="btn btn-primary" onClick={confirmBulkPrep} disabled={bulkSaving}>
+                  {bulkSaving ? <><span className="spinner-sm"/> 저장 중…</> : `${allActive.length}명 수강료 확정`}
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
       {/* ── 강사 청구 요청 승인 모달 ── */}
       {requestsModal && (
-        <div className="modal-overlay" onClick={() => setRequestsModal(false)}>
-          <div className="modal" onClick={e => e.stopPropagation()} style={{maxWidth:480}}>
+        <div className="mb" onClick={e => e.target === e.currentTarget && setRequestsModal(false)}>
+          <div className="modal" style={{maxWidth:480}}>
             <div className="modal-h"><h2>강사 청구 요청</h2><button className="modal-close" onClick={() => setRequestsModal(false)}>{IC.x}</button></div>
             <div className="modal-b">
               {pendingRequestStudents.length === 0 ? (

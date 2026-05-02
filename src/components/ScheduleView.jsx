@@ -23,6 +23,19 @@ function ScheduleView({ students, teachers, currentUser, attendance, onSaveAtten
   const effectiveFilter = canSeeAll ? filterTeacherId : currentUser.id;
   const visibleStudents = students.filter(s => effectiveFilter === "all" ? true : s.teacherId === effectiveFilter);
 
+  const ATT_BADGE = {
+    present: { bg:"var(--green-lt)", color:"var(--green)",   label:"✓ 출석" },
+    absent:  { bg:"var(--red-lt)",   color:"var(--red)",     label:"✗ 결석" },
+    late:    { bg:"#FEF3C7",         color:"#B45309",        label:"△ 지각" },
+    excused: { bg:"var(--blue-lt)",  color:"var(--blue)",    label:"보강"   },
+  };
+  const getAttBadge = (studentId, dateStr) => {
+    const a = (attendance||[]).find(a => a.studentId === studentId && a.date === dateStr);
+    if (a) return ATT_BADGE[a.status] || null;
+    if (dateStr <= TODAY_STR) return { bg:"var(--ink-10)", color:"var(--ink-30)", label:"미체크" };
+    return null;
+  };
+
   // Build regular schedule entries from lesson data keyed by day name
   const scheduleByDay = {};
   DAYS.forEach(d => { scheduleByDay[d] = []; });
@@ -133,7 +146,9 @@ function ScheduleView({ students, teachers, currentUser, attendance, onSaveAtten
               })}
               {all.length === 0 ? (
                 <div className="sched-empty">레슨 없음</div>
-              ) : all.map((entry, i) => (
+              ) : all.map((entry, i) => {
+                const badge = !entry.isMakeup ? getAttBadge(entry.studentId, date) : null;
+                return (
                 <div key={i} className={"sched-lesson" + (entry.isMakeup?" makeup":"")} style={{borderLeftColor:entry.color,cursor:"pointer"}} onClick={()=>{setEditEntry({studentId:entry.studentId,studentName:entry.studentName,instrument:entry.instrument,originalDay:dayName,originalDate:date,time:entry.time});setEditForm({action:"move",newDay:"",newTime:entry.time||"",newDate:""});}}>
                   <span className="sched-time">{entry.time||"—"}</span>
                   <div className="sched-info">
@@ -144,8 +159,10 @@ function ScheduleView({ students, teachers, currentUser, attendance, onSaveAtten
                   {entry.isMakeup && <span className="sched-makeup-badge">보강</span>}
                   {(scheduleOverrides||[]).find(o=>o.studentId===entry.studentId&&o.originalDate===date&&o.type==="absent") && <span style={{background:"var(--red-lt)",color:"var(--red)",fontSize:10,fontWeight:600,padding:"2px 8px",borderRadius:6,flexShrink:0}}>결석</span>}
                   {(scheduleOverrides||[]).find(o=>o.studentId===entry.studentId&&o.originalDate===date&&o.type==="move") && <span style={{background:"var(--gold-lt)",color:"var(--gold-dk)",fontSize:10,fontWeight:600,padding:"2px 8px",borderRadius:6,flexShrink:0}}>변경</span>}
+                  {badge && <span style={{fontSize:10,fontWeight:600,padding:"2px 8px",borderRadius:6,flexShrink:0,background:badge.bg,color:badge.color}}>{badge.label}</span>}
                 </div>
-              ))}
+                );
+              })}
             </div>
           );
         })}
@@ -301,7 +318,9 @@ function ScheduleView({ students, teachers, currentUser, attendance, onSaveAtten
               </div>
             )}
             {all.length === 0 ? <div className="sched-empty" style={{padding:16}}>레슨 없음</div> :
-              all.map((entry, i) => (
+              all.map((entry, i) => {
+                const badge = !entry.isMakeup ? getAttBadge(entry.studentId, dayDetail) : null;
+                return (
                 <div key={i} className={"sched-lesson"+(entry.isMakeup?" makeup":"")}
                   style={{borderLeftColor:entry.color,borderRadius:0,margin:0,borderTop:i>0?"1px solid var(--border)":"none",borderRight:"none",borderBottom:"none",cursor:"pointer"}}
                   onClick={()=>{setEditEntry({studentId:entry.studentId,studentName:entry.studentName,instrument:entry.instrument,originalDay:dayName,originalDate:dayDetail,time:entry.time});setEditForm({action:"move",newDay:"",newTime:entry.time||"",newDate:""});}}>
@@ -312,8 +331,10 @@ function ScheduleView({ students, teachers, currentUser, attendance, onSaveAtten
                     <div className="sched-teacher">{entry.teacherName}</div>
                   </div>
                   {entry.isMakeup && <span className="sched-makeup-badge">보강</span>}
+                  {badge && <span style={{fontSize:10,fontWeight:600,padding:"2px 8px",borderRadius:6,flexShrink:0,background:badge.bg,color:badge.color}}>{badge.label}</span>}
                 </div>
-              ))
+                );
+              })
             }
           </div>
         );

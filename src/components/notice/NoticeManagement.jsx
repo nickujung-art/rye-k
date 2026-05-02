@@ -107,12 +107,20 @@ export function NoticesView({ notices, currentUser, onAdd, onEdit, onDelete }) {
   const sorted = [...notices].sort((a, b) => { if (a.pinned && !b.pinned) return -1; if (!a.pinned && b.pinned) return 1; return b.createdAt - a.createdAt; });
   const [expanded, setExpanded] = useState(null);
   const [delTarget, setDelTarget] = useState(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const sq = searchQuery.trim();
+  const filtered = sq ? sorted.filter(n => n.title.includes(sq) || n.content.includes(sq)) : sorted;
   return (
     <div>
       <div className="ph"><div><h1>공지사항</h1><div className="ph-sub">{notices.length}건</div></div></div>
-      {sorted.length === 0 ? (
-        <div className="empty"><div className="empty-icon">◉</div><div className="empty-txt">등록된 공지가 없습니다.</div></div>
-      ) : sorted.map(n => (
+      <div className="srch-wrap" style={{marginBottom:10}}>
+        <span className="srch-icon">{IC.search}</span>
+        <input className="srch-inp" placeholder="제목 또는 내용 검색" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
+        {sq && <button className="srch-clr" onClick={() => setSearchQuery("")}>{IC.x}</button>}
+      </div>
+      {filtered.length === 0 ? (
+        <div className="empty"><div className="empty-icon">◉</div><div className="empty-txt">{sq ? "검색 결과가 없습니다." : "등록된 공지가 없습니다."}</div></div>
+      ) : filtered.map(n => (
         <div key={n.id} className={`notice-card ${n.pinned ? "pinned" : ""}`} onClick={() => setExpanded(expanded === n.id ? null : n.id)}>
           <div className="notice-title">{n.pinned && <span className="pin-icon">📌</span>}{n.title}</div>
           <div className="notice-meta">
@@ -253,6 +261,13 @@ export function StudentNoticeManager({ notices, currentUser, students = [], teac
     setConfirmDel(null);
   };
 
+  // 수신 대상 인원 계산
+  const getTargetCount = (n) => {
+    const active = (students||[]).filter(s => s.status === "active" && !s.isInstitution);
+    if (!n.targetTeacherId) return active.length;
+    return active.filter(s => s.teacherId === n.targetTeacherId).length;
+  };
+
   // 작성자 배지 계산
   const getAuthorBadge = (n) => {
     const role = n.authorRole;
@@ -309,7 +324,7 @@ export function StudentNoticeManager({ notices, currentUser, students = [], teac
             )}
             <div style={{display:"flex",gap:8,marginTop:10,alignItems:"center",flexWrap:"wrap"}}>
               <button className="btn btn-ghost btn-sm" style={{color:"var(--ink-30)",fontSize:12}} onClick={() => setReadersModal(n)}>
-                👁‍🗨 {(n.readBy||[]).length}명 확인
+                👁‍🗨 {(n.readBy||[]).length}/{getTargetCount(n)}명 읽음
               </button>
               {(canManageAll(currentUser.role) || (isTeacherRole && n.authorId === currentUser.id)) && (
                 <>
@@ -423,7 +438,7 @@ export function StudentNoticeManager({ notices, currentUser, students = [], teac
             <div className="modal-h"><h2>읽음 확인</h2><button className="modal-close" onClick={() => setReadersModal(null)}>{IC.x}</button></div>
             <div className="modal-b">
               <div style={{fontSize:13,fontWeight:600,color:"var(--ink)",marginBottom:8}}>「{readersModal.title}」</div>
-              <div style={{fontSize:12,color:"var(--ink-30)",marginBottom:12}}>총 {(readersModal.readBy||[]).length}명 읽음</div>
+              <div style={{fontSize:12,color:"var(--ink-30)",marginBottom:12}}>총 {(readersModal.readBy||[]).length}/{getTargetCount(readersModal)}명 읽음</div>
               {(readersModal.readBy||[]).length === 0 ? (
                 <div style={{textAlign:"center",color:"var(--ink-30)",fontSize:13,padding:"20px 0"}}>아직 읽은 수강생이 없습니다.</div>
               ) : (

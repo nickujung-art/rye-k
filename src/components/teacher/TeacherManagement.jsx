@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { IC, TODAY_STR } from "../../constants.jsx";
+import { IC, TODAY_STR, THIS_MONTH } from "../../constants.jsx";
 import { compressImage, fmtPhone, getPhoneInitialPassword, canManageAll, fmtDate, allLessonInsts } from "../../utils.js";
 import { Av, PhotoUpload, RoleBadge, DeleteConfirmFooter } from "../shared/CommonUI.jsx";
 
@@ -160,9 +160,10 @@ export function TeacherDetailModal({ teacher: t, students, currentUser, onClose,
 }
 
 // ── TEACHERS VIEW ─────────────────────────────────────────────────────────────
-export function TeachersView({ teachers, students, onAdd, onSelect }) {
+export function TeachersView({ teachers, students, onAdd, onSelect, attendance = [] }) {
   const [search, setSearch] = useState("");
   const filtered = teachers.filter(t => { const q = search.toLowerCase(); return !q || t.name?.toLowerCase().includes(q) || ((t.instruments || []).join("")).toLowerCase().includes(q); });
+  const todayDayName = ["일","월","화","수","목","금","토"][new Date(TODAY_STR + "T00:00:00").getDay()];
   return (
     <div>
       <div className="ph"><div><h1>강사 · 매니저</h1><div className="ph-sub">전체 {teachers.length}명</div></div></div>
@@ -172,8 +173,18 @@ export function TeachersView({ teachers, students, onAdd, onSelect }) {
       ) : (
         <div className="s-grid">
           {filtered.map(t => {
-            const cnt = students.filter(s => s.teacherId === t.id).length;
+            const cnt = students.filter(s => s.teacherId === t.id || (s.lessons||[]).some(l => l.teacherId === t.id)).length;
             const insts = (t.instruments || []).filter(Boolean);
+            const todayCount = students.filter(s =>
+              (s.teacherId === t.id || (s.lessons||[]).some(l => l.teacherId === t.id)) &&
+              (s.lessons||[]).some(l => (l.schedule||[]).some(sc => sc.day === todayDayName))
+            ).length;
+            const thisMonthAttIds = new Set(
+              attendance.filter(a => a.teacherId === t.id && (a.date||"").startsWith(THIS_MONTH) && (a.lessonNote || a.note)).map(a => a.studentId)
+            );
+            const missingNotes = [...new Set(
+              attendance.filter(a => a.teacherId === t.id && (a.date||"").startsWith(THIS_MONTH) && (a.status === "present" || a.status === "late") && !thisMonthAttIds.has(a.studentId)).map(a => a.studentId)
+            )].length;
             return (
               <div key={t.id} className="s-card" onClick={() => onSelect(t)}>
                 <Av photo={t.photo} name={t.name} />
@@ -183,6 +194,10 @@ export function TeachersView({ teachers, students, onAdd, onSelect }) {
                   <div className="s-meta">
                     <RoleBadge role={t.role || "teacher"} />
                     <span style={{fontSize:11,color:"var(--ink-30)"}}>회원 {cnt}명</span>
+                  </div>
+                  <div style={{display:"flex",gap:6,marginTop:4,flexWrap:"wrap"}}>
+                    {todayCount > 0 && <span style={{fontSize:10,background:"var(--blue-lt)",color:"var(--blue)",padding:"2px 7px",borderRadius:4,fontWeight:600}}>오늘 {todayCount}명</span>}
+                    {missingNotes > 0 && <span style={{fontSize:10,background:"#FEF3C7",color:"#B45309",padding:"2px 7px",borderRadius:4,fontWeight:600}}>미작성 {missingNotes}명</span>}
                   </div>
                 </div>
               </div>
