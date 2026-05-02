@@ -951,57 +951,166 @@ export function PublicParentView() {
         })()}
 
         {/* Lesson Notes Tab */}
-        {tab === "notes" && (
-          <div>
-            <div style={{fontSize:13,fontWeight:600,color:"var(--ink)",marginBottom:10}}>레슨 노트</div>
-            {notes.length === 0 ? <div className="empty"><div className="empty-icon">📝</div><div className="empty-txt">작성된 레슨 노트가 없습니다.</div></div> :
-              notes.map((a, i) => {
-                const st = attStatusStyle[a.status] || { color:"#999", bg:"#F5F5F5", icon:"·", text:"" };
-                const ln = a.lessonNote;
-                return (
-                  <div key={i} style={{background:"#fff",borderRadius:14,padding:0,marginBottom:8,overflow:"hidden",boxShadow:"0 1px 4px rgba(0,0,0,.03)",border:"1px solid #F0F0F0"}}>
-                    <div style={{display:"flex",alignItems:"center",gap:8,padding:"12px 16px",background:"#FAFAFA",borderBottom:"1px solid #F0F0F0"}}>
-                      <span style={{fontSize:12,fontWeight:500,color:"#888"}}>{fmtDate(a.date)}</span>
-                      <span style={{background:st.bg,color:st.color,fontSize:10,fontWeight:600,padding:"2px 8px",borderRadius:6}}>{st.icon} {st.text}</span>
+        {tab === "notes" && (() => {
+          // 월별 그룹화
+          const grouped = notes.reduce((acc, a) => {
+            const key = a.date?.slice(0, 7) || "기타";
+            (acc[key] = acc[key] || []).push(a);
+            return acc;
+          }, {});
+          const monthKeys = Object.keys(grouped).sort((a, b) => b.localeCompare(a));
+
+          // 이번달 통계
+          const thisMonthNotes = grouped[THIS_MONTH] || [];
+          const condCount = thisMonthNotes.reduce((acc, a) => {
+            const c = a.lessonNote?.condition;
+            if (c) acc[c] = (acc[c] || 0) + 1;
+            return acc;
+          }, {});
+          const topCond = Object.entries(condCount).sort((a, b) => b[1] - a[1])[0];
+          const condTopLabel = topCond ? ({excellent:"매우 좋음 ✨",good:"좋음 😊",normal:"보통 🙂",poor:"부진 💪"}[topCond[0]]) : null;
+
+          const today = new Date();
+          today.setHours(0,0,0,0);
+          const dateLabel = (dateStr) => {
+            const d = new Date(dateStr + "T00:00:00");
+            const diff = Math.round((today - d) / 86400000);
+            if (diff === 0) return "오늘";
+            if (diff === 1) return "어제";
+            if (diff < 7) return `${diff}일 전`;
+            return fmtDate(dateStr);
+          };
+
+          return (
+            <div>
+              {/* 이번달 요약 헤더 */}
+              {notes.length > 0 && (
+                <div style={{background:"linear-gradient(135deg,#EEF2FF,#F0F9FF)",borderRadius:16,padding:"16px 18px",marginBottom:14,border:"1px solid rgba(43,58,159,.1)"}}>
+                  <div style={{fontSize:11,color:"var(--blue)",fontWeight:600,letterSpacing:.4,marginBottom:6}}>이번 달 학습 기록</div>
+                  <div style={{display:"flex",gap:14,alignItems:"baseline",flexWrap:"wrap"}}>
+                    <div>
+                      <span style={{fontSize:24,fontWeight:700,color:"var(--blue)",fontFamily:"'Noto Serif KR',serif"}}>{thisMonthNotes.length}</span>
+                      <span style={{fontSize:12,color:"#888",marginLeft:4}}>건의 레슨노트</span>
                     </div>
-                    <div style={{padding:"14px 16px"}}>
-                      {ln && typeof ln === "object" ? (
-                        <div style={{fontSize:13,lineHeight:1.8}}>
-                          {ln.condition && <div style={{marginBottom:6}}><span style={{fontSize:11,color:"#999"}}>컨디션:</span> <span style={{fontWeight:500,color:ln.condition==="excellent"?"var(--blue)":ln.condition==="good"?"#22C55E":ln.condition==="normal"?"#F59E0B":"#EF4444"}}>{ln.condition==="excellent"?"매우 좋음":ln.condition==="good"?"좋음":ln.condition==="normal"?"보통":"부진"}</span></div>}
-                          {ln.progress && <div style={{color:"var(--ink)"}}><strong style={{color:"var(--blue)"}}>진도</strong> {ln.progress}</div>}
-                          {ln.content && <div style={{color:"#555",marginTop:4}}>{ln.content}</div>}
-                          {ln.assignment && <div style={{marginTop:6,padding:"8px 12px",background:"var(--blue-lt)",borderRadius:8,color:"var(--blue)",fontSize:12.5,fontWeight:500}}>📝 과제: {ln.assignment}</div>}
-                          {ln.makeupNeeded && ln.makeupPlan && <div style={{marginTop:4,fontSize:12,color:"#F59E0B"}}>보강: {ln.makeupPlan}</div>}
-                          {ln.memo && <div style={{marginTop:4,fontSize:12,color:"#888"}}>{ln.memo}</div>}
-                        </div>
-                      ) : (
-                        <div style={{fontSize:13.5,color:"var(--ink)",lineHeight:1.8,whiteSpace:"pre-wrap"}}>{a.note}</div>
-                      )}
-                      {/* 댓글 패널 */}
-                      <NoteCommentsPanel
-                        comments={a.comments || []}
-                        onAddComment={async (comment) => {
-                          const upd = attendance.map(rec => rec.id === a.id ? { ...rec, comments: [...(rec.comments||[]), comment] } : rec);
-                          await saveAttendance(upd);
-                        }}
-                        onDeleteComment={async (commentId) => {
-                          const upd = attendance.map(rec => rec.id === a.id
-                            ? { ...rec, comments: (rec.comments||[]).map(c => c.id === commentId ? { ...c, deletedAt: Date.now() } : c) }
-                            : rec);
-                          await saveAttendance(upd);
-                        }}
-                        authorType="student"
-                        authorName={student.name}
-                        authorId={student.id}
-                        viewerRole="student"
-                      />
-                    </div>
+                    {condTopLabel && (
+                      <div style={{paddingLeft:14,borderLeft:"1px solid rgba(43,58,159,.15)"}}>
+                        <div style={{fontSize:10,color:"#888"}}>이번달 컨디션</div>
+                        <div style={{fontSize:13,fontWeight:600,color:"var(--ink)",marginTop:1}}>{condTopLabel}</div>
+                      </div>
+                    )}
                   </div>
-                );
-              })
-            }
-          </div>
-        )}
+                </div>
+              )}
+
+              {notes.length === 0 ? (
+                <div style={{background:"#fff",borderRadius:16,padding:"40px 20px",textAlign:"center",border:"1px solid #F0F0F0"}}>
+                  <div style={{fontSize:40,marginBottom:10}}>📝</div>
+                  <div style={{fontSize:14,fontWeight:600,color:"var(--ink)",marginBottom:6}}>아직 레슨노트가 없어요</div>
+                  <div style={{fontSize:12,color:"#999",lineHeight:1.6}}>강사님이 레슨 후 작성하시면<br/>이곳에서 확인하실 수 있어요.</div>
+                </div>
+              ) : (
+                monthKeys.map(monthKey => (
+                  <div key={monthKey} style={{marginBottom:14}}>
+                    {/* 월 구분 라벨 */}
+                    {monthKey !== "기타" && (
+                      <div style={{fontSize:11,fontWeight:700,color:"#999",letterSpacing:.4,padding:"6px 4px 8px",borderBottom:"1px solid #F0F0F0",marginBottom:8}}>
+                        {monthKey.replace("-","년 ")}월 · {grouped[monthKey].length}건
+                      </div>
+                    )}
+                    {grouped[monthKey].map((a, i) => {
+                      const st = attStatusStyle[a.status] || { color:"#999", bg:"#F5F5F5", icon:"·", text:"" };
+                      const ln = a.lessonNote;
+                      const noteTeacher = teachers.find(t => t.id === a.teacherId) || teacher;
+                      const condColor = ln?.condition === "excellent" ? "var(--blue)" : ln?.condition === "good" ? "#22C55E" : ln?.condition === "normal" ? "#F59E0B" : ln?.condition === "poor" ? "#EF4444" : "#999";
+                      const condBg = ln?.condition === "excellent" ? "rgba(43,58,159,.08)" : ln?.condition === "good" ? "#F0FDF4" : ln?.condition === "normal" ? "#FFFBEB" : ln?.condition === "poor" ? "#FEF2F2" : "#F5F5F5";
+                      const condEmoji = { excellent: "✨", good: "😊", normal: "🙂", poor: "💪" }[ln?.condition];
+                      const condLabel = { excellent: "매우 좋음", good: "좋음", normal: "보통", poor: "부진" }[ln?.condition];
+                      return (
+                        <div key={i} style={{background:"#fff",borderRadius:16,padding:0,marginBottom:10,overflow:"hidden",boxShadow:"0 2px 8px rgba(0,0,0,.04)",border:"1px solid #F0F0F0"}}>
+                          {/* 카드 헤더 — 강사 + 날짜 + 출석 */}
+                          <div style={{display:"flex",alignItems:"center",gap:10,padding:"12px 16px",borderBottom:"1px solid #F5F5F5"}}>
+                            <Av photo={noteTeacher?.photo} name={noteTeacher?.name || "강사"} size="av-sm" />
+                            <div style={{flex:1,minWidth:0}}>
+                              <div style={{fontSize:12.5,fontWeight:600,color:"var(--ink)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{noteTeacher?.name || "강사"} 강사</div>
+                              <div style={{fontSize:10.5,color:"#A0A0A0",marginTop:1}}>{dateLabel(a.date)} · {fmtDate(a.date)}</div>
+                            </div>
+                            <span style={{background:st.bg,color:st.color,fontSize:10.5,fontWeight:700,padding:"3px 9px",borderRadius:8,whiteSpace:"nowrap"}}>{st.icon} {st.text}</span>
+                          </div>
+
+                          <div style={{padding:"14px 16px"}}>
+                            {ln && typeof ln === "object" ? (
+                              <div>
+                                {/* 컨디션 배지 */}
+                                {ln.condition && (
+                                  <div style={{display:"inline-flex",alignItems:"center",gap:4,background:condBg,color:condColor,fontSize:11,fontWeight:600,padding:"4px 10px",borderRadius:20,marginBottom:10}}>
+                                    <span>{condEmoji}</span>
+                                    <span>오늘 컨디션 · {condLabel}</span>
+                                  </div>
+                                )}
+                                {/* 진도 — 가장 강조 */}
+                                {ln.progress && (
+                                  <div style={{marginBottom:8}}>
+                                    <div style={{fontSize:10.5,fontWeight:700,color:"var(--blue)",letterSpacing:.4,marginBottom:3}}>📚 오늘의 진도</div>
+                                    <div style={{fontSize:14,fontWeight:600,color:"var(--ink)",lineHeight:1.6}}>{ln.progress}</div>
+                                  </div>
+                                )}
+                                {/* 수업 내용 */}
+                                {ln.content && (
+                                  <div style={{marginBottom:8,padding:"10px 12px",background:"#FAFAFA",borderRadius:10,borderLeft:"3px solid var(--blue)"}}>
+                                    <div style={{fontSize:10.5,fontWeight:700,color:"#888",letterSpacing:.4,marginBottom:3}}>수업 내용</div>
+                                    <div style={{fontSize:13,color:"var(--ink-70)",lineHeight:1.7,whiteSpace:"pre-wrap"}}>{ln.content}</div>
+                                  </div>
+                                )}
+                                {/* 과제 — 강조 */}
+                                {ln.assignment && (
+                                  <div style={{marginBottom:8,padding:"11px 14px",background:"linear-gradient(135deg,#F0F9FF,#EFF6FF)",borderRadius:10,border:"1px solid rgba(43,58,159,.12)"}}>
+                                    <div style={{fontSize:10.5,fontWeight:700,color:"var(--blue)",letterSpacing:.4,marginBottom:3}}>📝 다음 시간까지 과제</div>
+                                    <div style={{fontSize:13,color:"var(--ink)",lineHeight:1.7,fontWeight:500}}>{ln.assignment}</div>
+                                  </div>
+                                )}
+                                {/* 보강 안내 */}
+                                {ln.makeupNeeded && ln.makeupPlan && (
+                                  <div style={{marginBottom:8,padding:"9px 12px",background:"#FFFBEB",borderRadius:10,border:"1px solid #FDE68A"}}>
+                                    <div style={{fontSize:10.5,fontWeight:700,color:"#B45309",letterSpacing:.4,marginBottom:2}}>🔄 보강 안내</div>
+                                    <div style={{fontSize:12.5,color:"#92400E",lineHeight:1.6}}>{ln.makeupPlan}</div>
+                                  </div>
+                                )}
+                                {/* 메모 */}
+                                {ln.memo && (
+                                  <div style={{fontSize:11.5,color:"#999",lineHeight:1.6,marginTop:6,paddingTop:6,borderTop:"1px dashed #EEE"}}>{ln.memo}</div>
+                                )}
+                              </div>
+                            ) : (
+                              <div style={{fontSize:13.5,color:"var(--ink)",lineHeight:1.8,whiteSpace:"pre-wrap"}}>{a.note}</div>
+                            )}
+                            {/* 댓글 패널 */}
+                            <NoteCommentsPanel
+                              comments={a.comments || []}
+                              onAddComment={async (comment) => {
+                                const upd = attendance.map(rec => rec.id === a.id ? { ...rec, comments: [...(rec.comments||[]), comment] } : rec);
+                                await saveAttendance(upd);
+                              }}
+                              onDeleteComment={async (commentId) => {
+                                const upd = attendance.map(rec => rec.id === a.id
+                                  ? { ...rec, comments: (rec.comments||[]).map(c => c.id === commentId ? { ...c, deletedAt: Date.now() } : c) }
+                                  : rec);
+                                await saveAttendance(upd);
+                              }}
+                              authorType="student"
+                              authorName={student.name}
+                              authorId={student.id}
+                              viewerRole="student"
+                            />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ))
+              )}
+            </div>
+          );
+        })()}
 
         {/* Payment Tab — Invoice Style */}
         {tab === "pay" && (

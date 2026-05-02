@@ -1,5 +1,21 @@
 import { useState, useMemo } from "react";
-import { canManageAll, formatLessonNoteSummary, getAudience, fmtDateShort, uid } from "../../utils.js";
+import { canManageAll, getAudience, fmtDateShort, uid } from "../../utils.js";
+
+const COND_LABEL = { excellent: "매우 좋음", good: "좋음", normal: "보통", poor: "부진" };
+
+function formatNoteForReport(a) {
+  const ln = a.lessonNote;
+  if (!ln) return null;
+  if (typeof ln === "string") return `[${a.date}] ${ln}`;
+  const lines = [`[${a.date}]`];
+  if (ln.condition) lines.push(`컨디션: ${COND_LABEL[ln.condition] || ln.condition}`);
+  if (ln.progress) lines.push(`진도: ${ln.progress}`);
+  if (ln.content) lines.push(`내용: ${ln.content}`);
+  if (ln.assignment) lines.push(`과제: ${ln.assignment}`);
+  if (ln.makeupNeeded && ln.makeupPlan) lines.push(`보강: ${ln.makeupPlan}`);
+  if (ln.memo) lines.push(`메모: ${ln.memo}`);
+  return lines.join("\n");
+}
 import { aiGenerateMonthlyReport } from "../../aiClient.js";
 
 function prevMonthStr() {
@@ -71,9 +87,9 @@ export default function MonthlyReportsView({ students, teachers, attendance, cur
     const summary = computeAttSummary(monthRecs);
     const noteSummaries = monthRecs
       .filter(a => a.lessonNote)
-      .map(a => `${a.date}: ${formatLessonNoteSummary(a.lessonNote)}`)
-      .filter(Boolean)
-      .slice(0, 10);
+      .sort((a, b) => (a.date || "").localeCompare(b.date || ""))
+      .map(formatNoteForReport)
+      .filter(Boolean);
     const commentCount = monthRecs.reduce((acc, a) => acc + (a.comments?.length || 0), 0);
     const instruments = (student.lessons || []).map(l => l.instrument).filter(Boolean);
     const audience = getAudience(student);

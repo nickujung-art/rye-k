@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { TODAY_STR, THIS_MONTH, IC } from "../../constants.jsx";
 import { uid, fmtDateShort, canManageAll, monthLabel, formatLessonNoteSummary, getAudience } from "../../utils.js";
-import { aiPolishLessonNote, aiSuggestReply, aiSuggestPractice } from "../../aiClient.js";
+import { aiPolishLessonNote, aiSuggestReply } from "../../aiClient.js";
 import { Av } from "../shared/CommonUI.jsx";
 
 // ── LESSON NOTE MODAL ─────────────────────────────────────────────────────────
@@ -103,27 +103,11 @@ function LessonNoteModal({ student, teacher, date, existingNote, onSave, onClose
           </div>
           {/* Practice Guide */}
           <div className="fg" style={{background:"var(--blue-lt)",borderRadius:10,padding:"12px 14px",border:"1px solid rgba(43,58,159,.12)"}}>
-            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
-              <label className="fg-label" style={{margin:0,color:"var(--blue)"}}>🎯 다음 주 연습 가이드</label>
-              <button className="btn btn-ghost btn-sm" disabled={!!aiLoading.practiceGuide || (!form.progress.trim() && !form.content.trim() && !form.assignment.trim())} onClick={async () => {
-                setAiLoading(l => ({ ...l, practiceGuide: true }));
-                setAiError("");
-                try {
-                  const audience = getAudience(student);
-                  const instrument = (student?.lessons || []).map(l => l.instrument).filter(Boolean)[0] || "";
-                  const guide = await aiSuggestPractice({ progress: form.progress, assignment: form.assignment, content: form.content, instrument, audience });
-                  set("practiceGuideText", guide);
-                } catch (e) {
-                  setAiError(e.message === "rate_limited" ? "요청이 너무 많습니다. 잠시 후 다시 시도하세요." : `AI 가이드 생성 실패 (${e.message})`);
-                } finally {
-                  setAiLoading(l => ({ ...l, practiceGuide: false }));
-                }
-              }} style={{fontSize:11,color:"var(--blue)"}}>{aiLoading.practiceGuide ? "생성 중…" : "AI 가이드 생성"}</button>
-            </div>
-            <textarea className="inp" value={form.practiceGuideText} onChange={e=>set("practiceGuideText",e.target.value)} placeholder="AI 생성 또는 직접 입력 — 포털에 공유할 연습 안내" rows={3} style={{background:"#fff",marginBottom:8}} />
+            <label className="fg-label" style={{margin:"0 0 8px",color:"var(--blue)"}}>🎯 다음 주 과제 · 연습 가이드</label>
+            <textarea className="inp" value={form.practiceGuideText} onChange={e=>set("practiceGuideText",e.target.value)} placeholder="예: 산조 진양조 4장 5번 반복, 시김새 표현에 신경쓰기" rows={3} style={{background:"#fff",marginBottom:8}} />
             <div style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer"}} onClick={()=>set("sharePracticeGuide",!form.sharePracticeGuide)}>
               <div style={{width:18,height:18,border:"1.5px solid var(--blue)",borderRadius:4,display:"flex",alignItems:"center",justifyContent:"center",background:form.sharePracticeGuide?"var(--blue)":"#fff",transition:"all .12s"}}>{form.sharePracticeGuide && <span style={{color:"#fff",fontSize:11,fontWeight:700,lineHeight:1}}>✓</span>}</div>
-              <span style={{fontSize:12,color:"var(--blue)"}}>포털에 공유 (1주일간 노출)</span>
+              <span style={{fontSize:12,color:"var(--blue)"}}>회원 포털에 공유</span>
             </div>
           </div>
           {/* Makeup needed */}
