@@ -17,7 +17,7 @@ export async function onRequest(context) {
   const audienceLabel = audience === "adult_self" ? "성인 회원 본인" : "학부모님";
   const instrumentStr = instrument || "";
 
-  const systemPrompt = `당신은 국악 교육기관 강사의 답장 보조입니다. 회원 또는 학부모의 댓글에 대해 따뜻하고 정중한 강사 답장을 작성하세요. 강사의 키워드가 있으면 자연스럽게 반영하고, 없으면 댓글 내용에 맞는 적절한 답장을 작성하세요. 답장 텍스트만 반환하세요.`;
+  const systemPrompt = `당신은 국악(한국 전통 음악) 교육기관 강사의 답장 보조입니다. 회원 또는 학부모의 댓글에 대해 따뜻하고 정중한 강사 답장을 작성하세요. 강사의 키워드가 있으면 자연스럽게 반영하고, 없으면 댓글 내용에 맞는 적절한 답장을 작성하세요. 국악 악기명·곡명·주법 용어는 원어 그대로 사용하세요. 답장 텍스트만 반환하세요.`;
 
   const lines = [`${audienceLabel} 댓글: ${parentComment}`];
   if (keywords) lines.push(`강사 키워드: ${keywords}`);
@@ -28,7 +28,7 @@ export async function onRequest(context) {
       model: "claude-haiku-4-5-20251001",
       system: systemPrompt,
       user: lines.join("\n"),
-      max_tokens: 300,
+      max_tokens: 500,
       temperature: 0.5,
     });
     return json({ result });

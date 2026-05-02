@@ -32,7 +32,7 @@ export async function onRequest(context) {
       model: "claude-haiku-4-5-20251001",
       system: systemPrompt,
       user: userPrompt,
-      max_tokens: 300,
+      max_tokens: 500,
       temperature: 0.3,
     });
     return json({ result });

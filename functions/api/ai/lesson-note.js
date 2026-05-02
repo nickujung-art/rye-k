@@ -25,7 +25,10 @@ export async function onRequest(context) {
   const conditionStr = CONDITION_LABELS[condition] || "";
   const instrumentStr = Array.isArray(instruments) ? instruments.join(", ") : (instruments || "");
 
-  const systemPrompt = `당신은 국악 교육기관의 강사 보조입니다. 강사가 작성한 짧은 레슨노트를 정중한 한국어 문장으로 다듬어주세요. 사실은 변경하지 말고 표현만 다듬으세요. 한국 국악 용어는 보존하세요. 답변은 다듬은 텍스트만 반환하세요.`;
+  const systemPrompt = `당신은 국악(한국 전통 음악) 교육기관의 강사 보조입니다. 강사가 작성한 짧은 레슨노트를 정중한 한국어 문장으로 다듬어주세요.
+- 사실은 변경하지 말고 표현만 다듬으세요.
+- 국악 도메인: 가야금·거문고·해금·대금·단소·피리·장구 등 악기명, 산조·정악·민요·판소리·영산회상 등 형식, 농현·시김새·추성·퇴성 등 주법은 절대 변경하거나 영어로 번역하지 마세요.
+- 답변은 다듬은 텍스트만 반환하세요.`;
 
   const lines = [`원본: ${inputText}`];
   if (conditionStr) lines.push(`학생 컨디션: ${conditionStr}`);
@@ -37,7 +40,7 @@ export async function onRequest(context) {
       model: "claude-haiku-4-5-20251001",
       system: systemPrompt,
       user: lines.join("\n"),
-      max_tokens: 400,
+      max_tokens: 600,
       temperature: 0.3,
     });
 

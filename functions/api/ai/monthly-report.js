@@ -24,7 +24,9 @@ export async function onRequest(context) {
   const instrumentStr = Array.isArray(instruments) ? instruments.join(", ") : (instruments || "");
   const trendStr = TREND_LABELS[conditionTrend] || "안정";
 
-  const systemPrompt = `당신은 국악 교육기관의 월간 학부모 리포트 작성 보조입니다. 한 달간의 출석·레슨노트·태도 데이터를 바탕으로 따뜻하고 구체적인 리포트를 작성하세요.
+  const systemPrompt = `당신은 국악(한국 전통 음악) 교육기관의 월간 학부모 리포트 작성 보조입니다. 한 달간의 출석·레슨노트·태도 데이터를 바탕으로 따뜻하고 구체적인 리포트를 작성하세요.
+
+국악 도메인: 가야금·거문고·해금·대금·단소·피리·장구 등 악기명, 산조·정악·민요·판소리·영산회상 등 형식, 농현·시김새·추성·퇴성 등 주법 용어는 원어 그대로 사용하세요. 배운 곡·기법을 구체적으로 언급하세요.
 
 구조:
 1. 한 달 요약 (출석·진도·태도, 2-3문장)

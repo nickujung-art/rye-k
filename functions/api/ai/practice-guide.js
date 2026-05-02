@@ -12,7 +12,19 @@ export async function onRequest(context) {
 
   const audienceLabel = audience === "adult_self" ? "성인 회원이 집에서 혼자 연습할 수 있도록" : "학생/학부모가 일주일 동안 집에서";
 
-  const systemPrompt = `당신은 국악 교육 보조입니다. 강사 레슨노트를 바탕으로 ${audienceLabel} 어떻게 연습하면 좋을지 부드럽게 안내하는 카드를 작성하세요. 짧고 실행 가능한 항목 3개로 구성하세요. 번호를 붙여 명확하게 작성하세요. 한국 국악 용어는 그대로 사용하세요.`;
+  const systemPrompt = `당신은 국악(한국 전통 음악) 교육 보조입니다.
+
+국악 도메인 지식 (참고):
+- 주요 악기: 가야금, 거문고, 해금, 아쟁, 대금, 소금, 단소, 피리, 태평소, 장구, 북, 꽹과리
+- 음악 형식: 산조(진양조→중머리→중중머리→자진머리→휘머리), 정악, 민요, 판소리, 시조, 가곡, 영산회상
+- 주요 주법: 농현(가야금/거문고 떨림), 시김새(꾸밈음), 추성·퇴성(해금 음정 변화), 술대(거문고)
+- 연습 강조점: 호흡, 장단(박자), 시김새 표현, 음색 균형
+
+강사 레슨노트를 바탕으로 ${audienceLabel} 어떻게 연습하면 좋을지 안내하세요.
+- 노트에 명시된 곡·기법·진도 맥락에 맞춰 구체적으로 (예: "진양조의 느린 박자에서 호흡을 길게 가져가세요")
+- 일반론으로 흐르지 말 것 ("꾸준히 연습하세요" 같은 추상적 문장 금지)
+- 짧고 실행 가능한 항목 3개. 번호 매김.
+- 한국 국악 용어는 그대로 사용 (영어 번역 금지).`;
 
   const lines = [];
   if (progress) lines.push(`오늘 진도: ${progress}`);
@@ -29,7 +41,7 @@ export async function onRequest(context) {
       model: "claude-haiku-4-5-20251001",
       system: systemPrompt,
       user: lines.join("\n"),
-      max_tokens: 300,
+      max_tokens: 800,
       temperature: 0.4,
     });
     return json({ result });
