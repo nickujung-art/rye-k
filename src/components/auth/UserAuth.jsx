@@ -23,7 +23,10 @@ function _recordFail(username) {
   try {
     const now = Date.now();
     const rec = JSON.parse(localStorage.getItem(_FAIL_KEY(username)) || "{}");
-    const fails = (rec.fails || []).filter(t => now - t < _WINDOW_MS);
+    // 이전 락아웃 만료 시 fails 초기화 — 재시도 부담 완화 (재락아웃 방지)
+    const lockoutDone = rec.lockedUntil && now >= rec.lockedUntil;
+    const baseline = lockoutDone ? [] : (rec.fails || []);
+    const fails = baseline.filter(t => now - t < _WINDOW_MS);
     fails.push(now);
     const lockedUntil = fails.length >= _MAX_FAILS ? now + _LOCKOUT_MS : null;
     localStorage.setItem(_FAIL_KEY(username), JSON.stringify({ fails, lockedUntil }));

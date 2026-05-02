@@ -17,8 +17,9 @@ const auth = getAuth(app);
 
 const toAuthEmail = (username) => `${username}@ryek.app`;
 
-// 환경변수 VITE_AUTH_SALT가 설정된 경우 솔트 기반 비밀번호 사용 (권장)
-// Cloudflare Pages > Settings > Environment Variables 에서 설정 필요
+// ⚠️ VITE_AUTH_SALT — 한 번 설정하면 절대 변경/제거 금지!
+// 변경 시 SALTED 사용자 모두 로그인 실패 → 강사 앱 마비.
+// 신규 설정 절차 및 복구 방법: docs/operations/auth-salt.md
 const _SALT = import.meta.env.VITE_AUTH_SALT || "";
 const _LEGACY_PW = (u) => `ryek!${u}#2024`;    // 구 스킴 (fallback용)
 const _SALTED_PW = (u) => `ryek2!${u}#${_SALT}`; // 신 스킴 (SALT 설정 후)

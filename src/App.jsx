@@ -237,6 +237,7 @@ function MainApp() {
   const [filter, setFilter] = useState("전체");
   const [search, setSearch] = useState("");
   const [toast, setToast] = useState(null);
+  const [backupConfirm, setBackupConfirm] = useState(false);
   // Dark mode: null=system, 'dark'=forced dark, 'light'=forced light
   const [darkMode, setDarkMode] = useState(() => {
     try { return localStorage.getItem("rye-theme") || null; } catch { return null; }
@@ -551,6 +552,7 @@ function MainApp() {
 
   const restoreFromTrash = async (trashItem) => {
     const { type, deletedAt, deletedBy, ...original } = trashItem;
+    let codeChangeMsg = null;
     if (type === "student") {
       if (!students.some(s => s.id === original.id)) {
         let restored = original;
@@ -560,6 +562,7 @@ function MainApp() {
           let code;
           do { code = generateStudentCode(); } while (used.has(code));
           restored = { ...original, studentCode: code, restoredCodeChanged: true };
+          codeChangeMsg = `회원코드가 ${original.studentCode}→${code}로 변경되었습니다. 회원에게 안내해주세요.`;
           addLog(`${original.name} 복원 시 회원코드 충돌 — 새 코드 ${code} 발급`);
         }
         await addStudentDoc(restored);
@@ -585,13 +588,16 @@ function MainApp() {
               .map(m => ({ id: uid(), studentId: m.id, month: THIS_MONTH, amount: m.monthlyFee || 0, paid: false, createdAt: Date.now() }));
             if (newRecords.length === 0) return;
             tx.set(_paymentsRef, { value: [...cur, ...newRecords], updatedAt: Date.now() });
-          }).catch(() => {});
+          }).catch(e => {
+            console.error("기관 복원 시 결제 시드 실패:", e);
+            addLog(`${original.name} 기관 복원 — 결제 시드 실패 (${e.code || e.message || "unknown"}). 수동 확인 필요.`);
+          });
         }
       }
       addLog(`${original.name} 기관 복원`);
     }
     await saveTrash(trash.filter(t => !(t.id === trashItem.id && t.type === trashItem.type && t.deletedAt === trashItem.deletedAt)));
-    showToast(`${original.name} 복원되었습니다.`);
+    showToast(codeChangeMsg ? `${original.name} 복원 — ${codeChangeMsg}` : `${original.name} 복원되었습니다.`);
   };
 
   const permanentDeleteFromTrash = async (trashItem) => {
@@ -626,33 +632,41 @@ function MainApp() {
     try { await sSet("rye-activity", upd); } catch {}
   };
 
+  const requestFullBackup = () => setBackupConfirm(true);
   const handleFullBackup = () => {
-    const snapshot = {
-      version: CURRENT_VERSION,
-      exportedAt: new Date().toISOString(),
-      "rye-teachers": teachers,
-      "rye-students": students,
-      "rye-attendance": attendance,
-      "rye-payments": payments,
-      "rye-notices": notices,
-      "rye-categories": categories,
-      "rye-fee-presets": feePresets,
-      "rye-schedule-overrides": scheduleOverrides,
-      "rye-activity": activity,
-      "rye-pending": pending,
-      "rye-trash": trash,
-      "rye-student-notices": studentNotices,
-      "rye-institutions": institutions,
-    };
-    const blob = new Blob([JSON.stringify(snapshot, null, 2)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    const ts = new Date().toISOString().replace(/[:.]/g, "-");
-    a.href = url;
-    a.download = `rye-k-backup-${ts}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-    addLog(`전체 데이터 백업 다운로드 (v${CURRENT_VERSION})`);
+    setBackupConfirm(false);
+    try {
+      const snapshot = {
+        version: CURRENT_VERSION,
+        exportedAt: new Date().toISOString(),
+        "rye-teachers": teachers,
+        "rye-students": students,
+        "rye-attendance": attendance,
+        "rye-payments": payments,
+        "rye-notices": notices,
+        "rye-categories": categories,
+        "rye-fee-presets": feePresets,
+        "rye-schedule-overrides": scheduleOverrides,
+        "rye-activity": activity,
+        "rye-pending": pending,
+        "rye-trash": trash,
+        "rye-student-notices": studentNotices,
+        "rye-institutions": institutions,
+      };
+      const blob = new Blob([JSON.stringify(snapshot, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      const ts = new Date().toISOString().replace(/[:.]/g, "-");
+      a.href = url;
+      a.download = `rye-k-backup-${ts}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      addLog(`전체 데이터 백업 다운로드 (v${CURRENT_VERSION})`);
+      showToast("백업 파일이 다운로드되었습니다.");
+    } catch (e) {
+      console.error("백업 실패:", e);
+      showToast("백업 다운로드 실패. 콘솔을 확인하세요.");
+    }
   };
 
   const resetSeed = async () => {
@@ -844,7 +858,7 @@ function MainApp() {
             {view === "categories" && user.role === "admin" && <CategoriesView categories={categories} onSave={async c => { await saveCategories(c); addLog("과목 카테고리 수정"); showToast("저장되었습니다."); }} feePresets={feePresets} onSaveFees={async f => { setFeePresets(f); try { await sSet("rye-fee-presets", f); showToast("저장되었습니다."); } catch { showToast("저장에 실패했습니다. 네트워크를 확인해주세요.", true); } }} />}
             {view === "analytics" && user.role === "admin" && <AnalyticsView students={students} teachers={teachers} attendance={attendance} payments={payments} categories={categories} institutions={institutions} />}
             {view === "profile" && <ProfileView currentUser={user} teachers={teachers} students={visible} categories={categories} onProfileSave={async form => { const upd = teachers.map(t => t.id === user.id ? { ...t, ...form } : t); await saveTeachers(upd); setUserPersist({ ...user, name: form.name || user.name }); addLog("프로필 수정"); showToast("프로필이 수정되었습니다."); }} />}
-            {view === "activity" && canManageAll(user.role) && <ActivityView activity={activity} onFullBackup={handleFullBackup} />}
+            {view === "activity" && canManageAll(user.role) && <ActivityView activity={activity} onFullBackup={requestFullBackup} />}
             {view === "pending" && canManageAll(user.role) && <PendingView pending={pending} teachers={teachers} categories={categories} onApprove={approvePending} onReject={rejectPending} />}
             {view === "schedule" && <ScheduleView students={allMembers} teachers={teachers} currentUser={user} attendance={attendance} onSaveAttendance={async(upd)=>{await saveAttendance(upd);}} onSaveScheduleOverride={saveScheduleOverrides} scheduleOverrides={scheduleOverrides} notices={notices} />}
             {view === "trash" && canManageAll(user.role) && <TrashView trash={trash} onRestore={restoreFromTrash} onPermanentDelete={permanentDeleteFromTrash} />}
@@ -903,6 +917,29 @@ function MainApp() {
         addLog(`${selected.name} 기관 삭제 (7일간 복원 가능)`);
         setModal(null); showToast(`${selected.name} 삭제되었습니다. (7일간 복원 가능)`);
       }} />}
+      {backupConfirm && (
+        <div className="modal-bg" onClick={() => setBackupConfirm(false)}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-h"><h3>💾 전체 데이터 백업</h3></div>
+            <div className="modal-b">
+              <div style={{padding:"12px 16px", background:"var(--paper-soft)", borderRadius:8, marginBottom:12}}>
+                <div style={{fontSize:13, fontWeight:600, color:"var(--red)", marginBottom:6}}>⚠️ 민감정보 포함</div>
+                <div style={{fontSize:12, color:"var(--ink-30)", lineHeight:1.7}}>
+                  이 파일에는 다음이 평문으로 포함됩니다.<br/>
+                  • 강사 비밀번호 · 회원 및 보호자 연락처<br/>
+                  • 출석 기록 및 레슨노트 댓글<br/><br/>
+                  안전한 곳에 보관 후 즉시 삭제하세요.<br/>
+                  다운로드 폴더가 클라우드 동기화 중이면 자동으로 업로드될 수 있습니다.
+                </div>
+              </div>
+              <div style={{display:"flex", gap:8, justifyContent:"flex-end"}}>
+                <button className="btn btn-secondary" onClick={() => setBackupConfirm(false)}>취소</button>
+                <button className="btn btn-primary" onClick={handleFullBackup}>다운로드</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
