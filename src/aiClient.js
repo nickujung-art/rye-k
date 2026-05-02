@@ -7,18 +7,31 @@ export function isAiEnabled() { return _aiEnabled; }
 
 async function getToken() {
   let user = auth.currentUser;
-  // 로컬 fallback 로그인 시 Firebase Auth 세션이 없을 수 있음 → 익명 로그인으로 토큰 확보
+  console.log("[ai] currentUser:", user?.uid, user?.isAnonymous);
   if (!user) {
-    try { user = await firebaseSignInAnon(); } catch { return null; }
+    try {
+      user = await firebaseSignInAnon();
+      console.log("[ai] anon signin:", user?.uid);
+    } catch (e) {
+      console.error("[ai] anon failed:", e);
+      return null;
+    }
   }
-  if (!user) return null;
-  try { return await getIdToken(user); } catch { return null; }
+  if (!user) { console.warn("[ai] no user after anon"); return null; }
+  try {
+    const t = await getIdToken(user);
+    console.log("[ai] token len:", t?.length);
+    return t;
+  } catch (e) {
+    console.error("[ai] getIdToken failed:", e);
+    return null;
+  }
 }
 
 export async function callAi(endpoint, payload) {
   if (!_aiEnabled) throw new Error("ai_disabled");
   const token = await getToken();
-  if (!token) throw new Error("auth_required");
+  if (!token) throw new Error("no_token");
 
   const resp = await fetch(`/api/ai/${endpoint}`, {
     method: "POST",
@@ -29,7 +42,7 @@ export async function callAi(endpoint, payload) {
     body: JSON.stringify(payload),
   });
 
-  if (resp.status === 401) throw new Error("auth_required");
+  if (resp.status === 401) throw new Error("server_401");
   if (resp.status === 429) throw new Error("rate_limited");
   if (resp.status === 503) throw new Error("ai_disabled");
   if (!resp.ok) throw new Error(`api_error_${resp.status}`);
