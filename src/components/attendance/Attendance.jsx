@@ -652,28 +652,10 @@ function LessonNotesView({ students, teachers, currentUser, attendance, onSaveAt
     ? new Set(students.filter(s => s.teacherId === filterTeacher || (s.lessons||[]).some(l => l.teacherId === filterTeacher)).map(s => s.id))
     : myStudentIds;
 
-  // 미답변 포털 문의 (월 필터 없음): type:"inquiry" 댓글이 있고 강사 답변이 없는 레코드
-  const pendingInquiries = attendance
-    .filter(a => {
-      if (!filteredStudentIds.has(a.studentId)) return false;
-      const comments = a.comments || [];
-      const hasInquiry = comments.some(c => c.type === "inquiry" && c.authorType === "student" && !c.deletedAt);
-      if (!hasInquiry) return false;
-      return !comments.some(c => c.authorType !== "student" && !c.deletedAt);
-    })
-    .sort((a, b) => {
-      // 가장 최근 문의 댓글 기준 정렬
-      const lastA = Math.max(...(a.comments||[]).filter(c => c.type === "inquiry").map(c => c.createdAt || 0));
-      const lastB = Math.max(...(b.comments||[]).filter(c => c.type === "inquiry").map(c => c.createdAt || 0));
-      return lastB - lastA;
-    });
-
-  // 레슨노트가 있거나 회원 댓글이 있는 출석 레코드 — 월 필터 + 학생 필터 (pending 인박스 제외)
-  const pendingIds = new Set(pendingInquiries.map(a => a.id));
+  // 레슨노트가 있거나 회원 댓글이 있는 출석 레코드 — 월 필터 + 학생 필터
   const noteRecords = attendance
     .filter(a =>
       filteredStudentIds.has(a.studentId) &&
-      !pendingIds.has(a.id) &&
       (a.lessonNote || a.note || (a.comments||[]).some(c => c.authorType === "student" && !c.deletedAt)) &&
       a.date && a.date.startsWith(filterMonth)
     )
@@ -813,34 +795,6 @@ function LessonNotesView({ students, teachers, currentUser, attendance, onSaveAt
         <span className="srch-icon">{IC.search}</span>
         <input className="srch-inp" placeholder="회원 이름 검색" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
       </div>
-
-      {/* 📨 포털 문의 인박스 — 월 무관, 미답변만, 항상 최상단 */}
-      {!sq && pendingInquiries.length > 0 && (
-        <div style={{marginBottom:16,borderRadius:10,border:"1.5px solid var(--blue)",overflow:"hidden"}}>
-          <div style={{background:"var(--blue-lt)",padding:"10px 14px",display:"flex",alignItems:"center",gap:8}}>
-            <span style={{fontSize:14}}>📨</span>
-            <span style={{fontSize:13,fontWeight:700,color:"var(--blue)"}}>포털 문의 미답변 {pendingInquiries.length}건</span>
-            <span style={{fontSize:10,color:"var(--blue)",marginLeft:"auto"}}>답변하면 자동으로 사라집니다</span>
-          </div>
-          {pendingInquiries.map(a => {
-            const s = students.find(x => x.id === a.studentId);
-            const latestInquiry = [...(a.comments||[])].filter(c => c.type === "inquiry" && !c.deletedAt).sort((x,y) => y.createdAt - x.createdAt)[0];
-            return (
-              <div key={a.id} onClick={() => { setFilterMonth(a.date?.slice(0,7) || filterMonth); setExpandedId(a.id); }} style={{display:"flex",alignItems:"flex-start",gap:10,padding:"12px 14px",borderTop:"1px solid rgba(43,58,159,.12)",cursor:"pointer",background:"#fff",transition:"background .1s"}} onMouseEnter={e=>e.currentTarget.style.background="var(--blue-lt)"} onMouseLeave={e=>e.currentTarget.style.background="#fff"}>
-                <Av photo={s?.photo} name={s?.name||"?"} size="av-sm" />
-                <div style={{flex:1,minWidth:0}}>
-                  <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:3}}>
-                    <span style={{fontSize:13,fontWeight:600,color:"var(--ink)"}}>{s?.name}</span>
-                    <span style={{fontSize:10,color:"var(--ink-30)"}}>{fmtDateShort(a.date)}</span>
-                  </div>
-                  {latestInquiry && <div style={{fontSize:12,color:"var(--ink-60)",lineHeight:1.5,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{latestInquiry.text}</div>}
-                </div>
-                <span style={{fontSize:11,color:"var(--blue)",fontWeight:600,flexShrink:0,marginTop:2}}>답변하기 →</span>
-              </div>
-            );
-          })}
-        </div>
-      )}
 
       {/* 이달 미작성 현황 — 날짜 단위 */}
       {!sq && missingNoteRecords.length > 0 && (

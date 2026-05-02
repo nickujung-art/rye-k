@@ -21,7 +21,11 @@ function ScheduleView({ students, teachers, currentUser, attendance, onSaveAtten
 
   const canSeeAll = canManageAll(currentUser.role);
   const effectiveFilter = canSeeAll ? filterTeacherId : currentUser.id;
-  const visibleStudents = students.filter(s => effectiveFilter === "all" ? true : s.teacherId === effectiveFilter);
+  const visibleStudents = students.filter(s =>
+    effectiveFilter === "all" ||
+    s.teacherId === effectiveFilter ||
+    (s.lessons || []).some(l => l.teacherId === effectiveFilter)
+  );
 
   const ATT_BADGE = {
     present: { bg:"var(--green-lt)", color:"var(--green)",   label:"✓ 출석" },
@@ -40,15 +44,17 @@ function ScheduleView({ students, teachers, currentUser, attendance, onSaveAtten
   const scheduleByDay = {};
   DAYS.forEach(d => { scheduleByDay[d] = []; });
   visibleStudents.forEach(s => {
-    const teacher = teachers.find(t => t.id === s.teacherId);
     (s.lessons || []).forEach(lesson => {
+      const lessonTid = lesson.teacherId || s.teacherId;
+      if (effectiveFilter !== "all" && lessonTid !== effectiveFilter) return;
+      const teacher = teachers.find(t => t.id === lessonTid);
       (lesson.schedule || []).forEach(sch => {
         if (sch.day && DAYS.includes(sch.day)) {
           scheduleByDay[sch.day].push({
             studentId: s.id, studentName: s.name, instrument: lesson.instrument,
-            time: sch.time || "", teacherId: s.teacherId,
+            time: sch.time || "", teacherId: lessonTid,
             teacherName: teacher ? teacher.name : "미배정",
-            color: getTeacherColor(s.teacherId, teachers), isMakeup: false,
+            color: getTeacherColor(lessonTid, teachers), isMakeup: false,
           });
         }
       });
@@ -79,17 +85,23 @@ function ScheduleView({ students, teachers, currentUser, attendance, onSaveAtten
   };
 
   const getMakeups = (dateStr) => {
-    return attendance.filter(a => a.date === dateStr && a.status === "excused" &&
-      (effectiveFilter === "all" || students.find(s => s.id === a.studentId && s.teacherId === effectiveFilter))
-    ).map(a => {
+    return attendance.filter(a => {
+      if (a.status !== "excused" || a.date !== dateStr) return false;
+      if (effectiveFilter === "all") return true;
+      if (a.teacherId === effectiveFilter) return true;
       const s = students.find(st => st.id === a.studentId);
-      const teacher = s ? teachers.find(t => t.id === s.teacherId) : null;
+      if (!s) return false;
+      return s.teacherId === effectiveFilter || (s.lessons || []).some(l => l.teacherId === effectiveFilter);
+    }).map(a => {
+      const s = students.find(st => st.id === a.studentId);
+      const tid = a.teacherId || (s ? s.teacherId : "");
+      const teacher = teachers.find(t => t.id === tid);
       return {
         studentId: a.studentId, studentName: s ? s.name : "?",
         instrument: a.instrument || (s ? allLessonInsts(s).join(", ") : ""),
-        time: a.time || "", teacherId: s ? s.teacherId : "",
+        time: a.time || "", teacherId: tid,
         teacherName: teacher ? teacher.name : "미배정",
-        color: getTeacherColor(s ? s.teacherId : null, teachers), isMakeup: true, note: a.note || "",
+        color: getTeacherColor(tid, teachers), isMakeup: true, note: a.note || "",
       };
     });
   };

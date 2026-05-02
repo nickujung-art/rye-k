@@ -56,10 +56,11 @@ export default function AnalyticsView({ students, teachers, attendance, payments
   const instSorted = Object.entries(instMap).sort((a,b)=>b[1]-a[1]);
 
   // ── 강사별 회원 수
+  const isOf = (s, tid) => s.teacherId === tid || (s.lessons || []).some(l => l.teacherId === tid);
   const teacherLoad = teachers.map(t => ({
     name: t.name, role: t.role,
-    count: active.filter(s => s.teacherId === t.id).length,
-    total: students.filter(s => s.teacherId === t.id).length,
+    count: active.filter(s => isOf(s, t.id)).length,
+    total: students.filter(s => isOf(s, t.id)).length,
   })).sort((a,b)=>b.count-a.count);
 
   // ── 선택 월 출석률
