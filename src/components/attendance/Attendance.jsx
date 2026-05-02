@@ -1,4 +1,4 @@
-import { useState } from "react";
+﻿import { useState } from "react";
 import { TODAY_STR, THIS_MONTH, IC } from "../../constants.jsx";
 import { uid, fmtDateShort, canManageAll, monthLabel, formatLessonNoteSummary, getAudience } from "../../utils.js";
 import { aiPolishLessonNote, aiSuggestReply } from "../../aiClient.js";
@@ -461,7 +461,7 @@ function AttendanceView({ students, teachers, currentUser, attendance, onSaveAtt
         <div className="att-stat" style={{background:"var(--red-lt)",color:"var(--red)"}}>✗ {daySummary.absent}</div>
         <div className="att-stat" style={{background:"var(--gold-lt)",color:"var(--gold-dk)"}}>△ {daySummary.late}</div>
         <div className="att-stat" style={{background:"var(--blue-lt)",color:"var(--blue)"}}>○ {daySummary.excused}</div>
-        {daySummary.none > 0 && <div className="att-stat" style={{background:"#FEF3C7",color:"#B45309",fontWeight:700,border:"1px solid #FDE68A"}}>미체크 {daySummary.none}</div>}
+        {daySummary.none > 0 && <div className="att-stat" style={{background:"var(--gold-lt)",color:"var(--gold-dk)",fontWeight:700,border:"1px solid #FDE68A"}}>미체크 {daySummary.none}</div>}
       </div>
       {daySummary.none > 0 && dayStudents.length > 0 && (
         <div style={{display:"flex",justifyContent:"flex-end",marginBottom:10}}>
@@ -498,7 +498,7 @@ function AttendanceView({ students, teachers, currentUser, attendance, onSaveAtt
               )}
               {/* 그룹 일괄 처리 버튼 */}
               {group.isGroup && !isCollapsed && (
-                <div style={{display:"flex",gap:6,padding:"8px 14px",background:"#f0f3ff",border:"1px solid rgba(43,58,159,.12)",borderBottom:"none",flexWrap:"wrap"}}>
+                <div style={{display:"flex",gap:6,padding:"8px 14px",background:"var(--blue-lt)",border:"1px solid rgba(43,58,159,.12)",borderBottom:"none",flexWrap:"wrap"}}>
                   <span style={{fontSize:11,color:"var(--ink-60)",alignSelf:"center",marginRight:2}}>일괄:</span>
                   <button className={`att-btn btn-xs ${allPresent?"present":""}`} style={{fontSize:11,padding:"4px 10px",height:"auto"}} onClick={() => toggleGroupStatus(group.students.map(s=>s.id), "present")}><span>✓</span> 출석</button>
                   <button className={`att-btn btn-xs ${allAbsent?"absent":""}`} style={{fontSize:11,padding:"4px 10px",height:"auto"}} onClick={() => toggleGroupStatus(group.students.map(s=>s.id), "absent")}><span>✗</span> 결석</button>
@@ -875,14 +875,14 @@ function LessonNotesView({ students, teachers, currentUser, attendance, onSaveAt
 
       {/* 이달 미작성 현황 — 날짜 단위 */}
       {!sq && missingNoteRecords.length > 0 && (
-        <div style={{marginBottom:14,padding:"11px 14px",background:"#FFFBEB",border:"1px solid #FDE68A",borderRadius:10}}>
-          <div style={{fontSize:12,fontWeight:700,color:"#B45309",marginBottom:8}}>✏️ 레슨노트 미작성 {missingNoteRecords.length}건 <span style={{fontWeight:400,fontSize:10,color:"#92400E"}}>— 클릭 시 바로 작성</span></div>
+        <div style={{marginBottom:14,padding:"11px 14px",background:"var(--gold-lt)",border:"1px solid #FDE68A",borderRadius:10}}>
+          <div style={{fontSize:12,fontWeight:700,color:"var(--gold-dk)",marginBottom:8}}>✏️ 레슨노트 미작성 {missingNoteRecords.length}건 <span style={{fontWeight:400,fontSize:10,color:"var(--gold-dk)"}}>— 클릭 시 바로 작성</span></div>
           <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
             {missingNoteRecords.map(a => {
               const s = students.find(x => x.id === a.studentId);
               if (!s) return null;
               return (
-                <button key={a.id} onClick={() => openMissingNote(a)} style={{background:"#FEF3C7",color:"#78350F",fontSize:11,padding:"4px 11px",borderRadius:6,fontWeight:600,border:"1px solid #FCD34D",cursor:"pointer",fontFamily:"inherit",transition:"background .1s"}} onMouseEnter={e=>e.currentTarget.style.background="#FDE68A"} onMouseLeave={e=>e.currentTarget.style.background="#FEF3C7"}>
+                <button key={a.id} onClick={() => openMissingNote(a)} style={{background:"var(--gold-lt)",color:"var(--gold-dk)",fontSize:11,padding:"4px 11px",borderRadius:6,fontWeight:600,border:"1px solid #FCD34D",cursor:"pointer",fontFamily:"inherit",transition:"background .1s"}} onMouseEnter={e=>e.currentTarget.style.background="var(--gold)"} onMouseLeave={e=>e.currentTarget.style.background="var(--gold-lt)"}>
                   ✏️ {s.name} · {fmtDateShort(a.date)}
                 </button>
               );

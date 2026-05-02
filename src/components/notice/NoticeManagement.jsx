@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+﻿import { useState, useRef, useEffect } from "react";
 import { IC } from "../../constants.jsx";
 import { uid, fmtDateTime, fmtDate, fmtDateShort, canManageAll, compressImage } from "../../utils.js";
 
@@ -273,10 +273,10 @@ export function StudentNoticeManager({ notices, currentUser, students = [], teac
     const role = n.authorRole;
     if (role === "admin") return { label: "관리자", color: "var(--blue)", bg: "var(--blue-lt)" };
     if (role === "manager") return { label: "매니저", color: "#7C3AED", bg: "#F5F3FF" };
-    if (role === "teacher") return { label: `강사 ${n.authorName}`, color: "#D97706", bg: "#FEF3C7" };
+    if (role === "teacher") return { label: `강사 ${n.authorName}`, color: "var(--gold-dk)", bg: "var(--gold-lt)" };
     // 기존 공지 (authorRole 없음) — teachers 배열로 판별
     const isTeacherAuthor = (teachers || []).find(t => t.id === n.authorId);
-    if (isTeacherAuthor) return { label: `강사 ${n.authorName}`, color: "#D97706", bg: "#FEF3C7" };
+    if (isTeacherAuthor) return { label: `강사 ${n.authorName}`, color: "var(--gold-dk)", bg: "var(--gold-lt)" };
     return { label: "관리자", color: "var(--blue)", bg: "var(--blue-lt)" };
   };
 

@@ -1,4 +1,4 @@
-import { useState } from "react";
+﻿import { useState } from "react";
 import { IC, THIS_MONTH } from "../../constants.jsx";
 import { monthLabel, fmtMoney, getAudience } from "../../utils.js";
 import { aiPolishPaymentMessage } from "../../aiClient.js";
@@ -103,7 +103,7 @@ export default function AlimtalkModal({ type: initialType = "monthly_fee", stude
                   <span>회원</span><span style={{textAlign:"right"}}>수강료</span>
                 </div>
                 {reviewList.map(({ s, amt, isZero }) => (
-                  <div key={s.id} style={{display:"grid",gridTemplateColumns:"1fr auto",padding:"9px 14px",borderBottom:"1px solid var(--ink-10)",background:isZero?"#FEF2F2":"transparent",alignItems:"center"}}>
+                  <div key={s.id} style={{display:"grid",gridTemplateColumns:"1fr auto",padding:"9px 14px",borderBottom:"1px solid var(--ink-10)",background:isZero?"var(--red-lt)":"transparent",alignItems:"center"}}>
                     <span style={{fontSize:13,fontWeight:500,color:isZero?"var(--red)":"var(--ink)"}}>{s.name}</span>
                     <span style={{fontSize:13,fontWeight:700,color:isZero?"var(--red)":"var(--green)",fontFamily:"'Noto Serif KR',serif"}}>
                       {isZero ? "⚠ 0원" : fmtMoney(amt)}

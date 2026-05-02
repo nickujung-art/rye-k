@@ -680,8 +680,8 @@ export function PublicParentView() {
                 자녀 변경 🔄
               </button>
             )}
-            <button onClick={() => { const v = !textLarge; setTextLarge(v); localStorage.setItem("rye-text-large", v ? "1" : "0"); }} style={{background:textLarge?"var(--blue-lt)":"#F5F5F5",border:textLarge?"1px solid rgba(43,58,159,.2)":"none",color:textLarge?"var(--blue)":"var(--ink-30)",fontSize:11,padding:"6px 10px",borderRadius:8,cursor:"pointer",fontFamily:"inherit",fontWeight:700,transition:"all .15s"}}>Aa</button>
-            <button onClick={()=>{setLoggedIn(false);setStudent(null);setLoginCode("");setLoginPw("");setLoginStep("id");setPendingStudent(null);setTab("home");try{localStorage.removeItem("ryekPortal");}catch{}}} style={{background:"#F5F5F5",border:"none",color:"var(--ink-30)",fontSize:11,padding:"6px 14px",borderRadius:8,cursor:"pointer",fontFamily:"inherit"}}>로그아웃</button>
+            <button onClick={() => { const v = !textLarge; setTextLarge(v); localStorage.setItem("rye-text-large", v ? "1" : "0"); }} style={{background:textLarge?"var(--blue-lt)":"var(--ink-10)",border:textLarge?"1px solid rgba(43,58,159,.2)":"none",color:textLarge?"var(--blue)":"var(--ink-30)",fontSize:11,padding:"6px 10px",borderRadius:8,cursor:"pointer",fontFamily:"inherit",fontWeight:700,transition:"all .15s"}}>Aa</button>
+            <button onClick={()=>{setLoggedIn(false);setStudent(null);setLoginCode("");setLoginPw("");setLoginStep("id");setPendingStudent(null);setTab("home");try{localStorage.removeItem("ryekPortal");}catch{}}} style={{background:"var(--ink-10)",border:"none",color:"var(--ink-30)",fontSize:11,padding:"6px 14px",borderRadius:8,cursor:"pointer",fontFamily:"inherit"}}>로그아웃</button>
           </div>
         </div>
       </div>
@@ -814,7 +814,7 @@ export function PublicParentView() {
               <div style={{marginBottom:16}}>
                 <div style={{fontSize:13,fontWeight:600,color:"var(--ink)",marginBottom:8}}>최근 레슨 노트</div>
                 {notes.slice(0,2).map((a,i) => {
-                  const st = attStatusStyle[a.status]||{color:"var(--ink-30)",bg:"#F5F5F5",icon:"·",text:""};
+                  const st = attStatusStyle[a.status]||{color:"var(--ink-30)",bg:"var(--ink-10)",icon:"·",text:""};
                   const ln = a.lessonNote;
                   return (
                     <div key={i} style={{background:"#fff",borderRadius:12,padding:"14px 16px",marginBottom:6,boxShadow:"0 1px 4px rgba(0,0,0,.03)",border:"1px solid #F0F0F0"}}>
@@ -1018,11 +1018,11 @@ export function PublicParentView() {
                       </div>
                     )}
                     {grouped[monthKey].map((a, i) => {
-                      const st = attStatusStyle[a.status] || { color:"var(--ink-30)", bg:"#F5F5F5", icon:"·", text:"" };
+                      const st = attStatusStyle[a.status] || { color:"var(--ink-30)", bg:"var(--ink-10)", icon:"·", text:"" };
                       const ln = a.lessonNote;
                       const noteTeacher = teachers.find(t => t.id === a.teacherId) || teacher;
                       const condColor = ln?.condition === "excellent" ? "var(--blue)" : ln?.condition === "good" ? "var(--green)" : ln?.condition === "normal" ? "var(--gold)" : ln?.condition === "poor" ? "var(--red)" : "var(--ink-30)";
-                      const condBg = ln?.condition === "excellent" ? "rgba(43,58,159,.08)" : ln?.condition === "good" ? "var(--green-lt)" : ln?.condition === "normal" ? "var(--gold-lt)" : ln?.condition === "poor" ? "var(--red-lt)" : "#F5F5F5";
+                      const condBg = ln?.condition === "excellent" ? "rgba(43,58,159,.08)" : ln?.condition === "good" ? "var(--green-lt)" : ln?.condition === "normal" ? "var(--gold-lt)" : ln?.condition === "poor" ? "var(--red-lt)" : "var(--ink-10)";
                       const condEmoji = { excellent: "✨", good: "😊", normal: "🙂", poor: "💪" }[ln?.condition];
                       const condLabel = { excellent: "매우 좋음", good: "좋음", normal: "보통", poor: "부진" }[ln?.condition];
                       return (
@@ -1221,7 +1221,7 @@ export function PublicParentView() {
                       </div>
                       {rentalFee > 0 && (
                         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"5px 0",fontSize:13,color:"var(--ink)"}}>
-                          <span style={{display:"flex",alignItems:"center",gap:4}}>악기 대여료 <span style={{fontSize:10,color:"var(--ink-30)",background:"#F5F5F5",padding:"1px 6px",borderRadius:4,maxWidth:100,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",display:"inline-block"}}>{rentalLabel}</span></span>
+                          <span style={{display:"flex",alignItems:"center",gap:4}}>악기 대여료 <span style={{fontSize:10,color:"var(--ink-30)",background:"var(--ink-10)",padding:"1px 6px",borderRadius:4,maxWidth:100,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",display:"inline-block"}}>{rentalLabel}</span></span>
                           <span style={{fontFamily:"'Noto Serif KR',serif",fontWeight:500}}>{fmtMoney(rentalFee)}</span>
                         </div>
                       )}
@@ -1229,7 +1229,7 @@ export function PublicParentView() {
                         <div key={ei} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"5px 0",fontSize:13,color:"var(--ink)"}}>
                           <span style={{display:"flex",alignItems:"center",gap:4,minWidth:0}}>
                             <span style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:120}}>{ec.title}</span>
-                            <span style={{fontSize:10,color:"var(--ink-30)",background:"#F5F5F5",padding:"1px 6px",borderRadius:4,flexShrink:0}}>추가</span>
+                            <span style={{fontSize:10,color:"var(--ink-30)",background:"var(--ink-10)",padding:"1px 6px",borderRadius:4,flexShrink:0}}>추가</span>
                           </span>
                           <span style={{fontFamily:"'Noto Serif KR',serif",fontWeight:500}}>{fmtMoney(ec.amount||0)}</span>
                         </div>

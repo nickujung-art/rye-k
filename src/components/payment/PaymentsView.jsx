@@ -1,4 +1,4 @@
-import { useState } from "react";
+﻿import { useState } from "react";
 import { PAY_METHODS, IC, TODAY_STR, THIS_MONTH } from "../../constants.jsx";
 import { canManageAll, monthLabel, fmtMoney, fmtDateShort, fmtDate, calcAge, isMinor, instTypeLabel, uid, sendAligoMessage } from "../../utils.js";
 import { Av } from "../shared/CommonUI.jsx";
@@ -292,10 +292,10 @@ export default function PaymentsView({ students, teachers, currentUser, payments
             <span style={{fontSize:12,color:"var(--ink-60)"}}>수납률</span>
             <span style={{fontSize:13,fontWeight:700,color:paidCount===visibleStudents.length?"var(--green)":"var(--ink)"}}>{paidRate}%</span>
           </div>
-          <div style={{height:6,borderRadius:3,background:"#F0F0F0",overflow:"hidden"}}>
+          <div style={{height:6,borderRadius:3,background:"var(--border)",overflow:"hidden"}}>
             <div style={{height:"100%",borderRadius:3,background:"var(--green)",width:`${paidRate}%`,transition:"width .4s ease"}} />
           </div>
-          <div style={{fontSize:11,color:"#B0B0B0",marginTop:4}}>{paidCount}명 납부 / {visibleStudents.length}명 전체</div>
+          <div style={{fontSize:11,color:"var(--ink-30)",marginTop:4}}>{paidCount}명 납부 / {visibleStudents.length}명 전체</div>
         </div>
       )}
       {visibleStudents.length === 0 ? (
@@ -374,7 +374,7 @@ export default function PaymentsView({ students, teachers, currentUser, payments
                       <span style={{position:"absolute",right:12,top:"50%",transform:"translateY(-50%)",fontSize:13,color:"var(--ink-30)",pointerEvents:"none"}}>원</span>
                     </div>
                     {absenceCount > 0 && (
-                      <div style={{display:"flex",alignItems:"center",gap:8,marginTop:8,padding:"10px 14px",background:"#FEF3C7",border:"1.5px solid #F59E0B",borderRadius:10,fontSize:13,color:"#78350F",fontWeight:600}}>
+                      <div style={{display:"flex",alignItems:"center",gap:8,marginTop:8,padding:"10px 14px",background:"var(--gold-lt)",border:"1.5px solid #F59E0B",borderRadius:10,fontSize:13,color:"var(--gold-dk)",fontWeight:600}}>
                         <span style={{fontSize:18,flexShrink:0}}>⚠️</span>
                         <span><strong>{prevMonthStr.replace("-", "년 ")}월</strong> 미보강 결석 <strong>{absenceCount}회</strong> — 수강료 수동 차감을 검토하세요.</span>
                       </div>
@@ -425,7 +425,7 @@ export default function PaymentsView({ students, teachers, currentUser, payments
                   <div className="fg">
                     <label className="fg-label">일회성 청구 예정</label>
                     {pendingCharges.map((ch, i) => (
-                      <div key={i} style={{display:"flex",gap:6,alignItems:"center",marginBottom:6,padding:"8px 10px",background:"#FFFBEB",border:"1px solid rgba(245,158,11,.2)",borderRadius:8}}>
+                      <div key={i} style={{display:"flex",gap:6,alignItems:"center",marginBottom:6,padding:"8px 10px",background:"var(--gold-lt)",border:"1px solid rgba(245,158,11,.2)",borderRadius:8}}>
                         <span style={{flex:1,fontSize:13,color:"var(--ink)"}}>{ch.type}{ch.title ? ` — ${ch.title}` : ""}</span>
                         <span style={{fontSize:13,fontWeight:600,color:"var(--ink)",fontFamily:"'Noto Serif KR',serif"}}>{fmtMoney(ch.amount||0)}</span>
                         <button onClick={async () => {

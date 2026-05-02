@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+﻿import { useState, useRef } from "react";
 import { DAYS, INST_TYPES, IC, TODAY_STR, THIS_MONTH } from "../../constants.jsx";
 import { uid, compressImage, fmtPhone, getContractDaysLeft, instTypeLabel, fmtDate, fmtMoney, monthLabel, canManageAll } from "../../utils.js";
 import { Av, DeleteConfirmFooter } from "../shared/CommonUI.jsx";
@@ -214,20 +214,20 @@ function SettlementModal({ inst, teachers, attendance, payments, onClose }) {
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 }}>
             <div>
               <div style={{ fontSize: 17, fontWeight: 700, fontFamily: "'Noto Serif KR',serif" }}>RYE-K K-Culture Center</div>
-              <div style={{ fontSize: 11, color: "#888", marginTop: 2 }}>국악 교육 디렉토리 시스템</div>
+              <div style={{ fontSize: 11, color: "var(--ink-30)", marginTop: 2 }}>국악 교육 디렉토리 시스템</div>
             </div>
             <div style={{ textAlign: "right" }}>
               <div style={{ fontSize: 22, fontWeight: 700, fontFamily: "'Noto Serif KR',serif", letterSpacing: -0.5 }}>수강료 정산서</div>
-              <div style={{ fontSize: 11, color: "#888", marginTop: 2 }}>발행일: {todayStr}</div>
+              <div style={{ fontSize: 11, color: "var(--ink-30)", marginTop: 2 }}>발행일: {todayStr}</div>
             </div>
           </div>
           <div style={{ borderTop: "2px solid #1a1a1a", borderBottom: "1px solid #ccc", padding: "12px 0", marginBottom: 20 }}>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px 16px", fontSize: 12.5 }}>
-              <div><span style={{ color: "#888" }}>수신: </span><strong>{inst.name}</strong></div>
-              <div><span style={{ color: "#888" }}>정산 기간: </span><strong>{monthStr}</strong></div>
-              {inst.contactName && <div><span style={{ color: "#888" }}>담당자: </span>{inst.contactName}{inst.contactPhone && ` · ${inst.contactPhone}`}</div>}
-              {inst.bizNumber && <div><span style={{ color: "#888" }}>사업자번호: </span>{inst.bizNumber}</div>}
-              {inst.address && <div style={{ gridColumn: "1 / -1" }}><span style={{ color: "#888" }}>주소: </span>{inst.address}</div>}
+              <div><span style={{ color: "var(--ink-30)" }}>수신: </span><strong>{inst.name}</strong></div>
+              <div><span style={{ color: "var(--ink-30)" }}>정산 기간: </span><strong>{monthStr}</strong></div>
+              {inst.contactName && <div><span style={{ color: "var(--ink-30)" }}>담당자: </span>{inst.contactName}{inst.contactPhone && ` · ${inst.contactPhone}`}</div>}
+              {inst.bizNumber && <div><span style={{ color: "var(--ink-30)" }}>사업자번호: </span>{inst.bizNumber}</div>}
+              {inst.address && <div style={{ gridColumn: "1 / -1" }}><span style={{ color: "var(--ink-30)" }}>주소: </span>{inst.address}</div>}
             </div>
           </div>
           <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 8 }}>수업 내역</div>
@@ -247,14 +247,14 @@ function SettlementModal({ inst, teachers, attendance, payments, onClose }) {
               {classRows.map(({ cls, present, absent, sessions, clsPay, teacher }) => (
                 <tr key={cls.id}>
                   <td style={{ fontWeight: 500 }}>{cls.name || cls.instrument}</td>
-                  <td style={{ color: "#555" }}>{cls.instrument}</td>
+                  <td style={{ color: "var(--ink-60)" }}>{cls.instrument}</td>
                   <td>{teacher?.name || "—"}</td>
                   <td style={{ textAlign: "center" }}>{cls.participantCount > 0 ? `${cls.participantCount}명` : "—"}</td>
-                  <td style={{ textAlign: "center", fontSize: 11, color: "#555" }}>
+                  <td style={{ textAlign: "center", fontSize: 11, color: "var(--ink-60)" }}>
                     {sessions > 0 ? `출석 ${present} / 결석 ${absent}` : "—"}
                   </td>
                   <td style={{ textAlign: "center" }}>
-                    {clsPay?.paid ? <span style={{ color: "#22c55e", fontWeight: 600 }}>완료</span> : <span style={{ color: "#ef4444", fontWeight: 600 }}>미납</span>}
+                    {clsPay?.paid ? <span style={{ color: "var(--green)", fontWeight: 600 }}>완료</span> : <span style={{ color: "var(--red)", fontWeight: 600 }}>미납</span>}
                   </td>
                   <td style={{ textAlign: "right", fontWeight: 600 }}>
                     {cls.monthlyFee > 0 ? fmtMoney(cls.monthlyFee) : "—"}
@@ -270,12 +270,12 @@ function SettlementModal({ inst, teachers, attendance, payments, onClose }) {
             </tfoot>
           </table>
           {inst.notes && (
-            <div style={{ marginTop: 16, padding: "10px 14px", background: "#f8f8f8", borderRadius: 6, fontSize: 12 }}>
-              <div style={{ fontWeight: 600, marginBottom: 4, color: "#555" }}>특이사항</div>
-              <div style={{ color: "#666", whiteSpace: "pre-wrap" }}>{inst.notes}</div>
+            <div style={{ marginTop: 16, padding: "10px 14px", background: "var(--bg)", borderRadius: 6, fontSize: 12 }}>
+              <div style={{ fontWeight: 600, marginBottom: 4, color: "var(--ink-60)" }}>특이사항</div>
+              <div style={{ color: "var(--ink-60)", whiteSpace: "pre-wrap" }}>{inst.notes}</div>
             </div>
           )}
-          <div style={{ marginTop: 24, paddingTop: 12, borderTop: "1px solid #ccc", fontSize: 11, color: "#888", textAlign: "right" }}>
+          <div style={{ marginTop: 24, paddingTop: 12, borderTop: "1px solid #ccc", fontSize: 11, color: "var(--ink-30)", textAlign: "right" }}>
             발신: RYE-K K-Culture Center 국악 교육 디렉토리 시스템
           </div>
         </div>

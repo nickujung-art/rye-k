@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+﻿import { useState, useMemo } from "react";
 import { canManageAll, getAudience, fmtDateShort, uid } from "../../utils.js";
 
 const COND_LABEL = { excellent: "매우 좋음", good: "좋음", normal: "보통", poor: "부진" };
@@ -318,7 +318,7 @@ export default function MonthlyReportsView({ students, teachers, attendance, cur
       </div>
 
       {/* 일괄 작업 바 */}
-      <div style={{display:"flex",gap:8,marginBottom:16,flexWrap:"wrap",alignItems:"center",background:hasSelection?"#EFF6FF":"#F9FAFB",border:`1px solid ${hasSelection?"#BFDBFE":"#E5E7EB"}`,borderRadius:10,padding:"10px 12px",transition:"background .12s, border-color .12s"}}>
+      <div style={{display:"flex",gap:8,marginBottom:16,flexWrap:"wrap",alignItems:"center",background:hasSelection?"var(--blue-lt)":"var(--bg)",border:`1px solid ${hasSelection?"var(--blue-lt)":"var(--border)"}`,borderRadius:10,padding:"10px 12px",transition:"background .12s, border-color .12s"}}>
         <span style={{fontSize:12,color:hasSelection?"var(--blue)":"var(--ink-50)",fontWeight:600}}>
           {hasSelection ? `✓ ${selectedIds.size}명 선택됨` : "일괄 작업"}
         </span>
@@ -345,7 +345,7 @@ export default function MonthlyReportsView({ students, teachers, attendance, cur
           className="btn btn-sm"
           onClick={handleBulkGenerate}
           disabled={!!bulkBusy || bulkGenTargets.length === 0}
-          style={{background:bulkGenTargets.length>0?"var(--blue)":"#E5E7EB",color:bulkGenTargets.length>0?"#fff":"#9CA3AF",border:"none",cursor:bulkGenTargets.length>0&&!bulkBusy?"pointer":"not-allowed"}}
+          style={{background:bulkGenTargets.length>0?"var(--blue)":"var(--border)",color:bulkGenTargets.length>0?"#fff":"var(--ink-30)",border:"none",cursor:bulkGenTargets.length>0&&!bulkBusy?"pointer":"not-allowed"}}
         >
           {bulkBusy === "gen"
             ? `생성 중… ${bulkProgress.done}/${bulkProgress.total}`
@@ -358,21 +358,21 @@ export default function MonthlyReportsView({ students, teachers, attendance, cur
             className="btn btn-sm"
             onClick={() => setConfirmPubAll(true)}
             disabled={!!bulkBusy || draftsThisMonth.length === 0}
-            style={{background:draftsThisMonth.length>0?"#16A34A":"#E5E7EB",color:draftsThisMonth.length>0?"#fff":"#9CA3AF",border:"none",cursor:draftsThisMonth.length>0&&!bulkBusy?"pointer":"not-allowed"}}
+            style={{background:draftsThisMonth.length>0?"var(--green)":"var(--border)",color:draftsThisMonth.length>0?"#fff":"var(--ink-30)",border:"none",cursor:draftsThisMonth.length>0&&!bulkBusy?"pointer":"not-allowed"}}
           >
             {hasSelection
               ? `📤 선택 ${draftsThisMonth.length}건 공개`
               : `📤 모두 공개 (${draftsThisMonth.length}건)`}
           </button>
         ) : (
-          <span style={{display:"inline-flex",gap:6,alignItems:"center",background:"#FEF3C7",border:"1px solid #FCD34D",borderRadius:8,padding:"4px 8px"}}>
-            <span style={{fontSize:12,color:"#92400E",fontWeight:600}}>
+          <span style={{display:"inline-flex",gap:6,alignItems:"center",background:"var(--gold-lt)",border:"1px solid #FCD34D",borderRadius:8,padding:"4px 8px"}}>
+            <span style={{fontSize:12,color:"var(--gold-dk)",fontWeight:600}}>
               {hasSelection ? `선택 ${draftsThisMonth.length}건 공개?` : `${draftsThisMonth.length}건 모두 공개?`}
             </span>
-            <button className="btn btn-sm" onClick={handleBulkPublish} disabled={bulkBusy === "pub"} style={{background:"#16A34A",color:"#fff",border:"none",fontSize:11,padding:"3px 8px"}}>
+            <button className="btn btn-sm" onClick={handleBulkPublish} disabled={bulkBusy === "pub"} style={{background:"var(--green)",color:"#fff",border:"none",fontSize:11,padding:"3px 8px"}}>
               {bulkBusy === "pub" ? "공개 중…" : "확인"}
             </button>
-            <button className="btn btn-sm" onClick={() => setConfirmPubAll(false)} style={{background:"transparent",color:"#92400E",border:"1px solid #FCD34D",fontSize:11,padding:"3px 8px"}}>
+            <button className="btn btn-sm" onClick={() => setConfirmPubAll(false)} style={{background:"transparent",color:"var(--gold-dk)",border:"1px solid #FCD34D",fontSize:11,padding:"3px 8px"}}>
               취소
             </button>
           </span>
@@ -420,7 +420,7 @@ export default function MonthlyReportsView({ students, teachers, attendance, cur
                   )}
                   {isGenerating && <span style={{fontSize:12,color:"var(--blue)"}}>AI 작성 중…</span>}
                   {report?.status === "published" && (
-                    <span style={{fontSize:12,color:"#16A34A",fontWeight:600}}>공개됨 ✓ {fmtDateShort(report.publishedAt)}</span>
+                    <span style={{fontSize:12,color:"var(--green)",fontWeight:600}}>공개됨 ✓ {fmtDateShort(report.publishedAt)}</span>
                   )}
                 </div>
               </div>
@@ -440,7 +440,7 @@ export default function MonthlyReportsView({ students, teachers, attendance, cur
                       className="btn btn-sm"
                       onClick={() => handleSaveDraft(report)}
                       disabled={saving.has(report.id) || localEdits[report.id] === undefined}
-                      style={{background:localEdits[report.id]!==undefined?"var(--ink-10)":"#F3F4F6",color:localEdits[report.id]!==undefined?"var(--ink)":"#9CA3AF"}}
+                      style={{background:localEdits[report.id]!==undefined?"var(--ink-10)":"var(--bg)",color:localEdits[report.id]!==undefined?"var(--ink)":"var(--ink-30)"}}
                     >
                       {saving.has(report.id) ? "저장 중…" : "💾 수정 저장"}
                     </button>

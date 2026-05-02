@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+﻿import { useState, useRef } from "react";
 import { IC, TODAY_STR, THIS_MONTH, DAYS, ATT_STATUS } from "../../constants.jsx";
 import { uid, calcAge, isMinor, getCat, fmtDate, fmtDateShort, fmtMoney, canManageAll, monthLabel, allLessonInsts, allLessonDays, getBirthPassword, formatLessonNoteSummary, compressImage, fmtPhone } from "../../utils.js";
 import { Av, PhotoUpload, DeleteConfirmFooter } from "../shared/CommonUI.jsx";
@@ -38,7 +38,7 @@ export function LessonEditor({ lessons, onChange, categories, teachers }) {
               <div className="lesson-item-head" style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
                 <div style={{display:"flex",alignItems:"center",gap:6}}>
                   <div className="lesson-inst-label">{l.instrument}</div>
-                  {isGhost && <span style={{fontSize:10,color:"#92400E",background:"#FEF3C7",padding:"1px 6px",borderRadius:4,fontWeight:600}}>삭제된 과목</span>}
+                  {isGhost && <span style={{fontSize:10,color:"var(--gold-dk)",background:"var(--gold-lt)",padding:"1px 6px",borderRadius:4,fontWeight:600}}>삭제된 과목</span>}
                 </div>
                 <button type="button" style={{background:"none",border:"1px solid var(--border)",borderRadius:4,color:"var(--red)",cursor:"pointer",fontSize:11,padding:"2px 8px",lineHeight:1.5,fontFamily:"inherit"}} onClick={()=>onChange(lessons.filter(x=>x.instrument!==l.instrument))} title="과목 제거">× 제거</button>
               </div>
@@ -781,8 +781,8 @@ function StudentCard({ student: s, teachers, onClick, payStatus }) {
           {teacher && <span style={{color:"var(--gold-dk)",fontSize:11,fontWeight:500}}>{teacher.name}</span>}
           {s.status === "paused" && <span className="tag" style={{background:"var(--gold-lt)",color:"var(--gold-dk)",padding:"1px 6px",fontSize:10}}>휴원</span>}
           {s.status === "withdrawn" && <span className="tag" style={{background:"var(--ink-10)",color:"var(--ink-30)",padding:"1px 6px",fontSize:10}}>퇴원</span>}
-          {payStatus === "unpaid" && <span style={{background:"#FEF3C7",color:"#B45309",padding:"1px 6px",fontSize:10,borderRadius:4,fontWeight:700}}>미납</span>}
-          {payStatus === "paid" && <span style={{background:"#DCFCE7",color:"var(--green)",padding:"1px 6px",fontSize:10,borderRadius:4,fontWeight:600}}>✓</span>}
+          {payStatus === "unpaid" && <span style={{background:"var(--gold-lt)",color:"var(--gold-dk)",padding:"1px 6px",fontSize:10,borderRadius:4,fontWeight:700}}>미납</span>}
+          {payStatus === "paid" && <span style={{background:"var(--green-lt)",color:"var(--green)",padding:"1px 6px",fontSize:10,borderRadius:4,fontWeight:600}}>✓</span>}
         </div>
       </div>
       {days.length > 0 && (

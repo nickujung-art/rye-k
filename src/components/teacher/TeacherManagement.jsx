@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+﻿import { useState, useRef } from "react";
 import { IC, TODAY_STR, THIS_MONTH } from "../../constants.jsx";
 import { compressImage, fmtPhone, getPhoneInitialPassword, canManageAll, fmtDate, allLessonInsts } from "../../utils.js";
 import { Av, PhotoUpload, RoleBadge, DeleteConfirmFooter } from "../shared/CommonUI.jsx";
@@ -197,7 +197,7 @@ export function TeachersView({ teachers, students, onAdd, onSelect, attendance =
                   </div>
                   <div style={{display:"flex",gap:6,marginTop:4,flexWrap:"wrap"}}>
                     {todayCount > 0 && <span style={{fontSize:10,background:"var(--blue-lt)",color:"var(--blue)",padding:"2px 7px",borderRadius:4,fontWeight:600}}>오늘 {todayCount}명</span>}
-                    {missingNotes > 0 && <span style={{fontSize:10,background:"#FEF3C7",color:"#B45309",padding:"2px 7px",borderRadius:4,fontWeight:600}}>미작성 {missingNotes}명</span>}
+                    {missingNotes > 0 && <span style={{fontSize:10,background:"var(--gold-lt)",color:"var(--gold-dk)",padding:"2px 7px",borderRadius:4,fontWeight:600}}>미작성 {missingNotes}명</span>}
                   </div>
                 </div>
               </div>
