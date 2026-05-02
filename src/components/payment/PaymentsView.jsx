@@ -22,6 +22,9 @@ export default function PaymentsView({ students, teachers, currentUser, payments
   const [bulkPrepModal, setBulkPrepModal] = useState(false);
   const [bulkPrepData, setBulkPrepData] = useState({});
   const [bulkSaving, setBulkSaving] = useState(false);
+  const [bulkInstModal, setBulkInstModal] = useState(false);
+  const [bulkInstData, setBulkInstData] = useState({});
+  const [bulkInstSaving, setBulkInstSaving] = useState(false);
 
   const pendingRequestStudents = students.filter(s => (s.pendingOneTimeCharges||[]).length > 0);
 
@@ -156,6 +159,7 @@ export default function PaymentsView({ students, teachers, currentUser, payments
   const confirmBulkPrep = async () => {
     setBulkSaving(true);
     try {
+      // 회원만 — 기관(B2B)은 별도 버튼 (기관 청구 확정)으로 처리
       const allActive = students.filter(s => (s.status||"active")==="active" && !s.isInstitution);
       let updated = [...payments];
       for (const s of allActive) {
@@ -186,6 +190,49 @@ export default function PaymentsView({ students, teachers, currentUser, payments
     } catch {} finally { setBulkSaving(false); }
   };
 
+  const openBulkPrepInst = () => {
+    const instActive = students.filter(s => s.isInstitution && (s.status||"active")==="active");
+    const data = {};
+    instActive.forEach(s => {
+      const p = payments.find(py => py.studentId === s.id && py.month === month);
+      data[s.id] = { amount: p?.amount ?? (s.monthlyFee || 0) };
+    });
+    setBulkInstData(data);
+    setBulkInstModal(true);
+  };
+
+  const confirmBulkInstPrep = async () => {
+    setBulkInstSaving(true);
+    try {
+      const instActive = students.filter(s => s.isInstitution && (s.status||"active")==="active");
+      let updated = [...payments];
+      for (const s of instActive) {
+        const d = bulkInstData[s.id];
+        if (!d) continue;
+        const existing = updated.find(p => p.studentId === s.id && p.month === month);
+        const record = {
+          ...(existing || {}),
+          id: existing?.id || uid(),
+          studentId: s.id,
+          month,
+          amount: d.amount,
+          paid: existing?.paid ?? false,
+          paidAmount: existing?.paidAmount ?? 0,
+          paidDate: existing?.paidDate ?? "",
+          method: existing?.method ?? "",
+          note: existing?.note ?? "",
+          createdAt: existing?.createdAt || Date.now(),
+          updatedAt: Date.now(),
+        };
+        updated = existing
+          ? updated.map(p => p.id === existing.id ? record : p)
+          : [...updated, record];
+      }
+      await onSavePayments(updated);
+      setBulkInstModal(false);
+    } catch {} finally { setBulkInstSaving(false); }
+  };
+
   return (
     <div>
       {/* ── 계좌 안내 배너 ── */}
@@ -206,6 +253,7 @@ export default function PaymentsView({ students, teachers, currentUser, payments
           </button>
         )}
         {canManageAll(currentUser.role) && <button className="btn btn-secondary btn-sm" onClick={openBulkPrep} title="전체 수강료 일괄 확인 및 확정">📋 수강료 확정</button>}
+        {canManageAll(currentUser.role) && <button className="btn btn-secondary btn-sm" onClick={openBulkPrepInst} title="기관 청구 일괄 확정">🏢 기관 청구 확정</button>}
         {canManageAll(currentUser.role) && <button className="btn btn-secondary btn-sm" onClick={() => setAlimtalkModal("monthly_fee")} title="이달의 수강료 알림톡 발송">💬 수강료 알림톡</button>}
         {canManageAll(currentUser.role) && <button className="btn btn-secondary btn-sm" onClick={exportCSV}>📥 엑셀</button>}
       </div></div>
@@ -600,6 +648,57 @@ export default function PaymentsView({ students, teachers, currentUser, payments
                 <button className="btn btn-secondary" onClick={() => setBulkPrepModal(false)} disabled={bulkSaving}>취소</button>
                 <button className="btn btn-primary" onClick={confirmBulkPrep} disabled={bulkSaving}>
                   {bulkSaving ? <><span className="spinner-sm"/> 저장 중…</> : `${allActive.length}명 수강료 확정`}
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* ── 기관 청구 일괄 확정 모달 ── */}
+      {bulkInstModal && (() => {
+        const instActive = students.filter(s => s.isInstitution && (s.status||"active")==="active");
+        const zeroCount = instActive.filter(s => (bulkInstData[s.id]?.amount ?? 0) === 0).length;
+        return (
+          <div style={{position:"fixed",top:0,left:0,width:"100vw",height:"100vh",zIndex:10000,display:"flex",alignItems:"center",justifyContent:"center",background:"rgba(0,0,0,.5)"}} onClick={e => e.target===e.currentTarget && !bulkInstSaving && setBulkInstModal(false)}>
+            <div style={{width:"96%",maxWidth:560,height:"90vh",background:"var(--paper)",borderRadius:16,boxShadow:"0 8px 40px rgba(0,0,0,.18)",display:"flex",flexDirection:"column",overflow:"hidden"}}>
+              <div className="modal-h">
+                <h2>🏢 {monthLabel(month)} 기관 청구 확정</h2>
+                <button className="modal-close" onClick={() => setBulkInstModal(false)} disabled={bulkInstSaving}>{IC.x}</button>
+              </div>
+              <div style={{padding:"8px 16px",background:"var(--bg)",borderBottom:"1px solid var(--border)",fontSize:12,color:"var(--ink-60)",display:"flex",gap:12,alignItems:"center"}}>
+                <span>기관반 <strong>{instActive.length}개</strong></span>
+                {zeroCount > 0
+                  ? <span style={{color:"var(--red)",fontWeight:600}}>⚠ 0원 {zeroCount}개 — 확인 필요</span>
+                  : <span style={{color:"var(--green)",fontWeight:600}}>✓ 전체 청구액 입력됨</span>}
+              </div>
+              <div style={{flex:1,overflowY:"auto"}}>
+                {instActive.map(s => {
+                  const d = bulkInstData[s.id] || { amount: 0 };
+                  const isZero = d.amount === 0;
+                  return (
+                    <div key={s.id} style={{padding:"10px 14px",borderBottom:"1px solid var(--border)",background:isZero?"var(--red-lt)":"transparent",display:"flex",alignItems:"center",gap:10}}>
+                      <Av photo={s.photo} name={s.name} size="av-sm" />
+                      <div style={{flex:1,minWidth:0}}>
+                        <div style={{fontSize:13,fontWeight:600,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{s.name}</div>
+                        <div style={{fontSize:10.5,color:"var(--ink-30)"}}>참여 {s.participantCount || 0}명</div>
+                      </div>
+                      <div style={{position:"relative",width:108,flexShrink:0}}>
+                        <input className="inp" inputMode="numeric"
+                          value={d.amount ? d.amount.toLocaleString("ko-KR") : ""}
+                          onChange={e => setBulkInstData(data => ({...data, [s.id]: {...(data[s.id]||{}), amount: parseInt(e.target.value.replace(/[^\d]/g,""))||0}}))}
+                          style={{paddingRight:22,fontSize:13,height:34,borderColor:isZero?"var(--red)":undefined}}
+                        />
+                        <span style={{position:"absolute",right:7,top:"50%",transform:"translateY(-50%)",fontSize:11,color:"var(--ink-30)",pointerEvents:"none"}}>원</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="modal-f">
+                <button className="btn btn-secondary" onClick={() => setBulkInstModal(false)} disabled={bulkInstSaving}>취소</button>
+                <button className="btn btn-primary" onClick={confirmBulkInstPrep} disabled={bulkInstSaving}>
+                  {bulkInstSaving ? <><span className="spinner-sm"/> 저장 중…</> : `${instActive.length}개 청구 확정`}
                 </button>
               </div>
             </div>

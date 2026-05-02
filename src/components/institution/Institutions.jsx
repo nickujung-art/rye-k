@@ -421,6 +421,24 @@ export function InstitutionsView({ institutions, teachers, currentUser, onAdd, o
           <button key={x.k} className={`ftab ${statusFilter === x.k ? "active" : ""}`} onClick={() => setStatusFilter(x.k)} style={{ borderRadius: 20, fontSize: 12, padding: "5px 12px" }}>{x.l}</button>
         ))}
       </div>
+      {canManageAll(currentUser.role) && (() => {
+        const expiring = visible
+          .filter(i => (i.status || "active") === "active")
+          .map(i => ({ i, dl: getContractDaysLeft(i) }))
+          .filter(x => x.dl !== null && x.dl <= 30);
+        if (expiring.length === 0) return null;
+        const expired = expiring.filter(x => x.dl < 0);
+        const warning = expiring.filter(x => x.dl >= 0 && x.dl <= 30);
+        return (
+          <div style={{ marginBottom: 10, padding: "10px 14px", background: "var(--red-lt)", border: "1px solid rgba(220,38,38,.25)", borderRadius: 10, display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+            <span style={{ fontSize: 13 }}>⚠️</span>
+            {expired.length > 0 && <span style={{ fontSize: 12.5, color: "var(--red)", fontWeight: 600 }}>만료된 계약 {expired.length}곳</span>}
+            {expired.length > 0 && warning.length > 0 && <span style={{ color: "var(--ink-30)", fontSize: 12 }}>·</span>}
+            {warning.length > 0 && <span style={{ fontSize: 12.5, color: "var(--red)", fontWeight: 600 }}>D-30 임박 {warning.length}곳</span>}
+            <span style={{ fontSize: 11, color: "var(--ink-60)", marginLeft: "auto" }}>기관 상세에서 계약 상태를 확인하세요</span>
+          </div>
+        );
+      })()}
       {filtered.length === 0 ? (
         <div className="empty"><div className="empty-icon">🏢</div><div className="empty-txt">{search ? "검색 결과가 없습니다." : (canManageAll(currentUser.role) ? "등록된 기관이 없습니다." : "담당 기관이 없습니다.")}</div></div>
       ) : (
