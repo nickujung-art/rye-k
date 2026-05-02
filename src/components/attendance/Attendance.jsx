@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { TODAY_STR, THIS_MONTH, IC } from "../../constants.jsx";
-import { uid, fmtDateShort, canManageAll, monthLabel, formatLessonNoteSummary } from "../../utils.js";
+import { uid, fmtDateShort, canManageAll, monthLabel, formatLessonNoteSummary, getAudience } from "../../utils.js";
+import { aiPolishLessonNote } from "../../aiClient.js";
 import { Av } from "../shared/CommonUI.jsx";
 
 // ── LESSON NOTE MODAL ─────────────────────────────────────────────────────────
@@ -15,6 +16,24 @@ function LessonNoteModal({ student, teacher, date, existingNote, onSave, onClose
   const [form, setForm] = useState(parseNote(existingNote));
   const [saving, setSaving] = useState(false);
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+  const [aiLoading, setAiLoading] = useState({});
+  const [aiError, setAiError] = useState("");
+  const handleAiPolish = async (fieldKey) => {
+    const text = form[fieldKey];
+    if (!text?.trim()) return;
+    setAiLoading(l => ({ ...l, [fieldKey]: true }));
+    setAiError("");
+    try {
+      const audience = getAudience(student);
+      const instruments = (student?.lessons || []).map(l => l.instrument).filter(Boolean);
+      const polished = await aiPolishLessonNote({ field: fieldKey, text, condition: form.condition, instruments, audience, studentName: student?.name });
+      set(fieldKey, polished);
+    } catch (e) {
+      setAiError(e.message === "rate_limited" ? "요청이 너무 많습니다. 잠시 후 다시 시도하세요." : "AI 다듬기에 실패했습니다.");
+    } finally {
+      setAiLoading(l => ({ ...l, [fieldKey]: false }));
+    }
+  };
   const conditionOpts = [
     { k: "excellent", l: "매우 좋음", color: "var(--blue)" },
     { k: "good", l: "좋음", color: "var(--green)" },
@@ -74,17 +93,24 @@ function LessonNoteModal({ student, teacher, date, existingNote, onSave, onClose
           {/* Progress */}
           <div className="fg">
             <label className="fg-label">수업 진도</label>
-            <input className="inp" value={form.progress} onChange={e=>set("progress",e.target.value)} placeholder="예: 산조 해금 — 진양조 4장 ~ 중머리 1장" />
+            <div style={{display:"flex",gap:6,alignItems:"center"}}>
+              <input className="inp" style={{flex:1}} value={form.progress} onChange={e=>set("progress",e.target.value)} placeholder="예: 산조 해금 — 진양조 4장 ~ 중머리 1장" />
+              {form.progress.trim() && <button className="btn btn-ghost btn-sm" onClick={()=>handleAiPolish("progress")} disabled={!!aiLoading.progress} style={{whiteSpace:"nowrap",flexShrink:0,fontSize:11}}>{aiLoading.progress?"…":"✨"}</button>}
+            </div>
           </div>
           {/* Lesson Content */}
           <div className="fg">
             <label className="fg-label">수업 내용</label>
             <textarea className="inp" value={form.content} onChange={e=>set("content",e.target.value)} placeholder="오늘 수업에서 다룬 내용을 기록하세요." rows={3} />
+            {form.content.trim() && <button className="btn btn-ghost btn-sm" onClick={()=>handleAiPolish("content")} disabled={!!aiLoading.content} style={{marginTop:4,fontSize:11}}>{aiLoading.content?"다듬는 중…":"✨ AI 다듬기"}</button>}
           </div>
           {/* Assignment */}
           <div className="fg">
             <label className="fg-label">과제</label>
-            <input className="inp" value={form.assignment} onChange={e=>set("assignment",e.target.value)} placeholder="다음 수업까지 연습할 내용" />
+            <div style={{display:"flex",gap:6,alignItems:"center"}}>
+              <input className="inp" style={{flex:1}} value={form.assignment} onChange={e=>set("assignment",e.target.value)} placeholder="다음 수업까지 연습할 내용" />
+              {form.assignment.trim() && <button className="btn btn-ghost btn-sm" onClick={()=>handleAiPolish("assignment")} disabled={!!aiLoading.assignment} style={{whiteSpace:"nowrap",flexShrink:0,fontSize:11}}>{aiLoading.assignment?"…":"✨"}</button>}
+            </div>
           </div>
           {/* Makeup needed */}
           <div className="fg">
@@ -103,13 +129,18 @@ function LessonNoteModal({ student, teacher, date, existingNote, onSave, onClose
           {/* Memo */}
           <div className="fg">
             <label className="fg-label">비고</label>
-            <input className="inp" value={form.memo} onChange={e=>set("memo",e.target.value)} placeholder="기타 참고사항" />
+            <div style={{display:"flex",gap:6,alignItems:"center"}}>
+              <input className="inp" style={{flex:1}} value={form.memo} onChange={e=>set("memo",e.target.value)} placeholder="기타 참고사항" />
+              {form.memo.trim() && <button className="btn btn-ghost btn-sm" onClick={()=>handleAiPolish("memo")} disabled={!!aiLoading.memo} style={{whiteSpace:"nowrap",flexShrink:0,fontSize:11}}>{aiLoading.memo?"…":"✨"}</button>}
+            </div>
           </div>
           {/* Manager Report */}
           <div className="fg">
             <label className="fg-label">매니저 보고사항</label>
             <textarea className="inp" value={form.managerReport} onChange={e=>set("managerReport",e.target.value)} placeholder="매니저에게 전달할 사항 (학부모 상담 필요, 수강료 관련 등)" rows={2} style={{background:"var(--gold-lt)",borderColor:"rgba(245,168,0,.3)"}} />
+            {form.managerReport.trim() && <button className="btn btn-ghost btn-sm" onClick={()=>handleAiPolish("managerReport")} disabled={!!aiLoading.managerReport} style={{marginTop:4,fontSize:11}}>{aiLoading.managerReport?"다듬는 중…":"✨ AI 다듬기"}</button>}
           </div>
+          {aiError && <div style={{fontSize:12,color:"var(--red)",marginTop:4}}>{aiError}</div>}
         </div>
         <div className="modal-f" style={{flexDirection:"column",gap:0,padding:0}}>
           {/* 댓글 패널 */}

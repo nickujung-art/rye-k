@@ -3,6 +3,7 @@ import { INST_TYPES } from "./constants.jsx";
 // ── Utils ─────────────────────────────────────────────────────────────────────
 export function calcAge(d){if(!d)return null;const t=new Date(),b=new Date(d);return t.getFullYear()-b.getFullYear()-((t.getMonth()<b.getMonth()||(t.getMonth()===b.getMonth()&&t.getDate()<b.getDate()))?1:0);}
 export function isMinor(d){const a=calcAge(d);return a!==null&&a<18;}
+export function getAudience(student){if(student?.audienceOverride==="guardian")return"guardian";if(student?.audienceOverride==="adult_self")return"adult_self";if(student?.isInstitution)return"adult_self";return isMinor(student?.birthDate)?"guardian":"adult_self";}
 export function getCat(inst,cats){for(const[c,arr]of Object.entries(cats))if(arr.includes(inst))return c;return"기타";}
 export function fmtDate(d){return d?new Date(d).toLocaleDateString("ko-KR"):"-";}
 export function fmtDateShort(d){if(!d)return"-";const x=new Date(d);return `${x.getMonth()+1}/${x.getDate()}`;}

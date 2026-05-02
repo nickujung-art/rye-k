@@ -1,0 +1,33 @@
+import { auth } from "./firebase.js";
+import { getIdToken } from "firebase/auth";
+
+async function getToken() {
+  const user = auth.currentUser;
+  if (!user) return null;
+  try { return await getIdToken(user); } catch { return null; }
+}
+
+export async function callAi(endpoint, payload) {
+  const token = await getToken();
+  if (!token) throw new Error("auth_required");
+
+  const resp = await fetch(`/api/ai/${endpoint}`, {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (resp.status === 401) throw new Error("auth_required");
+  if (resp.status === 429) throw new Error("rate_limited");
+  if (!resp.ok) throw new Error("api_error");
+  return resp.json();
+}
+
+export async function aiPolishLessonNote({ field, text, condition, instruments, audience, studentName }) {
+  if (!text?.trim()) return text;
+  const { result } = await callAi("lesson-note", { field, text, condition, instruments, audience, studentName });
+  return result;
+}

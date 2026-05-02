@@ -1,0 +1,12 @@
+name = "rye-k-center"
+pages_build_output_dir = "dist"
+compatibility_date = "2024-09-23"
+
+# KV namespace for AI rate limiting
+# Replace PLACEHOLDER values with actual IDs after creating via Cloudflare dashboard:
+# Dashboard → Pages → rye-k-center → Settings → Functions → KV namespace bindings
+# Variable name: RATE_LIMIT_KV → Namespace: RYEK_AI_RATE
+[[kv_namespaces]]
+binding = "RATE_LIMIT_KV"
+id = "PLACEHOLDER_REPLACE_WITH_KV_NAMESPACE_ID"
+preview_id = "PLACEHOLDER_REPLACE_WITH_KV_NAMESPACE_ID"
