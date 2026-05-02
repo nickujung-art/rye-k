@@ -1,4 +1,4 @@
-import { auth } from "./firebase.js";
+import { auth, firebaseSignInAnon } from "./firebase.js";
 import { getIdToken } from "firebase/auth";
 
 let _aiEnabled = true;
@@ -6,7 +6,11 @@ export function setAiEnabled(val) { _aiEnabled = val; }
 export function isAiEnabled() { return _aiEnabled; }
 
 async function getToken() {
-  const user = auth.currentUser;
+  let user = auth.currentUser;
+  // 로컬 fallback 로그인 시 Firebase Auth 세션이 없을 수 있음 → 익명 로그인으로 토큰 확보
+  if (!user) {
+    try { user = await firebaseSignInAnon(); } catch { return null; }
+  }
   if (!user) return null;
   try { return await getIdToken(user); } catch { return null; }
 }
@@ -27,7 +31,8 @@ export async function callAi(endpoint, payload) {
 
   if (resp.status === 401) throw new Error("auth_required");
   if (resp.status === 429) throw new Error("rate_limited");
-  if (!resp.ok) throw new Error("api_error");
+  if (resp.status === 503) throw new Error("ai_disabled");
+  if (!resp.ok) throw new Error(`api_error_${resp.status}`);
   return resp.json();
 }
 

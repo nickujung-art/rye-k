@@ -16,8 +16,7 @@ export async function verifyToken(request) {
       issuer: `https://securetoken.google.com/${PROJECT_ID}`,
       audience: PROJECT_ID,
     });
-    const signInProvider = payload?.firebase?.sign_in_provider;
-    if (!signInProvider || signInProvider === "anonymous") return null;
+    if (!payload?.sub) return null;
     return payload;
   } catch {
     return null;
