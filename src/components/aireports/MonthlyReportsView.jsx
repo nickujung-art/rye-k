@@ -52,6 +52,10 @@ export default function MonthlyReportsView({ students, teachers, attendance, cur
   const [bulkBusy, setBulkBusy] = useState(null); // null | "gen" | "pub"
   const [bulkProgress, setBulkProgress] = useState({ done: 0, total: 0, errors: 0 });
   const [confirmPubAll, setConfirmPubAll] = useState(false);
+  const [selectedIds, setSelectedIds] = useState(() => new Set());
+
+  const toggleSelect = (sid) => setSelectedIds(prev => { const n = new Set(prev); n.has(sid) ? n.delete(sid) : n.add(sid); return n; });
+  const clearSelection = () => setSelectedIds(new Set());
 
   const isAdmin = canManageAll(currentUser.role);
   const showBannerBase = new Date().getDate() === 1;
@@ -186,20 +190,34 @@ export default function MonthlyReportsView({ students, teachers, attendance, cur
     }
   };
 
-  // Eligible for bulk gen: no existing report this month, AND has at least one lesson note OR attendance record
-  const bulkGenTargets = useMemo(() => {
+  // 미생성 + 출석/노트 1개 이상 있는 학생 (선택과 무관)
+  const eligibleForGen = useMemo(() => {
     return viewStudents.filter(s => {
       if (reportsForMonth.find(r => r.studentId === s.id)) return false;
       const recs = attendance.filter(a => a.studentId === s.id && a.date?.startsWith(selectedMonth));
-      if (recs.length === 0) return false;
-      return recs.some(a => a.lessonNote) || recs.length > 0;
+      return recs.length > 0;
     });
   }, [viewStudents, reportsForMonth, attendance, selectedMonth]);
 
-  const draftsThisMonth = useMemo(
+  // 일괄 생성 대상: 선택된 학생이 있으면 그 중 미생성만, 없으면 전체 미생성
+  const bulkGenTargets = useMemo(() => {
+    if (selectedIds.size === 0) return eligibleForGen;
+    return eligibleForGen.filter(s => selectedIds.has(s.id));
+  }, [eligibleForGen, selectedIds]);
+
+  const allDraftsThisMonth = useMemo(
     () => reportsForMonth.filter(r => r.status === "draft"),
     [reportsForMonth]
   );
+
+  // 일괄 공개 대상: 선택된 학생이 있으면 그 중 draft만, 없으면 전체 draft
+  const draftsThisMonth = useMemo(() => {
+    if (selectedIds.size === 0) return allDraftsThisMonth;
+    return allDraftsThisMonth.filter(r => selectedIds.has(r.studentId));
+  }, [allDraftsThisMonth, selectedIds]);
+
+  const selectAllVisible = () => setSelectedIds(new Set(viewStudents.map(s => s.id)));
+  const hasSelection = selectedIds.size > 0;
 
   const handleBulkGenerate = async () => {
     if (bulkBusy || bulkGenTargets.length === 0) return;
@@ -244,6 +262,7 @@ export default function MonthlyReportsView({ students, teachers, attendance, cur
       if (i < bulkGenTargets.length - 1) await new Promise(r => setTimeout(r, 1500));
     }
     setBulkBusy(null);
+    if (hasSelection) clearSelection();
   };
 
   const handleBulkPublish = async () => {
@@ -265,6 +284,7 @@ export default function MonthlyReportsView({ students, teachers, attendance, cur
     } finally {
       setBulkBusy(null);
       setConfirmPubAll(false);
+      if (hasSelection) clearSelection();
     }
   };
 
@@ -298,15 +318,40 @@ export default function MonthlyReportsView({ students, teachers, attendance, cur
       </div>
 
       {/* 일괄 작업 바 */}
-      <div style={{display:"flex",gap:8,marginBottom:16,flexWrap:"wrap",alignItems:"center",background:"#F9FAFB",border:"1px solid #E5E7EB",borderRadius:10,padding:"10px 12px"}}>
-        <span style={{fontSize:12,color:"var(--ink-50)",fontWeight:600}}>일괄 작업</span>
+      <div style={{display:"flex",gap:8,marginBottom:16,flexWrap:"wrap",alignItems:"center",background:hasSelection?"#EFF6FF":"#F9FAFB",border:`1px solid ${hasSelection?"#BFDBFE":"#E5E7EB"}`,borderRadius:10,padding:"10px 12px",transition:"background .12s, border-color .12s"}}>
+        <span style={{fontSize:12,color:hasSelection?"var(--blue)":"var(--ink-50)",fontWeight:600}}>
+          {hasSelection ? `✓ ${selectedIds.size}명 선택됨` : "일괄 작업"}
+        </span>
+        {!hasSelection && (
+          <button
+            type="button"
+            onClick={selectAllVisible}
+            disabled={viewStudents.length === 0}
+            style={{background:"transparent",border:"1px dashed var(--ink-30)",color:"var(--ink-50)",fontSize:11,padding:"3px 8px",borderRadius:6,cursor:viewStudents.length>0?"pointer":"not-allowed",fontFamily:"inherit"}}
+          >
+            전체 선택
+          </button>
+        )}
+        {hasSelection && (
+          <button
+            type="button"
+            onClick={clearSelection}
+            style={{background:"transparent",border:"1px dashed var(--blue)",color:"var(--blue)",fontSize:11,padding:"3px 8px",borderRadius:6,cursor:"pointer",fontFamily:"inherit"}}
+          >
+            선택 해제
+          </button>
+        )}
         <button
           className="btn btn-sm"
           onClick={handleBulkGenerate}
           disabled={!!bulkBusy || bulkGenTargets.length === 0}
           style={{background:bulkGenTargets.length>0?"var(--blue)":"#E5E7EB",color:bulkGenTargets.length>0?"#fff":"#9CA3AF",border:"none",cursor:bulkGenTargets.length>0&&!bulkBusy?"pointer":"not-allowed"}}
         >
-          {bulkBusy === "gen" ? `생성 중… ${bulkProgress.done}/${bulkProgress.total}` : `✨ 일괄 초안 생성 (${bulkGenTargets.length}명)`}
+          {bulkBusy === "gen"
+            ? `생성 중… ${bulkProgress.done}/${bulkProgress.total}`
+            : hasSelection
+              ? `✨ 선택 ${bulkGenTargets.length}명 초안 생성`
+              : `✨ 일괄 초안 생성 (${bulkGenTargets.length}명)`}
         </button>
         {!confirmPubAll ? (
           <button
@@ -315,11 +360,15 @@ export default function MonthlyReportsView({ students, teachers, attendance, cur
             disabled={!!bulkBusy || draftsThisMonth.length === 0}
             style={{background:draftsThisMonth.length>0?"#16A34A":"#E5E7EB",color:draftsThisMonth.length>0?"#fff":"#9CA3AF",border:"none",cursor:draftsThisMonth.length>0&&!bulkBusy?"pointer":"not-allowed"}}
           >
-            📤 모두 공개 ({draftsThisMonth.length}건)
+            {hasSelection
+              ? `📤 선택 ${draftsThisMonth.length}건 공개`
+              : `📤 모두 공개 (${draftsThisMonth.length}건)`}
           </button>
         ) : (
           <span style={{display:"inline-flex",gap:6,alignItems:"center",background:"#FEF3C7",border:"1px solid #FCD34D",borderRadius:8,padding:"4px 8px"}}>
-            <span style={{fontSize:12,color:"#92400E",fontWeight:600}}>{draftsThisMonth.length}건 모두 공개?</span>
+            <span style={{fontSize:12,color:"#92400E",fontWeight:600}}>
+              {hasSelection ? `선택 ${draftsThisMonth.length}건 공개?` : `${draftsThisMonth.length}건 모두 공개?`}
+            </span>
             <button className="btn btn-sm" onClick={handleBulkPublish} disabled={bulkBusy === "pub"} style={{background:"#16A34A",color:"#fff",border:"none",fontSize:11,padding:"3px 8px"}}>
               {bulkBusy === "pub" ? "공개 중…" : "확인"}
             </button>
@@ -331,6 +380,11 @@ export default function MonthlyReportsView({ students, teachers, attendance, cur
         {bulkBusy === "gen" && bulkProgress.errors > 0 && (
           <span style={{fontSize:11,color:"var(--red)"}}>오류 {bulkProgress.errors}건</span>
         )}
+        {!hasSelection && !bulkBusy && (
+          <span style={{fontSize:11,color:"var(--ink-30)",marginLeft:"auto"}}>
+            💡 카드의 체크박스로 일부만 선택 가능
+          </span>
+        )}
       </div>
 
       <div style={{display:"flex",flexDirection:"column",gap:12}}>
@@ -341,14 +395,23 @@ export default function MonthlyReportsView({ students, teachers, attendance, cur
           const teacher = teachers.find(t => t.id === s.teacherId);
           const instruments = (s.lessons || []).map(l => l.instrument).filter(Boolean);
 
+          const isSelected = selectedIds.has(s.id);
           return (
-            <div key={s.id} style={{background:"var(--paper)",border:"1px solid var(--border)",borderRadius:"var(--radius)",padding:16}}>
+            <div key={s.id} style={{background:"var(--paper)",border:`1px solid ${isSelected?"var(--blue)":"var(--border)"}`,borderRadius:"var(--radius)",padding:16,boxShadow:isSelected?"0 0 0 2px rgba(43,58,159,.08)":"none",transition:"border-color .12s, box-shadow .12s"}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8,gap:8}}>
-                <div style={{minWidth:0}}>
-                  <span style={{fontWeight:700,fontSize:15}}>{s.name}</span>
-                  {instruments.length > 0 && <span style={{fontSize:12,color:"var(--ink-50)",marginLeft:8}}>{instruments.join(", ")}</span>}
-                  {teacher && isAdmin && <span style={{fontSize:11,color:"var(--ink-30)",marginLeft:6}}>({teacher.name})</span>}
-                </div>
+                <label style={{display:"flex",alignItems:"center",gap:10,minWidth:0,cursor:"pointer",userSelect:"none"}}>
+                  <input
+                    type="checkbox"
+                    checked={isSelected}
+                    onChange={() => toggleSelect(s.id)}
+                    style={{width:16,height:16,accentColor:"var(--blue)",cursor:"pointer",flexShrink:0}}
+                  />
+                  <span style={{minWidth:0}}>
+                    <span style={{fontWeight:700,fontSize:15}}>{s.name}</span>
+                    {instruments.length > 0 && <span style={{fontSize:12,color:"var(--ink-50)",marginLeft:8}}>{instruments.join(", ")}</span>}
+                    {teacher && isAdmin && <span style={{fontSize:11,color:"var(--ink-30)",marginLeft:6}}>({teacher.name})</span>}
+                  </span>
+                </label>
                 <div style={{flexShrink:0}}>
                   {!report && !isGenerating && (
                     <button className="btn btn-sm" onClick={() => handleGenerate(s)} style={{background:"var(--blue)",color:"#fff",border:"none",whiteSpace:"nowrap"}}>
