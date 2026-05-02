@@ -12,7 +12,9 @@ export async function callAnthropic(apiKey, { system, user, max_tokens = 400, te
   });
   if (!resp.ok) {
     const err = await resp.text().catch(() => String(resp.status));
-    throw new Error(`Gemini ${resp.status}: ${err}`);
+    const e = new Error(`Gemini ${resp.status}: ${err}`);
+    e.status = resp.status;
+    throw e;
   }
   const data = await resp.json();
   return data.candidates?.[0]?.content?.parts?.[0]?.text || "";

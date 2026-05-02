@@ -34,7 +34,8 @@ export async function onRequest(context) {
     return json({ result });
   } catch (e) {
     console.error("reply-suggest AI error:", e);
-    return json({ error: "AI service error" }, 500);
+    if (e.status === 429) return new Response("Too Many Requests", { status: 429 });
+    return json({ error: e.message }, 500);
   }
 }
 
