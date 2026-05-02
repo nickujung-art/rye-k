@@ -189,7 +189,7 @@ export default function AlimtalkModal({ type: initialType = "monthly_fee", stude
                           const polished = await aiPolishPaymentMessage({ previewText: currentPreview, messageType: type, audience });
                           setAiPreview(polished);
                         } catch (e) {
-                          setAiToneError(e.message === "rate_limited" ? "잠시 후 다시 시도하세요." : "AI 오류");
+                          setAiToneError(e.message === "rate_limited" ? "잠시 후 다시 시도하세요." : `AI 오류 (${e.message})`);
                         } finally { setAiToneLoading(false); }
                       }} style={{fontSize:11}}>{aiToneLoading ? "…" : "✨ AI 톤 다듬기"}</button>
                     </div>

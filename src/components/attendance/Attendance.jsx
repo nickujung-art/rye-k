@@ -29,7 +29,7 @@ function LessonNoteModal({ student, teacher, date, existingNote, onSave, onClose
       const polished = await aiPolishLessonNote({ field: fieldKey, text, condition: form.condition, instruments, audience, studentName: student?.name });
       set(fieldKey, polished);
     } catch (e) {
-      setAiError(e.message === "rate_limited" ? "요청이 너무 많습니다. 잠시 후 다시 시도하세요." : "AI 다듬기에 실패했습니다.");
+      setAiError(e.message === "rate_limited" ? "요청이 너무 많습니다. 잠시 후 다시 시도하세요." : `AI 다듬기 실패 (${e.message})`);
     } finally {
       setAiLoading(l => ({ ...l, [fieldKey]: false }));
     }
@@ -125,7 +125,7 @@ function LessonNoteModal({ student, teacher, date, existingNote, onSave, onClose
                   const guide = await aiSuggestPractice({ progress: form.progress, assignment: form.assignment, content: form.content, instrument, audience });
                   set("practiceGuideText", guide);
                 } catch (e) {
-                  setAiError(e.message === "rate_limited" ? "요청이 너무 많습니다. 잠시 후 다시 시도하세요." : "AI 가이드 생성에 실패했습니다.");
+                  setAiError(e.message === "rate_limited" ? "요청이 너무 많습니다. 잠시 후 다시 시도하세요." : `AI 가이드 생성 실패 (${e.message})`);
                 } finally {
                   setAiLoading(l => ({ ...l, practiceGuide: false }));
                 }
@@ -223,7 +223,7 @@ function NoteCommentsPanel({ comments = [], onAddComment, onDeleteComment, autho
       const reply = await aiSuggestReply({ parentComment: lastStudentComment.text, keywords: text.trim(), audience, instrument });
       setText(reply);
     } catch (e) {
-      setAiReplyError(e.message === "rate_limited" ? "요청이 너무 많습니다. 잠시 후 다시 시도하세요." : "AI 답장 생성에 실패했습니다.");
+      setAiReplyError(e.message === "rate_limited" ? "요청이 너무 많습니다. 잠시 후 다시 시도하세요." : `AI 답장 생성 실패 (${e.message})`);
     } finally {
       setAiReplyLoading(false);
     }
