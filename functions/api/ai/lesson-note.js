@@ -46,7 +46,7 @@ export async function onRequest(context) {
     return json({ result });
   } catch (e) {
     console.error("lesson-note AI error:", e);
-    return json({ error: "AI service error" }, 500);
+    return json({ error: e.message }, 500);
   }
 }
 

@@ -45,7 +45,11 @@ export async function callAi(endpoint, payload) {
   if (resp.status === 401) throw new Error("server_401");
   if (resp.status === 429) throw new Error("rate_limited");
   if (resp.status === 503) throw new Error("ai_disabled");
-  if (!resp.ok) throw new Error(`api_error_${resp.status}`);
+  if (!resp.ok) {
+    let detail = "";
+    try { const b = await resp.json(); detail = b.error || ""; } catch {}
+    throw new Error(`api_error_${resp.status}${detail ? `:${detail}` : ""}`);
+  }
   return resp.json();
 }
 
