@@ -874,7 +874,7 @@ function MainApp() {
             {view === "schedule" && <ScheduleView students={allMembers} teachers={teachers} currentUser={user} attendance={attendance} onSaveAttendance={async(upd)=>{await saveAttendance(upd);}} onSaveScheduleOverride={saveScheduleOverrides} scheduleOverrides={scheduleOverrides} notices={notices} />}
             {view === "trash" && canManageAll(user.role) && <TrashView trash={trash} onRestore={restoreFromTrash} onPermanentDelete={permanentDeleteFromTrash} />}
             {view === "studentNotices" && (canManageAll(user.role) || user.role === "teacher") && <StudentNoticeManager notices={studentNotices} students={allMembers} teachers={teachers} currentUser={user} onSave={async (upd) => { await saveStudentNotices(upd); showToast("수강생 공지가 저장되었습니다."); }} />}
-            {view === "lessonNotes" && <LessonNotesView students={allMembers} teachers={teachers} currentUser={user} attendance={attendance} onSaveAttendance={async (upd) => { await saveAttendance(upd); }} />}
+            {view === "lessonNotes" && <LessonNotesView students={allMembers} teachers={teachers} currentUser={user} attendance={attendance} onSaveAttendance={async (upd) => { await saveAttendance(upd); }} onUpdateStudent={async (s) => { await updateStudentDoc(s); }} />}
             {view === "systemNews" && <SystemNewsView user={user} navigate={navigate} />}
             {view === "monthlyReports" && (canManageAll(user.role) || user.role === "teacher") && <MonthlyReportsView students={students} teachers={teachers} attendance={attendance} currentUser={user} aiReports={aiReports} onSaveAiReports={saveAiReports} />}
             {view === "aiSettings" && user.role === "admin" && <AiSettingsView settings={ryeSettings} onSave={saveRyeSettings} />}

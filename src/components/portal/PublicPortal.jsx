@@ -771,9 +771,9 @@ export function PublicParentView() {
               </div>
             )}
             {/* Practice Guide */}
-            {student.practiceGuide?.body && student.practiceGuide.expiresAt > Date.now() && (
+            {student.practiceGuide?.body && (
               <div style={{marginBottom:16}}>
-                <div style={{fontSize:13,fontWeight:600,color:"var(--ink)",marginBottom:8}}>🎯 이번 주 연습할 것</div>
+                <div style={{fontSize:13,fontWeight:600,color:"var(--ink)",marginBottom:8}}>🎯 이번 주 과제 · 연습</div>
                 <div style={{background:"linear-gradient(135deg,#F0F9FF,#E0F2FE)",borderRadius:12,padding:"16px",boxShadow:"0 1px 4px rgba(0,0,0,.03)",border:"1px solid rgba(43,58,159,.12)"}}>
                   <div style={{fontSize:13,color:"var(--ink)",lineHeight:1.7,whiteSpace:"pre-wrap"}}>{student.practiceGuide.body}</div>
                   <div style={{display:"flex",alignItems:"center",gap:8,marginTop:10}}>

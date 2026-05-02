@@ -149,7 +149,6 @@ function LessonNoteModal({ student, teacher, date, existingNote, onSave, onClose
           <div className="fg">
             <label className="fg-label">매니저 보고사항</label>
             <textarea className="inp" value={form.managerReport} onChange={e=>set("managerReport",e.target.value)} placeholder="매니저에게 전달할 사항 (학부모 상담 필요, 수강료 관련 등)" rows={2} style={{background:"var(--gold-lt)",borderColor:"rgba(245,168,0,.3)"}} />
-            {form.managerReport.trim() && <button className="btn btn-ghost btn-sm" onClick={()=>handleAiPolish("managerReport")} disabled={!!aiLoading.managerReport} style={{marginTop:4,fontSize:11}}>{aiLoading.managerReport?"다듬는 중…":"✨ AI 다듬기"}</button>}
           </div>
           {aiError && <div style={{fontSize:12,color:"var(--red)",marginTop:4}}>{aiError}</div>}
         </div>
@@ -372,7 +371,7 @@ function AttendanceView({ students, teachers, currentUser, attendance, onSaveAtt
       const theStudent = students.find(s => s.id === studentId);
       if (theStudent) {
         const instrument = (theStudent.lessons || []).map(l => l.instrument).filter(Boolean)[0] || "";
-        await onUpdateStudent({ ...theStudent, practiceGuide: { body: practiceGuideText.trim(), instrument, createdAt: Date.now(), expiresAt: Date.now() + 7 * 24 * 60 * 60 * 1000 } });
+        await onUpdateStudent({ ...theStudent, practiceGuide: { body: practiceGuideText.trim(), instrument, createdAt: Date.now() } });
       }
     }
     setNoteModal(null);
@@ -712,7 +711,7 @@ function AttendanceView({ students, teachers, currentUser, attendance, onSaveAtt
   );
 }
 // ── LESSON NOTES VIEW ────────────────────────────────────────────────────────
-function LessonNotesView({ students, teachers, currentUser, attendance, onSaveAttendance }) {
+function LessonNotesView({ students, teachers, currentUser, attendance, onSaveAttendance, onUpdateStudent }) {
   const isManager = canManageAll(currentUser.role);
   const [filterTeacher, setFilterTeacher] = useState(currentUser.role === "teacher" ? currentUser.id : "all");
   const [filterMonth, setFilterMonth] = useState(THIS_MONTH);
@@ -784,11 +783,19 @@ function LessonNotesView({ students, teachers, currentUser, attendance, onSaveAt
 
   const saveLessonNoteInView = async (studentId, noteData) => {
     const noteDate = newNoteTarget?.date || TODAY_STR;
+    const { practiceGuideText, sharePracticeGuide, ...cleanNote } = noteData;
     const existing = attendance.find(a => a.studentId === studentId && a.date === noteDate);
     if (existing) {
-      await onSaveAttendance(attendance.map(a => a.id === existing.id ? { ...a, lessonNote: noteData, note: formatLessonNoteSummary(noteData), updatedAt: Date.now() } : a));
+      await onSaveAttendance(attendance.map(a => a.id === existing.id ? { ...a, lessonNote: cleanNote, note: formatLessonNoteSummary(cleanNote), updatedAt: Date.now() } : a));
     } else {
-      await onSaveAttendance([...attendance, { id: uid(), studentId, teacherId: currentUser.id, date: noteDate, status: "present", lessonNote: noteData, note: formatLessonNoteSummary(noteData), createdAt: Date.now() }]);
+      await onSaveAttendance([...attendance, { id: uid(), studentId, teacherId: currentUser.id, date: noteDate, status: "present", lessonNote: cleanNote, note: formatLessonNoteSummary(cleanNote), createdAt: Date.now() }]);
+    }
+    if (sharePracticeGuide && practiceGuideText?.trim() && onUpdateStudent) {
+      const theStudent = students.find(s => s.id === studentId);
+      if (theStudent) {
+        const instrument = (theStudent.lessons || []).map(l => l.instrument).filter(Boolean)[0] || "";
+        await onUpdateStudent({ ...theStudent, practiceGuide: { body: practiceGuideText.trim(), instrument, createdAt: Date.now() } });
+      }
     }
     setNewNoteTarget(null);
   };
@@ -836,6 +843,12 @@ function LessonNotesView({ students, teachers, currentUser, attendance, onSaveAt
                 <div style={{whiteSpace:"pre-wrap",color:"var(--ink)"}}>{a.note}</div>
               )}
             </div>
+            {/* 수정 버튼 — 본인이 작성했거나 매니저인 경우 */}
+            {(isManager || a.teacherId === currentUser.id) && s && (
+              <div style={{display:"flex",justifyContent:"flex-end",marginBottom:8}}>
+                <button className="btn btn-secondary btn-sm" onClick={(e) => { e.stopPropagation(); setNewNoteTarget({ student: s, date: a.date }); }} style={{fontSize:12}}>✏️ 레슨노트 수정</button>
+              </div>
+            )}
             {/* 댓글 패널 */}
             <NoteCommentsPanel
               comments={a.comments || []}
