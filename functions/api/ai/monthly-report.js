@@ -57,7 +57,13 @@ ${audienceBlock}
 2. **이번 달 학습 흐름** — 레슨노트의 진도/곡/기법을 시간순 정리 (3-5문장)
 3. **잘한 점** — 구체적인 사례 1-2개 (레슨노트 발췌 기반)
 4. **다음 달 권장 사항** — 실행 가능한 1-2개 (레슨노트 과제 기반)
-5. **격려 마무리** — 1-2문장`;
+5. **격려 마무리** — 1-2문장
+
+# 길이·완결성 (필수)
+- **반드시 5개 섹션 모두를 끝까지 완성하세요.** 중간에 멈추거나 문장을 잘라먹지 마세요.
+- 각 섹션은 위에 명시된 문장 수를 넘기지 마세요. 짧고 밀도 있게.
+- 마지막 문장은 반드시 **마침표(.)·물음표·느낌표** 등 종결부호로 끝나야 합니다.
+- 전체 길이는 한국어 600~900자 수준으로 유지하세요.`;
 
   const lines = [
     `회원: ${studentName}`,
@@ -71,10 +77,9 @@ ${audienceBlock}
 
   try {
     const result = await callAnthropic(env.GEMINI_API_KEY, {
-      model: "claude-sonnet-4-6",
       system: systemPrompt,
       user: lines.join("\n"),
-      max_tokens: 1200,
+      max_tokens: 3000,
       temperature: 0.4,
     });
     return json({ result });
