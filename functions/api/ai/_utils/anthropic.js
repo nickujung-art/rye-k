@@ -1,4 +1,4 @@
-const GEMINI_API = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
+const GEMINI_API = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent";
 
 export async function callAnthropic(apiKey, { system, user, max_tokens = 400, temperature = 0.3 }) {
   const resp = await fetch(`${GEMINI_API}?key=${apiKey}`, {
