@@ -31,3 +31,15 @@ export async function aiPolishLessonNote({ field, text, condition, instruments, 
   const { result } = await callAi("lesson-note", { field, text, condition, instruments, audience, studentName });
   return result;
 }
+
+export async function aiSuggestReply({ parentComment, keywords, audience, instrument }) {
+  if (!parentComment?.trim()) return "";
+  const { result } = await callAi("reply-suggest", { parentComment, keywords, audience, instrument });
+  return result;
+}
+
+export async function aiPolishPaymentMessage({ previewText, messageType, audience }) {
+  if (!previewText?.trim()) return previewText;
+  const { result } = await callAi("payment-tone", { previewText, messageType, audience });
+  return result;
+}

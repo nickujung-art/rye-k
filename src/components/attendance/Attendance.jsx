@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { TODAY_STR, THIS_MONTH, IC } from "../../constants.jsx";
 import { uid, fmtDateShort, canManageAll, monthLabel, formatLessonNoteSummary, getAudience } from "../../utils.js";
-import { aiPolishLessonNote } from "../../aiClient.js";
+import { aiPolishLessonNote, aiSuggestReply } from "../../aiClient.js";
 import { Av } from "../shared/CommonUI.jsx";
 
 // ── LESSON NOTE MODAL ─────────────────────────────────────────────────────────
@@ -154,6 +154,7 @@ function LessonNoteModal({ student, teacher, date, existingNote, onSave, onClose
                 authorName={currentUserName || (teacher?.name || "강사")}
                 authorId={currentUserId}
                 viewerRole={currentUserType}
+                student={student}
                 compact
               />
             </div>
@@ -169,10 +170,12 @@ function LessonNoteModal({ student, teacher, date, existingNote, onSave, onClose
 }
 
 // ── 레슨노트 댓글 패널 (강사 앱 — 레슨노트 모달 하단 / 포털 — 레슨노트 카드) ──
-function NoteCommentsPanel({ comments = [], onAddComment, onDeleteComment, authorType, authorName, authorId, viewerRole, compact }) {
+function NoteCommentsPanel({ comments = [], onAddComment, onDeleteComment, authorType, authorName, authorId, viewerRole, compact, student }) {
   const [text, setText] = useState("");
   const [saving, setSaving] = useState(false);
   const [confirmDel, setConfirmDel] = useState(null);
+  const [aiReplyLoading, setAiReplyLoading] = useState(false);
+  const [aiReplyError, setAiReplyError] = useState("");
 
   const handleSend = async () => {
     if (!text.trim() || saving) return;
@@ -181,6 +184,24 @@ function NoteCommentsPanel({ comments = [], onAddComment, onDeleteComment, autho
       await onAddComment({ id: uid(), text: text.trim(), authorType, authorName, authorId, createdAt: Date.now() });
       setText("");
     } finally { setSaving(false); }
+  };
+
+  const isStaffAuthor = authorType === "teacher" || authorType === "manager" || authorType === "admin";
+  const lastStudentComment = [...comments].filter(c => !c.deletedAt && c.authorType === "student").pop();
+  const handleAiReply = async () => {
+    if (!lastStudentComment || aiReplyLoading) return;
+    setAiReplyLoading(true);
+    setAiReplyError("");
+    try {
+      const audience = getAudience(student);
+      const instrument = (student?.lessons || []).map(l => l.instrument).filter(Boolean).join(", ");
+      const reply = await aiSuggestReply({ parentComment: lastStudentComment.text, keywords: text.trim(), audience, instrument });
+      setText(reply);
+    } catch (e) {
+      setAiReplyError(e.message === "rate_limited" ? "요청이 너무 많습니다. 잠시 후 다시 시도하세요." : "AI 답장 생성에 실패했습니다.");
+    } finally {
+      setAiReplyLoading(false);
+    }
   };
 
   const canDelete = (c) => {
@@ -248,21 +269,31 @@ function NoteCommentsPanel({ comments = [], onAddComment, onDeleteComment, autho
       )}
       {/* 댓글 입력 */}
       {onAddComment && (
-        <div style={{display:"flex",gap:8,alignItems:"center"}}>
-          <input
-            className="inp"
-            style={{flex:1,fontSize:12.5,padding:"8px 12px",borderRadius:8}}
-            placeholder="댓글을 입력하세요..."
-            value={text}
-            onChange={e => setText(e.target.value)}
-            onKeyDown={e => e.key === "Enter" && !e.shiftKey && handleSend()}
-            maxLength={200}
-          />
-          <button
-            style={{padding:"8px 14px",background:text.trim()?"var(--blue)":"var(--border)",color:text.trim()?"#fff":"var(--ink-30)",border:"none",borderRadius:8,fontSize:12,fontWeight:600,cursor:text.trim()?"pointer":"default",transition:"all .12s",flexShrink:0,fontFamily:"inherit"}}
-            onClick={handleSend}
-            disabled={!text.trim() || saving}
-          >{saving ? "…" : "전송"}</button>
+        <div>
+          {isStaffAuthor && lastStudentComment && (
+            <div style={{marginBottom:4}}>
+              <button className="btn btn-ghost btn-sm" onClick={handleAiReply} disabled={aiReplyLoading} style={{fontSize:11}}>
+                {aiReplyLoading ? "답장 생성 중…" : "✨ AI 답장 초안"}
+              </button>
+              {aiReplyError && <span style={{fontSize:11,color:"var(--red)",marginLeft:8}}>{aiReplyError}</span>}
+            </div>
+          )}
+          <div style={{display:"flex",gap:8,alignItems:"center"}}>
+            <input
+              className="inp"
+              style={{flex:1,fontSize:12.5,padding:"8px 12px",borderRadius:8}}
+              placeholder="댓글을 입력하세요..."
+              value={text}
+              onChange={e => setText(e.target.value)}
+              onKeyDown={e => e.key === "Enter" && !e.shiftKey && handleSend()}
+              maxLength={200}
+            />
+            <button
+              style={{padding:"8px 14px",background:text.trim()?"var(--blue)":"var(--border)",color:text.trim()?"#fff":"var(--ink-30)",border:"none",borderRadius:8,fontSize:12,fontWeight:600,cursor:text.trim()?"pointer":"default",transition:"all .12s",flexShrink:0,fontFamily:"inherit"}}
+              onClick={handleSend}
+              disabled={!text.trim() || saving}
+            >{saving ? "…" : "전송"}</button>
+          </div>
         </div>
       )}
     </div>

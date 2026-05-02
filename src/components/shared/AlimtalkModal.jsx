@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { IC, THIS_MONTH } from "../../constants.jsx";
-import { monthLabel, fmtMoney } from "../../utils.js";
+import { monthLabel, fmtMoney, getAudience } from "../../utils.js";
+import { aiPolishPaymentMessage } from "../../aiClient.js";
 
 const TEMPLATES = {
   monthly_fee: (d) =>
@@ -24,6 +25,9 @@ export default function AlimtalkModal({ type: initialType = "monthly_fee", stude
   const [makeupTime, setMakeupTime] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [step, setStep] = useState(initialType === "monthly_fee" ? "review" : "send");
+  const [aiPreview, setAiPreview] = useState("");
+  const [aiToneLoading, setAiToneLoading] = useState(false);
+  const [aiToneError, setAiToneError] = useState("");
 
   const autoFee = (s) => (s.monthlyFee || 0) + (s.instrumentRental ? (s.rentalFee || 0) : 0);
 
@@ -128,7 +132,7 @@ export default function AlimtalkModal({ type: initialType = "monthly_fee", stude
                 <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
                   {Object.entries(TYPE_LABELS).map(([k,v]) => (
                     <button key={k} className={`btn btn-sm ${type===k?"btn-primary":"btn-secondary"}`}
-                      onClick={() => { setType(k); setTargetMode(k==="unpaid_reminder"?"unpaid":"all"); }}>
+                      onClick={() => { setType(k); setTargetMode(k==="unpaid_reminder"?"unpaid":"all"); setAiPreview(""); setAiToneError(""); }}>
                       {v}
                     </button>
                   ))}
@@ -172,10 +176,30 @@ export default function AlimtalkModal({ type: initialType = "monthly_fee", stude
 
               {/* 메시지 미리보기 */}
               <div className="fg">
-                <label className="fg-label">메시지 미리보기 ({targets.length > 0 ? targets[0].name : "-"} 기준)</label>
-                <div style={{background:"var(--bg)",border:"1px solid var(--border)",borderRadius:10,padding:"12px 14px",fontSize:12,color:"var(--ink-60)",whiteSpace:"pre-wrap",lineHeight:1.65,minHeight:100,maxHeight:200,overflowY:"auto"}}>
-                  {preview}
+                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:6}}>
+                  <label className="fg-label" style={{margin:0}}>메시지 미리보기 ({targets.length > 0 ? targets[0].name : "-"} 기준)</label>
+                  {targets.length > 0 && (
+                    <div style={{display:"flex",alignItems:"center",gap:6}}>
+                      {aiPreview && <button className="btn btn-ghost btn-sm" onClick={() => { setAiPreview(""); setAiToneError(""); }} style={{fontSize:10}}>원본</button>}
+                      <button className="btn btn-ghost btn-sm" disabled={aiToneLoading} onClick={async () => {
+                        setAiToneLoading(true); setAiToneError("");
+                        try {
+                          const currentPreview = aiPreview || preview;
+                          const audience = getAudience(targets[0]);
+                          const polished = await aiPolishPaymentMessage({ previewText: currentPreview, messageType: type, audience });
+                          setAiPreview(polished);
+                        } catch (e) {
+                          setAiToneError(e.message === "rate_limited" ? "잠시 후 다시 시도하세요." : "AI 오류");
+                        } finally { setAiToneLoading(false); }
+                      }} style={{fontSize:11}}>{aiToneLoading ? "…" : "✨ AI 톤 다듬기"}</button>
+                    </div>
+                  )}
                 </div>
+                {aiToneError && <div style={{fontSize:11,color:"var(--red)",marginBottom:4}}>{aiToneError}</div>}
+                <div style={{background:"var(--bg)",border:"1px solid var(--border)",borderRadius:10,padding:"12px 14px",fontSize:12,color:"var(--ink-60)",whiteSpace:"pre-wrap",lineHeight:1.65,minHeight:100,maxHeight:200,overflowY:"auto"}}>
+                  {aiPreview || preview}
+                </div>
+                {aiPreview && <div style={{fontSize:10,color:"var(--ink-30)",marginTop:4}}>✨ AI 다듬기 적용 중 (미리보기 전용)</div>}
               </div>
 
               <div style={{fontSize:12,color:"var(--ink-30)",marginBottom:4}}>총 {targets.length}명에게 발송됩니다.</div>
