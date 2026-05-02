@@ -1,12 +1,12 @@
 import { useState } from "react";
 import { TODAY_STR, THIS_MONTH, IC } from "../../constants.jsx";
 import { uid, fmtDateShort, canManageAll, monthLabel, formatLessonNoteSummary, getAudience } from "../../utils.js";
-import { aiPolishLessonNote, aiSuggestReply } from "../../aiClient.js";
+import { aiPolishLessonNote, aiSuggestReply, aiSuggestPractice } from "../../aiClient.js";
 import { Av } from "../shared/CommonUI.jsx";
 
 // ── LESSON NOTE MODAL ─────────────────────────────────────────────────────────
 function LessonNoteModal({ student, teacher, date, existingNote, onSave, onClose, inlineMode, comments, onAddComment, onDeleteComment, currentUserType, currentUserName, currentUserId }) {
-  const defaultNote = { progress: "", content: "", assignment: "", makeupNeeded: false, makeupPlan: "", condition: "good", instrumentRental: false, managerReport: "", memo: "" };
+  const defaultNote = { progress: "", content: "", assignment: "", makeupNeeded: false, makeupPlan: "", condition: "good", instrumentRental: false, managerReport: "", memo: "", practiceGuideText: "", sharePracticeGuide: false };
   const parseNote = (n) => {
     if (!n) return { ...defaultNote };
     if (typeof n === "object" && n.progress !== undefined) return { ...defaultNote, ...n };
@@ -110,6 +110,31 @@ function LessonNoteModal({ student, teacher, date, existingNote, onSave, onClose
             <div style={{display:"flex",gap:6,alignItems:"center"}}>
               <input className="inp" style={{flex:1}} value={form.assignment} onChange={e=>set("assignment",e.target.value)} placeholder="다음 수업까지 연습할 내용" />
               {form.assignment.trim() && <button className="btn btn-ghost btn-sm" onClick={()=>handleAiPolish("assignment")} disabled={!!aiLoading.assignment} style={{whiteSpace:"nowrap",flexShrink:0,fontSize:11}}>{aiLoading.assignment?"…":"✨"}</button>}
+            </div>
+          </div>
+          {/* Practice Guide */}
+          <div className="fg" style={{background:"var(--blue-lt)",borderRadius:10,padding:"12px 14px",border:"1px solid rgba(43,58,159,.12)"}}>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
+              <label className="fg-label" style={{margin:0,color:"var(--blue)"}}>🎯 다음 주 연습 가이드</label>
+              <button className="btn btn-ghost btn-sm" disabled={!!aiLoading.practiceGuide || (!form.progress.trim() && !form.content.trim() && !form.assignment.trim())} onClick={async () => {
+                setAiLoading(l => ({ ...l, practiceGuide: true }));
+                setAiError("");
+                try {
+                  const audience = getAudience(student);
+                  const instrument = (student?.lessons || []).map(l => l.instrument).filter(Boolean)[0] || "";
+                  const guide = await aiSuggestPractice({ progress: form.progress, assignment: form.assignment, content: form.content, instrument, audience });
+                  set("practiceGuideText", guide);
+                } catch (e) {
+                  setAiError(e.message === "rate_limited" ? "요청이 너무 많습니다. 잠시 후 다시 시도하세요." : "AI 가이드 생성에 실패했습니다.");
+                } finally {
+                  setAiLoading(l => ({ ...l, practiceGuide: false }));
+                }
+              }} style={{fontSize:11,color:"var(--blue)"}}>{aiLoading.practiceGuide ? "생성 중…" : "AI 가이드 생성"}</button>
+            </div>
+            <textarea className="inp" value={form.practiceGuideText} onChange={e=>set("practiceGuideText",e.target.value)} placeholder="AI 생성 또는 직접 입력 — 포털에 공유할 연습 안내" rows={3} style={{background:"#fff",marginBottom:8}} />
+            <div style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer"}} onClick={()=>set("sharePracticeGuide",!form.sharePracticeGuide)}>
+              <div style={{width:18,height:18,border:"1.5px solid var(--blue)",borderRadius:4,display:"flex",alignItems:"center",justifyContent:"center",background:form.sharePracticeGuide?"var(--blue)":"#fff",transition:"all .12s"}}>{form.sharePracticeGuide && <span style={{color:"#fff",fontSize:11,fontWeight:700,lineHeight:1}}>✓</span>}</div>
+              <span style={{fontSize:12,color:"var(--blue)"}}>포털에 공유 (1주일간 노출)</span>
             </div>
           </div>
           {/* Makeup needed */}
@@ -324,7 +349,7 @@ function detectLessonGroups(students, dayName, filterTeacher) {
     .sort((a, b) => (a.time || "").localeCompare(b.time || ""));
 }
 
-function AttendanceView({ students, teachers, currentUser, attendance, onSaveAttendance, categories, scheduleOverrides, onSaveScheduleOverride }) {
+function AttendanceView({ students, teachers, currentUser, attendance, onSaveAttendance, categories, scheduleOverrides, onSaveScheduleOverride, onUpdateStudent }) {
   const [date, setDate] = useState(TODAY_STR);
   const [filterTeacher, setFilterTeacher] = useState(currentUser.role === "teacher" ? currentUser.id : "all");
   const [noteModal, setNoteModal] = useState(null); // { studentId } | { groupKey, studentIds }
@@ -350,12 +375,19 @@ function AttendanceView({ students, teachers, currentUser, attendance, onSaveAtt
   const getRecord = (studentId) => attendance.find(a => a.studentId === studentId && a.date === date);
 
   const saveLessonNote = async (studentId, noteData) => {
+    const { practiceGuideText, sharePracticeGuide, ...cleanNote } = noteData;
     const existing = attendance.find(a => a.studentId === studentId && a.date === date);
     if (existing) {
-      await onSaveAttendance(attendance.map(a => a.id === existing.id ? { ...a, lessonNote: noteData, note: formatLessonNoteSummary(noteData), updatedAt: Date.now() } : a));
+      await onSaveAttendance(attendance.map(a => a.id === existing.id ? { ...a, lessonNote: cleanNote, note: formatLessonNoteSummary(cleanNote), updatedAt: Date.now() } : a));
     } else {
-      // Create a record with note but no status yet
-      await onSaveAttendance([...attendance, { id: uid(), studentId, teacherId: currentUser.id, date, status: "present", lessonNote: noteData, note: formatLessonNoteSummary(noteData), createdAt: Date.now() }]);
+      await onSaveAttendance([...attendance, { id: uid(), studentId, teacherId: currentUser.id, date, status: "present", lessonNote: cleanNote, note: formatLessonNoteSummary(cleanNote), createdAt: Date.now() }]);
+    }
+    if (sharePracticeGuide && practiceGuideText?.trim() && onUpdateStudent) {
+      const theStudent = students.find(s => s.id === studentId);
+      if (theStudent) {
+        const instrument = (theStudent.lessons || []).map(l => l.instrument).filter(Boolean)[0] || "";
+        await onUpdateStudent({ ...theStudent, practiceGuide: { body: practiceGuideText.trim(), instrument, createdAt: Date.now(), expiresAt: Date.now() + 7 * 24 * 60 * 60 * 1000 } });
+      }
     }
     setNoteModal(null);
   };

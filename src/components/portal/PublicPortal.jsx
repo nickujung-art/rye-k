@@ -765,6 +765,19 @@ export function PublicParentView() {
                 {visibleNotices.length > 2 && <button style={{background:"none",border:"none",color:"var(--blue)",fontSize:12,cursor:"pointer",fontFamily:"inherit",padding:0}} onClick={()=>handleTabChange("notice")}>전체 보기 →</button>}
               </div>
             )}
+            {/* Practice Guide */}
+            {student.practiceGuide?.body && student.practiceGuide.expiresAt > Date.now() && (
+              <div style={{marginBottom:16}}>
+                <div style={{fontSize:13,fontWeight:600,color:"var(--ink)",marginBottom:8}}>🎯 이번 주 연습할 것</div>
+                <div style={{background:"linear-gradient(135deg,#F0F9FF,#E0F2FE)",borderRadius:12,padding:"16px",boxShadow:"0 1px 4px rgba(0,0,0,.03)",border:"1px solid rgba(43,58,159,.12)"}}>
+                  <div style={{fontSize:13,color:"var(--ink)",lineHeight:1.7,whiteSpace:"pre-wrap"}}>{student.practiceGuide.body}</div>
+                  <div style={{display:"flex",alignItems:"center",gap:8,marginTop:10}}>
+                    {student.practiceGuide.instrument && <span style={{background:"var(--blue-lt)",color:"var(--blue)",fontSize:10,padding:"2px 8px",borderRadius:8,fontWeight:500}}>{student.practiceGuide.instrument}</span>}
+                    <span style={{fontSize:10,color:"#B0B0B0"}}>{fmtDateShort(student.practiceGuide.createdAt)} 작성</span>
+                  </div>
+                </div>
+              </div>
+            )}
             {/* Lesson Schedule */}
             <div style={{marginBottom:16}}>
               <div style={{fontSize:13,fontWeight:600,color:"var(--ink)",marginBottom:8}}>레슨 일정</div>

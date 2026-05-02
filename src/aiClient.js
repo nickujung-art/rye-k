@@ -43,3 +43,8 @@ export async function aiPolishPaymentMessage({ previewText, messageType, audienc
   const { result } = await callAi("payment-tone", { previewText, messageType, audience });
   return result;
 }
+
+export async function aiSuggestPractice({ progress, assignment, content, instrument, audience }) {
+  const { result } = await callAi("practice-guide", { progress, assignment, content, instrument, audience });
+  return result;
+}
