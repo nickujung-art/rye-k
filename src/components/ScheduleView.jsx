@@ -3,11 +3,11 @@ import { DAYS, TODAY_STR, IC } from "../constants.jsx";
 import { canManageAll, allLessonInsts, uid, fmtDateShort } from "../utils.js";
 import { Av } from "./shared/CommonUI.jsx";
 
-const TEACHER_COLORS = ["#2B3A9F","#E8281C","#1A7A40","#7C3AED","#C88800","#0E7490","#B45309","#BE185D"];
+const TEACHER_COLORS = ["var(--blue)","var(--red)","var(--green)","#7C3AED","var(--gold-dk)","var(--blue-md)","var(--gold)","var(--red-dk)"];
 function getTeacherColor(id, teachersList) {
-  if (!id) return "#A1A1AA";
+  if (!id) return "var(--ink-30)";
   const idx = teachersList.findIndex(t => t.id === id);
-  return TEACHER_COLORS[Math.abs(idx) % TEACHER_COLORS.length] || "#A1A1AA";
+  return TEACHER_COLORS[Math.abs(idx) % TEACHER_COLORS.length] || "var(--ink-30)";
 }
 
 function ScheduleView({ students, teachers, currentUser, attendance, onSaveAttendance, onSaveScheduleOverride, scheduleOverrides, notices }) {
@@ -30,7 +30,7 @@ function ScheduleView({ students, teachers, currentUser, attendance, onSaveAtten
   const ATT_BADGE = {
     present: { bg:"var(--green-lt)", color:"var(--green)",   label:"✓ 출석" },
     absent:  { bg:"var(--red-lt)",   color:"var(--red)",     label:"✗ 결석" },
-    late:    { bg:"#FEF3C7",         color:"#B45309",        label:"△ 지각" },
+    late:    { bg:"var(--gold-lt)",   color:"var(--gold-dk)", label:"△ 지각" },
     excused: { bg:"var(--blue-lt)",  color:"var(--blue)",    label:"보강"   },
   };
   const getAttBadge = (studentId, dateStr) => {

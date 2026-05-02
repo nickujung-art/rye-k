@@ -26,7 +26,7 @@ export default function AnalyticsView({ students, teachers, attendance, payments
   });
   const referralTotal = Object.values(referralMap).reduce((a,b)=>a+b, 0);
   const referralSorted = Object.entries(referralMap).sort((a,b)=>b[1]-a[1]);
-  const refColors = ["var(--blue)","var(--red)","var(--green)","var(--gold-dk)","#7C3AED","#0E7490","#B45309","#BE185D"];
+  const refColors = ["var(--blue)","var(--red)","var(--green)","var(--gold-dk)","#7C3AED","var(--blue-md)","var(--gold)","var(--red-dk)"];
 
   // ── 수업 목적 분석
   const purposeMap = {};
