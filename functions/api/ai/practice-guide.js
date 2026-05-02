@@ -25,7 +25,7 @@ export async function onRequest(context) {
   }
 
   try {
-    const result = await callAnthropic(env.ANTHROPIC_API_KEY, {
+    const result = await callAnthropic(env.GEMINI_API_KEY, {
       model: "claude-haiku-4-5-20251001",
       system: systemPrompt,
       user: lines.join("\n"),

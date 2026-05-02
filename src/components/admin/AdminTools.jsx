@@ -510,6 +510,50 @@ export function CategoriesView({ categories, onSave, feePresets, onSaveFees }) {
   );
 }
 
+// ── AI SETTINGS VIEW ─────────────────────────────────────────────────────────
+export function AiSettingsView({ settings, onSave }) {
+  const s = settings || {};
+  const toggle = (key) => onSave({ ...s, [key]: !s[key] });
+  const Row = ({ label, desc, value, onToggle }) => (
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",padding:"14px 0",borderBottom:"1px solid var(--border)"}}>
+      <div style={{flex:1,minWidth:0,paddingRight:16}}>
+        <div style={{fontWeight:600,fontSize:14}}>{label}</div>
+        <div style={{fontSize:12,color:"var(--ink-30)",marginTop:3,lineHeight:1.5}}>{desc}</div>
+      </div>
+      <div onClick={onToggle} style={{width:44,height:24,borderRadius:12,background:value?"var(--blue)":"var(--border)",position:"relative",cursor:"pointer",transition:"background .2s",flexShrink:0,marginTop:2}}>
+        <div style={{width:18,height:18,borderRadius:"50%",background:"#fff",position:"absolute",top:3,left:value?23:3,transition:"left .2s",boxShadow:"0 1px 3px rgba(0,0,0,.2)"}} />
+      </div>
+    </div>
+  );
+  return (
+    <div>
+      <div className="ph"><div><h1>AI 설정</h1><div className="ph-sub">AI 보조 기능 운영 설정</div></div></div>
+      <div className="card" style={{padding:20,marginBottom:16}}>
+        <Row
+          label="AI 기능 사용"
+          desc="레슨노트 다듬기, 연습 가이드, 댓글 답장, 월간 리포트, 수납 톤 다듬기 기능을 켜고 끕니다."
+          value={s.aiEnabled !== false}
+          onToggle={() => toggle("aiEnabled")}
+        />
+        <Row
+          label="AI 안전 모드 (학생 이름 익명화)"
+          desc="켜면 Anthropic AI에 전달되는 텍스트에서 학생 이름을 익명으로 치환합니다. AI 응답에는 실제 이름이 복원됩니다."
+          value={!!s.aiSafeMode}
+          onToggle={() => toggle("aiSafeMode")}
+        />
+      </div>
+      <div className="card" style={{padding:"14px 20px",background:"var(--blue-lt)",border:"1px solid rgba(43,58,159,.12)"}}>
+        <div style={{fontWeight:600,fontSize:13,marginBottom:6}}>🔒 데이터 보호 정책</div>
+        <div style={{fontSize:12,color:"var(--ink-60)",lineHeight:1.7}}>
+          연락처·주소·이메일 등 개인 식별 정보는 AI에 절대 전송되지 않습니다.<br />
+          AI에 전달되는 데이터: 학생 이름(안전 모드 OFF), 악기명, 레슨노트 내용, 출석 통계.<br />
+          AI 응답은 강사가 확인 후 직접 저장해야 DB에 반영됩니다.
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── TRASH VIEW (휴지통 — 7일 백업) ───────────────────────────────────────────
 export function TrashView({ trash, onRestore, onPermanentDelete }) {
   const [confirmId, setConfirmId] = useState(null);

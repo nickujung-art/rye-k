@@ -9,6 +9,10 @@ export const onRequest = [
       return new Response("Method Not Allowed", { status: 405 });
     }
 
+    if (env.AI_ENABLED === "false") {
+      return new Response("Service Unavailable", { status: 503 });
+    }
+
     const payload = await verifyToken(request);
     if (!payload) {
       return new Response("Unauthorized", { status: 401 });

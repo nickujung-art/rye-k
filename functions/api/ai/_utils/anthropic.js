@@ -1,25 +1,19 @@
-const ANTHROPIC_API = "https://api.anthropic.com/v1/messages";
+const GEMINI_API = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
 
-export async function callAnthropic(apiKey, { model, system, user, max_tokens = 400, temperature = 0.3 }) {
-  const resp = await fetch(ANTHROPIC_API, {
+export async function callAnthropic(apiKey, { system, user, max_tokens = 400, temperature = 0.3 }) {
+  const resp = await fetch(`${GEMINI_API}?key=${apiKey}`, {
     method: "POST",
-    headers: {
-      "x-api-key": apiKey,
-      "anthropic-version": "2023-06-01",
-      "content-type": "application/json",
-    },
+    headers: { "content-type": "application/json" },
     body: JSON.stringify({
-      model,
-      max_tokens,
-      temperature,
-      system,
-      messages: [{ role: "user", content: user }],
+      system_instruction: { parts: [{ text: system }] },
+      contents: [{ role: "user", parts: [{ text: user }] }],
+      generationConfig: { maxOutputTokens: max_tokens, temperature },
     }),
   });
   if (!resp.ok) {
     const err = await resp.text().catch(() => String(resp.status));
-    throw new Error(`Anthropic ${resp.status}: ${err}`);
+    throw new Error(`Gemini ${resp.status}: ${err}`);
   }
   const data = await resp.json();
-  return data.content?.[0]?.text || "";
+  return data.candidates?.[0]?.content?.parts?.[0]?.text || "";
 }

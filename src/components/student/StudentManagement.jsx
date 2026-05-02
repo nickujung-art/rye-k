@@ -228,6 +228,16 @@ export function StudentFormModal({ student, teachers, currentUser, categories, f
               </select>
             </div>
           )}
+          {currentUser.role === "admin" && (
+            <div className="fg">
+              <label className="fg-label">AI 리포트 톤<span style={{fontWeight:400,color:"var(--ink-30)",textTransform:"none",letterSpacing:0,marginLeft:6}}>(선택)</span></label>
+              <select className="sel" value={form.audienceOverride || ""} onChange={e => set("audienceOverride", e.target.value || undefined)} style={{maxWidth:220}}>
+                <option value="">자동 (생년월일 기준)</option>
+                <option value="guardian">학부모 톤 강제</option>
+                <option value="adult_self">본인 톤 강제</option>
+              </select>
+            </div>
+          )}
           <div className="divider" />
           <div className="fg"><LessonEditor lessons={form.lessons || []} onChange={v => set("lessons", v)} categories={categories} teachers={canManageAll(currentUser.role) ? teachers : []} /></div>
           <div className="fg"><label className="fg-label">메모 / 특이사항</label><textarea className="inp" value={form.notes} onChange={e => set("notes", e.target.value)} placeholder="수업 참고사항, 특이사항 등" rows={3} /></div>

@@ -27,6 +27,7 @@ export function PublicRegisterForm() {
   const [categories, setCategories] = useState(DEFAULT_CATEGORIES);
   const [privacyAgreed, setPrivacyAgreed] = useState(false);
   const [optionalAgreed, setOptionalAgreed] = useState(false);
+  const [aiAgreed, setAiAgreed] = useState(false);
   const [showFullPolicy, setShowFullPolicy] = useState(false);
   const [showPhotoPolicy, setShowPhotoPolicy] = useState(false);
   const [feePresets, setFeePresets] = useState({});
@@ -156,6 +157,8 @@ export function PublicRegisterForm() {
                 <button onClick={()=>setShowPhotoPolicy(!showPhotoPolicy)} style={{background:"none",border:"none",color:"var(--ink-60)",fontSize:12,cursor:"pointer",padding:0,fontFamily:"inherit",marginBottom:8,display:"block",textDecoration:"underline"}}>{showPhotoPolicy?"▲ 촬영·이용 동의 상세 닫기":"▼ 사진 및 동영상 촬영·이용 동의 상세 보기"}</button>
                 {showPhotoPolicy && (<div style={{background:"#FAFAFA",border:"1px solid var(--border)",borderRadius:8,padding:14,marginBottom:10,fontSize:11.5,lineHeight:1.9,color:"var(--ink-60)",whiteSpace:"pre-wrap",maxHeight:200,overflowY:"auto"}}>{`[선택] 사진 및 동영상 촬영·이용 및 제3자 제공 동의\n\n1. 수집 및 이용 목적: 교육·행사 기록, 기관 홍보 콘텐츠 제작 및 공식 SNS·홈페이지 게시\n2. 수집 항목: 교육·행사 중 촬영된 초상(사진, 동영상) 및 음성\n3. 제3자 제공 대상: 홍보 콘텐츠 시청자, 영상 제작 대행사, 보도 매체\n4. 보유·이용 기간: 목적 달성 후 파기 (홍보물 게시 시 철회 요청 시까지)\n5. 동의 거부 시: 촬영에서 제외되거나, 홍보물 내 블러(모자이크) 처리될 수 있습니다.`}</div>)}
                 <div onClick={()=>setOptionalAgreed(!optionalAgreed)} style={{display:"flex",alignItems:"flex-start",gap:14,cursor:"pointer",padding:"14px 0",userSelect:"none"}}><div style={{width:30,height:30,borderRadius:8,border:`2.5px solid ${optionalAgreed?"var(--blue)":"#6B7280"}`,background:optionalAgreed?"var(--blue)":"var(--paper)",display:"flex",alignItems:"center",justifyContent:"center",transition:"all .15s",flexShrink:0,marginTop:2}}>{optionalAgreed && <span style={{color:"#fff",fontSize:17,fontWeight:700}}>✓</span>}</div><div style={{fontSize:17,color:"#111827",lineHeight:1.6}}><span style={{fontWeight:600,color:"#6B7280"}}>[선택]</span> 사진·동영상 촬영·이용 및 제3자 제공에 동의합니다.<div style={{fontSize:14,color:"#6B7280",marginTop:4}}>미동의 시에도 수강에 영향 없습니다.</div></div></div>
+                <div className="divider" />
+                <div onClick={()=>setAiAgreed(!aiAgreed)} style={{display:"flex",alignItems:"flex-start",gap:14,cursor:"pointer",padding:"14px 0",userSelect:"none"}}><div style={{width:30,height:30,borderRadius:8,border:`2.5px solid ${aiAgreed?"var(--blue)":"#6B7280"}`,background:aiAgreed?"var(--blue)":"var(--paper)",display:"flex",alignItems:"center",justifyContent:"center",transition:"all .15s",flexShrink:0,marginTop:2}}>{aiAgreed && <span style={{color:"#fff",fontSize:17,fontWeight:700}}>✓</span>}</div><div style={{fontSize:17,color:"#111827",lineHeight:1.6}}><span style={{fontWeight:600,color:"#6B7280"}}>[선택]</span> AI 보조 기능 사용에 동의합니다.<div style={{fontSize:14,color:"#6B7280",marginTop:4}}>레슨노트 다듬기·월간 리포트 등 AI 기능에 이름·레슨 내용이 활용됩니다. 연락처는 절대 전송되지 않습니다. 미동의 시 수강에 영향 없습니다.</div></div></div>
               </div>
             </div>
             <div style={{display:"flex",gap:8}}><button className="btn btn-secondary" style={{flex:1}} onClick={()=>setStep(2)}>이전</button><button className="btn btn-primary" style={{flex:2}} onClick={()=>{ if(!privacyAgreed){setErr("개인정보 수집·이용에 동의해주세요.");return;} setStep(4); }} disabled={!privacyAgreed}>다음</button></div>
@@ -277,6 +280,7 @@ export function PublicParentView() {
   const [payments, setPayments] = useState([]);
   const [teachers, setTeachers] = useState([]);
   const [studentNotices, setStudentNotices] = useState([]);
+  const [aiReports, setAiReports] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loggedIn, setLoggedIn] = useState(false);
   const [student, setStudent] = useState(null);
@@ -356,6 +360,7 @@ export function PublicParentView() {
         { key: "rye-payments", setter: setPayments, default: [] },
         { key: "rye-teachers", setter: setTeachers, default: [] },
         { key: "rye-student-notices", setter: setStudentNotices, default: [] },
+        { key: "rye-ai-reports", setter: setAiReports, default: [] },
       ];
       KEYS.forEach(({ key, setter, default: def }) => {
         const unsub = onSnapshot(doc(db, COLLECTION, key), (snap) => {
@@ -778,6 +783,18 @@ export function PublicParentView() {
                 </div>
               </div>
             )}
+            {/* Monthly Reports */}
+            {aiReports.filter(r => r.studentId === student.id && r.status === "published").sort((a,b)=>b.publishedAt-a.publishedAt).slice(0,3).map(rep => (
+              <div key={rep.id} style={{marginBottom:12}}>
+                <details style={{background:"linear-gradient(135deg,#F0FDF4,#DCFCE7)",borderRadius:12,border:"1px solid rgba(22,163,74,.15)",overflow:"hidden"}}>
+                  <summary style={{padding:"14px 16px",cursor:"pointer",fontSize:13,fontWeight:600,color:"#15803D",display:"flex",justifyContent:"space-between",alignItems:"center",listStyle:"none",gap:8}}>
+                    <span>📋 월간 리포트 {rep.month?.slice(0,7).replace("-","년 ")}월</span>
+                    <span style={{fontSize:11,color:"#86EFAC",fontWeight:400}}>{fmtDateShort(rep.publishedAt)} 등록</span>
+                  </summary>
+                  <div style={{padding:"0 16px 14px",fontSize:13,color:"var(--ink)",lineHeight:1.8,whiteSpace:"pre-wrap",borderTop:"1px solid rgba(22,163,74,.1)"}}>{rep.body}</div>
+                </details>
+              </div>
+            ))}
             {/* Lesson Schedule */}
             <div style={{marginBottom:16}}>
               <div style={{fontSize:13,fontWeight:600,color:"var(--ink)",marginBottom:8}}>레슨 일정</div>

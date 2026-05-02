@@ -1,6 +1,10 @@
 import { auth } from "./firebase.js";
 import { getIdToken } from "firebase/auth";
 
+let _aiEnabled = true;
+export function setAiEnabled(val) { _aiEnabled = val; }
+export function isAiEnabled() { return _aiEnabled; }
+
 async function getToken() {
   const user = auth.currentUser;
   if (!user) return null;
@@ -8,6 +12,7 @@ async function getToken() {
 }
 
 export async function callAi(endpoint, payload) {
+  if (!_aiEnabled) throw new Error("ai_disabled");
   const token = await getToken();
   if (!token) throw new Error("auth_required");
 
@@ -46,5 +51,10 @@ export async function aiPolishPaymentMessage({ previewText, messageType, audienc
 
 export async function aiSuggestPractice({ progress, assignment, content, instrument, audience }) {
   const { result } = await callAi("practice-guide", { progress, assignment, content, instrument, audience });
+  return result;
+}
+
+export async function aiGenerateMonthlyReport({ studentName, instruments, audience, month, attendanceSummary, conditionTrend, noteSummaries, commentCount }) {
+  const { result } = await callAi("monthly-report", { studentName, instruments, audience, month, attendanceSummary, conditionTrend, noteSummaries, commentCount });
   return result;
 }

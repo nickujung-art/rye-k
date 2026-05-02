@@ -9,18 +9,20 @@ import PaymentsView from "./components/payment/PaymentsView.jsx";
 import { LessonEditor, StudentFormModal, StudentDetailModal, StudentsView } from "./components/student/StudentManagement.jsx";
 import { TeacherFormModal, TeacherDetailModal, TeachersView } from "./components/teacher/TeacherManagement.jsx";
 import { NoticeFormModal, NoticesView, StudentNoticeManager } from "./components/notice/NoticeManagement.jsx";
-import { ActivityView, PendingView, TrashView, CategoriesView } from "./components/admin/AdminTools.jsx";
+import { ActivityView, PendingView, TrashView, CategoriesView, AiSettingsView } from "./components/admin/AdminTools.jsx";
 import { CURRENT_VERSION } from "./constants/releases.js";
 import Dashboard from "./components/dashboard/Dashboard.jsx";
 import { PublicParentView, PublicRegisterForm } from "./components/portal/PublicPortal.jsx";
 import { LoginScreen, ProfileView } from "./components/auth/UserAuth.jsx";
 import { BottomNav, Sidebar, MoreMenu } from "./components/layout/NavLayout.jsx";
 import { UpdatePopup } from "./components/updates/UpdatePopup.jsx";
+import { setAiEnabled } from "./aiClient.js";
 
 // ── Lazy-loaded views (code-split) ────────────────────────────────────────────
-const AnalyticsView  = lazy(() => import("./components/analytics/AnalyticsView.jsx"));
-const ScheduleView   = lazy(() => import("./components/ScheduleView.jsx"));
-const SystemNewsView = lazy(() => import("./components/updates/SystemNewsView.jsx").then(m => ({ default: m.SystemNewsView })));
+const AnalyticsView       = lazy(() => import("./components/analytics/AnalyticsView.jsx"));
+const ScheduleView        = lazy(() => import("./components/ScheduleView.jsx"));
+const SystemNewsView      = lazy(() => import("./components/updates/SystemNewsView.jsx").then(m => ({ default: m.SystemNewsView })));
+const MonthlyReportsView  = lazy(() => import("./components/aireports/MonthlyReportsView.jsx"));
 
 // ── Storage (Firestore — 실시간 크로스플랫폼 동기화) ─────────────────────────
 const COLLECTION = "appData";
@@ -230,6 +232,8 @@ function MainApp() {
   const [trash, setTrash] = useState([]);
   const [studentNotices, setStudentNotices] = useState([]);
   const [institutions, setInstitutions] = useState([]);
+  const [aiReports, setAiReports] = useState([]);
+  const [ryeSettings, setRyeSettings] = useState({ aiEnabled: true, aiSafeMode: false });
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
   const [modal, setModal] = useState(null);
@@ -328,6 +332,8 @@ function MainApp() {
       { key: "rye-trash", setter: setTrash, default: [] },
       { key: "rye-student-notices", setter: setStudentNotices, default: [] },
       { key: "rye-institutions", setter: setInstitutions, default: [] },
+      { key: "rye-ai-reports", setter: setAiReports, default: [] },
+      { key: "rye-settings", setter: setRyeSettings, default: { aiEnabled: true, aiSafeMode: false } },
     ];
 
     const checkAllLoaded = async () => {
@@ -473,6 +479,11 @@ function MainApp() {
   const saveTrash = async u => { setTrash(u); try { await sSet("rye-trash", u); } catch (e) { showToast("저장에 실패했습니다. 네트워크를 확인해주세요.", true); throw e; } };
   const saveStudentNotices = async u => { setStudentNotices(u); try { await sSet("rye-student-notices", u); } catch { showToast("저장에 실패했습니다. 네트워크를 확인해주세요.", true); } };
   const saveInstitutions = async u => { setInstitutions(u); try { await sSet("rye-institutions", u); } catch { showToast("저장에 실패했습니다. 네트워크를 확인해주세요.", true); } };
+  const saveAiReports = async u => { setAiReports(u); try { await sSet("rye-ai-reports", u); } catch { showToast("저장에 실패했습니다. 네트워크를 확인해주세요.", true); } };
+  const saveRyeSettings = async u => { setRyeSettings(u); try { await sSet("rye-settings", u); showToast("AI 설정이 저장되었습니다."); } catch { showToast("저장에 실패했습니다. 네트워크를 확인해주세요.", true); } };
+
+  // Sync AI enabled flag to module-level singleton (aiClient.js)
+  useEffect(() => { setAiEnabled(ryeSettings?.aiEnabled !== false); }, [ryeSettings]);
 
   // Auto-purge trash after 7 days
   useEffect(() => {
@@ -828,7 +839,7 @@ function MainApp() {
   if (!user) return <><style>{CSS}</style><LoginScreen onLogin={login} /></>;
 
   const pendingCount = isAdmin ? pending.length : 0;
-  const topTitle = { dashboard: "RYE-K", students: "회원 관리", attendance: "출석 체크", payments: "수납 관리", teachers: "강사 관리", notices: "공지사항", categories: "과목 관리", analytics: "현황 분석", profile: "내 정보", more: "더보기", activity: "활동 기록", pending: "등록 대기", schedule: "강사 스케줄", trash: "휴지통", studentNotices: "수강생 공지", lessonNotes: "레슨노트", institutions: "기관 관리", systemNews: "시스템 소식" }[view] || "RYE-K";
+  const topTitle = { dashboard: "RYE-K", students: "회원 관리", attendance: "출석 체크", payments: "수납 관리", teachers: "강사 관리", notices: "공지사항", categories: "과목 관리", analytics: "현황 분석", profile: "내 정보", more: "더보기", activity: "활동 기록", pending: "등록 대기", schedule: "강사 스케줄", trash: "휴지통", studentNotices: "수강생 공지", lessonNotes: "레슨노트", institutions: "기관 관리", systemNews: "시스템 소식", monthlyReports: "월간 리포트", aiSettings: "AI 설정" }[view] || "RYE-K";
 
   return (
     <>
@@ -865,6 +876,8 @@ function MainApp() {
             {view === "studentNotices" && (canManageAll(user.role) || user.role === "teacher") && <StudentNoticeManager notices={studentNotices} students={allMembers} teachers={teachers} currentUser={user} onSave={async (upd) => { await saveStudentNotices(upd); showToast("수강생 공지가 저장되었습니다."); }} />}
             {view === "lessonNotes" && <LessonNotesView students={allMembers} teachers={teachers} currentUser={user} attendance={attendance} onSaveAttendance={async (upd) => { await saveAttendance(upd); }} />}
             {view === "systemNews" && <SystemNewsView user={user} navigate={navigate} />}
+            {view === "monthlyReports" && (canManageAll(user.role) || user.role === "teacher") && <MonthlyReportsView students={students} teachers={teachers} attendance={attendance} currentUser={user} aiReports={aiReports} onSaveAiReports={saveAiReports} />}
+            {view === "aiSettings" && user.role === "admin" && <AiSettingsView settings={ryeSettings} onSave={saveRyeSettings} />}
             {view === "more" && <MoreMenu user={user} setView={navigate} onLogout={handleLogout} onResetSeed={resetSeed} counts={{ teachers: teachers.length }} pendingCount={pendingCount} darkMode={darkMode} setDarkMode={setDarkMode} trash={trash} newCommentCount={newCommentCount} />}
           </div>
           </Suspense>
