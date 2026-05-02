@@ -3,6 +3,37 @@ import { compressImage, fmtDate, fmtPhone } from "../../utils.js";
 import { Logo, Av, RoleBadge } from "../shared/CommonUI.jsx";
 import { InstSelector } from "../teacher/TeacherManagement.jsx";
 
+// ── 로그인 레이트 리밋 ─────────────────────────────────────────────────────────
+const _FAIL_KEY = (u) => `ryek_lf_${u}`;
+const _MAX_FAILS = 5;
+const _WINDOW_MS = 15 * 60 * 1000; // 15분 윈도우 내
+const _LOCKOUT_MS = 5 * 60 * 1000;  // 5분 락아웃
+
+function _checkLockout(username) {
+  try {
+    const rec = JSON.parse(localStorage.getItem(_FAIL_KEY(username)) || "{}");
+    if (rec.lockedUntil && Date.now() < rec.lockedUntil) {
+      return Math.ceil((rec.lockedUntil - Date.now()) / 60000);
+    }
+  } catch {}
+  return 0;
+}
+
+function _recordFail(username) {
+  try {
+    const now = Date.now();
+    const rec = JSON.parse(localStorage.getItem(_FAIL_KEY(username)) || "{}");
+    const fails = (rec.fails || []).filter(t => now - t < _WINDOW_MS);
+    fails.push(now);
+    const lockedUntil = fails.length >= _MAX_FAILS ? now + _LOCKOUT_MS : null;
+    localStorage.setItem(_FAIL_KEY(username), JSON.stringify({ fails, lockedUntil }));
+  } catch {}
+}
+
+function _clearFail(username) {
+  try { localStorage.removeItem(_FAIL_KEY(username)); } catch {}
+}
+
 // ── LOGIN ─────────────────────────────────────────────────────────────────────
 export function LoginScreen({ onLogin }) {
   const [u, setU] = useState(() => {
@@ -18,11 +49,19 @@ export function LoginScreen({ onLogin }) {
   const [saveId, setSaveId] = useState(() => { try { return !!localStorage.getItem("ryekSavedId"); } catch { return false; } });
   const handle = async () => {
     if (!u.trim() || !p.trim()) { setErr("아이디와 비밀번호를 입력하세요."); return; }
+    const minsLeft = _checkLockout(u.trim());
+    if (minsLeft > 0) { setErr(`로그인 시도 초과. ${minsLeft}분 후 다시 시도해주세요.`); return; }
     setLoading(true); setErr("");
     const ok = await onLogin(u.trim(), p);
     if (ok === "loading") { setErr("데이터를 불러오는 중입니다. 잠시 후 다시 시도해주세요."); setLoading(false); }
-    else if (!ok) { setErr("아이디 또는 비밀번호가 올바르지 않습니다."); setLoading(false); }
-    else {
+    else if (!ok) {
+      _recordFail(u.trim());
+      const minsAfter = _checkLockout(u.trim());
+      if (minsAfter > 0) setErr(`로그인 시도 초과. ${minsAfter}분 후 다시 시도해주세요.`);
+      else setErr("아이디 또는 비밀번호가 올바르지 않습니다.");
+      setLoading(false);
+    } else {
+      _clearFail(u.trim());
       try {
         if (saveId) localStorage.setItem("ryekSavedId", u.trim());
         else localStorage.removeItem("ryekSavedId");

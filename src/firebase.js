@@ -1,6 +1,6 @@
 import { initializeApp } from "firebase/app";
 import { getFirestore, doc, setDoc, onSnapshot, runTransaction } from "firebase/firestore";
-import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signInAnonymously, signOut, onAuthStateChanged } from "firebase/auth";
+import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signInAnonymously, signOut, onAuthStateChanged, updatePassword } from "firebase/auth";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDViGzxa0o1tqqX6fGr46Sfiews-ieGmks",
@@ -16,28 +16,47 @@ const db = getFirestore(app);
 const auth = getAuth(app);
 
 const toAuthEmail = (username) => `${username}@ryek.app`;
-// Firebase Auth 비밀번호는 username 기반 고정값 — 앱 로그인 비밀번호와 독립적
-// 이렇게 하면 관리자가 앱 비밀번호를 변경해도 Firebase Auth 세션이 끊기지 않음
-const toAuthPassword = (username) => `ryek!${username}#2024`;
+
+// 환경변수 VITE_AUTH_SALT가 설정된 경우 솔트 기반 비밀번호 사용 (권장)
+// Cloudflare Pages > Settings > Environment Variables 에서 설정 필요
+const _SALT = import.meta.env.VITE_AUTH_SALT || "";
+const _LEGACY_PW = (u) => `ryek!${u}#2024`;    // 구 스킴 (fallback용)
+const _SALTED_PW = (u) => `ryek2!${u}#${_SALT}`; // 신 스킴 (SALT 설정 후)
 
 async function firebaseSignIn(username, _appPassword) {
   const email = toAuthEmail(username);
-  const stablePw = toAuthPassword(username);
 
-  // 1차: 안정적 고정 비밀번호로 시도
+  // 1차: 솔트 비밀번호 시도 (SALT가 설정된 경우에만)
+  if (_SALT) {
+    try {
+      const cred = await signInWithEmailAndPassword(auth, email, _SALTED_PW(username));
+      return cred.user;
+    } catch (e) {
+      if (e.code !== "auth/user-not-found" && e.code !== "auth/invalid-credential" && e.code !== "auth/wrong-password") {
+        return null; // 예상치 못한 오류
+      }
+      // fall through to legacy
+    }
+  }
+
+  // 2차: 구 비밀번호 시도 (fallback 또는 SALT 미설정)
   try {
-    const cred = await signInWithEmailAndPassword(auth, email, stablePw);
+    const cred = await signInWithEmailAndPassword(auth, email, _LEGACY_PW(username));
+    // SALT 설정된 경우, 백그라운드에서 신 비밀번호로 업그레이드
+    if (_SALT) {
+      try { await updatePassword(cred.user, _SALTED_PW(username)); } catch {}
+    }
     return cred.user;
   } catch (e) {
     if (e.code === "auth/user-not-found" || e.code === "auth/invalid-credential") {
-      // Firebase Auth 계정 없음 → 고정 비밀번호로 신규 생성
+      // Firebase Auth 계정 없음 → 신규 생성 (SALT 있으면 신 스킴, 없으면 구 스킴)
       try {
-        const cred = await createUserWithEmailAndPassword(auth, email, stablePw);
+        const initialPw = _SALT ? _SALTED_PW(username) : _LEGACY_PW(username);
+        const cred = await createUserWithEmailAndPassword(auth, email, initialPw);
         return cred.user;
       } catch { return null; }
     }
-    // 계정은 있으나 구 비밀번호 스킴으로 생성된 경우 (마이그레이션) → null 반환, 앱은 로컬 인증으로 진행
-    // Firebase Auth 토큰이 캐시되어 있으면 Firestore 쓰기는 계속 동작함
+    // 계정 있으나 구 비밀번호도 불일치 — 로컬 인증으로 진행 (Firebase 토큰 캐시 유지)
     return null;
   }
 }

@@ -39,6 +39,25 @@ service cloud.firestore {
       allow read, write: if isAuthed();
     }
 
+    // 휴지통 — 운영자(강사·관리자)만 쓰기 (익명 포털은 접근 불가)
+    match /appData/rye-trash {
+      allow read: if isAuthed();
+      allow write: if isEmailUser();
+    }
+
+    // 활동 로그 — 운영자(강사·관리자)만 쓰기 (익명 포털은 접근 불가)
+    match /appData/rye-activity {
+      allow read: if isAuthed();
+      allow write: if isEmailUser();
+    }
+
+    // ── 보안 노트 (v14.3) ─────────────────────────────────────────────────────
+    // rye-teachers: 익명 read 허용 (PublicPortal에서 강사 이름 lookup). v14.4에서
+    //   student doc에 teacherName denormalize 후 emailUser-only로 잠글 예정.
+    // rye-attendance: 익명 write 허용 (포털 학부모 댓글). v14.4에서 comments를
+    //   서브컬렉션으로 분리하여 부모 doc은 emailUser-only로 잠글 예정.
+    // rye-pending: 익명 write 필수 (/register 폼). 변경 없음.
+
     // ── 그 외 모든 컬렉션: 차단 ───────────────────────────────────────────────
     match /{document=**} {
       allow read, write: if false;
