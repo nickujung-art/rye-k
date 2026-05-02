@@ -10,6 +10,7 @@ import { LessonEditor, StudentFormModal, StudentDetailModal, StudentsView } from
 import { TeacherFormModal, TeacherDetailModal, TeachersView } from "./components/teacher/TeacherManagement.jsx";
 import { NoticeFormModal, NoticesView, StudentNoticeManager } from "./components/notice/NoticeManagement.jsx";
 import { ActivityView, PendingView, TrashView, CategoriesView } from "./components/admin/AdminTools.jsx";
+import { CURRENT_VERSION } from "./constants/releases.js";
 import Dashboard from "./components/dashboard/Dashboard.jsx";
 import { PublicParentView, PublicRegisterForm } from "./components/portal/PublicPortal.jsx";
 import { LoginScreen, ProfileView } from "./components/auth/UserAuth.jsx";
@@ -552,7 +553,16 @@ function MainApp() {
     const { type, deletedAt, deletedBy, ...original } = trashItem;
     if (type === "student") {
       if (!students.some(s => s.id === original.id)) {
-        await addStudentDoc(original);
+        let restored = original;
+        // studentCode 충돌 시 새 코드 발급 (DB 후방 호환 — 추가 필드만)
+        if (original.studentCode && students.some(s => s.studentCode === original.studentCode)) {
+          const used = new Set(students.map(s => s.studentCode).filter(Boolean));
+          let code;
+          do { code = generateStudentCode(); } while (used.has(code));
+          restored = { ...original, studentCode: code, restoredCodeChanged: true };
+          addLog(`${original.name} 복원 시 회원코드 충돌 — 새 코드 ${code} 발급`);
+        }
+        await addStudentDoc(restored);
       }
       addLog(`${original.name} 회원 복원`);
     } else if (type === "teacher") {
@@ -563,6 +573,20 @@ function MainApp() {
     } else if (type === "institution") {
       if (!institutions.some(i => i.id === original.id)) {
         await saveInstitutions([...institutions, original]);
+        // 복원된 기관의 이번 달 결제 시드가 없으면 재생성 (기존 결제 건드리지 않음)
+        const virtuals = expandInstitutionsToMembers([original]).filter(m => (m.status || "active") === "active");
+        if (virtuals.length > 0) {
+          const _paymentsRef = doc(db, "appData", "rye-payments");
+          runTransaction(db, async (tx) => {
+            const snap = await tx.get(_paymentsRef);
+            const cur = snap.exists() ? (snap.data().value || []) : [];
+            const newRecords = virtuals
+              .filter(m => !cur.some(p => p.studentId === m.id && p.month === THIS_MONTH))
+              .map(m => ({ id: uid(), studentId: m.id, month: THIS_MONTH, amount: m.monthlyFee || 0, paid: false, createdAt: Date.now() }));
+            if (newRecords.length === 0) return;
+            tx.set(_paymentsRef, { value: [...cur, ...newRecords], updatedAt: Date.now() });
+          }).catch(() => {});
+        }
       }
       addLog(`${original.name} 기관 복원`);
     }
@@ -571,6 +595,26 @@ function MainApp() {
   };
 
   const permanentDeleteFromTrash = async (trashItem) => {
+    // 영구 삭제 전 고아 레코드(출석/수납) 카운트를 활동 로그에 기록
+    const orphan = (() => {
+      if (trashItem.type === "student") {
+        return {
+          att: attendance.filter(a => a.studentId === trashItem.id).length,
+          pay: payments.filter(p => p.studentId === trashItem.id).length,
+        };
+      }
+      if (trashItem.type === "institution") {
+        const memberIds = (trashItem.classes || []).map(c => `inst_${trashItem.id}_${c.id}`);
+        return {
+          att: attendance.filter(a => memberIds.includes(a.studentId)).length,
+          pay: payments.filter(p => memberIds.includes(p.studentId)).length,
+        };
+      }
+      return null;
+    })();
+    if (orphan && (orphan.att > 0 || orphan.pay > 0)) {
+      addLog(`${trashItem.name} 영구 삭제 — 출석 ${orphan.att}건 / 수납 ${orphan.pay}건 고아 잔존`);
+    }
     await saveTrash(trash.filter(t => !(t.id === trashItem.id && t.type === trashItem.type && t.deletedAt === trashItem.deletedAt)));
     showToast("완전히 삭제되었습니다.");
   };
@@ -580,6 +624,35 @@ function MainApp() {
     const upd = [log, ...activity].slice(0, 200);
     setActivity(upd);
     try { await sSet("rye-activity", upd); } catch {}
+  };
+
+  const handleFullBackup = () => {
+    const snapshot = {
+      version: CURRENT_VERSION,
+      exportedAt: new Date().toISOString(),
+      "rye-teachers": teachers,
+      "rye-students": students,
+      "rye-attendance": attendance,
+      "rye-payments": payments,
+      "rye-notices": notices,
+      "rye-categories": categories,
+      "rye-fee-presets": feePresets,
+      "rye-schedule-overrides": scheduleOverrides,
+      "rye-activity": activity,
+      "rye-pending": pending,
+      "rye-trash": trash,
+      "rye-student-notices": studentNotices,
+      "rye-institutions": institutions,
+    };
+    const blob = new Blob([JSON.stringify(snapshot, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    const ts = new Date().toISOString().replace(/[:.]/g, "-");
+    a.href = url;
+    a.download = `rye-k-backup-${ts}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    addLog(`전체 데이터 백업 다운로드 (v${CURRENT_VERSION})`);
   };
 
   const resetSeed = async () => {
@@ -771,7 +844,7 @@ function MainApp() {
             {view === "categories" && user.role === "admin" && <CategoriesView categories={categories} onSave={async c => { await saveCategories(c); addLog("과목 카테고리 수정"); showToast("저장되었습니다."); }} feePresets={feePresets} onSaveFees={async f => { setFeePresets(f); try { await sSet("rye-fee-presets", f); showToast("저장되었습니다."); } catch { showToast("저장에 실패했습니다. 네트워크를 확인해주세요.", true); } }} />}
             {view === "analytics" && user.role === "admin" && <AnalyticsView students={students} teachers={teachers} attendance={attendance} payments={payments} categories={categories} institutions={institutions} />}
             {view === "profile" && <ProfileView currentUser={user} teachers={teachers} students={visible} categories={categories} onProfileSave={async form => { const upd = teachers.map(t => t.id === user.id ? { ...t, ...form } : t); await saveTeachers(upd); setUserPersist({ ...user, name: form.name || user.name }); addLog("프로필 수정"); showToast("프로필이 수정되었습니다."); }} />}
-            {view === "activity" && canManageAll(user.role) && <ActivityView activity={activity} />}
+            {view === "activity" && canManageAll(user.role) && <ActivityView activity={activity} onFullBackup={handleFullBackup} />}
             {view === "pending" && canManageAll(user.role) && <PendingView pending={pending} teachers={teachers} categories={categories} onApprove={approvePending} onReject={rejectPending} />}
             {view === "schedule" && <ScheduleView students={allMembers} teachers={teachers} currentUser={user} attendance={attendance} onSaveAttendance={async(upd)=>{await saveAttendance(upd);}} onSaveScheduleOverride={saveScheduleOverrides} scheduleOverrides={scheduleOverrides} notices={notices} />}
             {view === "trash" && canManageAll(user.role) && <TrashView trash={trash} onRestore={restoreFromTrash} onPermanentDelete={permanentDeleteFromTrash} />}

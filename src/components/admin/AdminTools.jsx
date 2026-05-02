@@ -5,7 +5,7 @@ import { Av } from "../shared/CommonUI.jsx";
 import { LessonEditor } from "../student/StudentManagement.jsx";
 
 // ── ACTIVITY LOG ──────────────────────────────────────────────────────────────
-export function ActivityView({ activity }) {
+export function ActivityView({ activity, onFullBackup }) {
   const [searchQuery, setSearchQuery] = useState("");
   const sq = searchQuery.trim();
   const filtered = sq
@@ -13,7 +13,10 @@ export function ActivityView({ activity }) {
     : activity;
   return (
     <div>
-      <div className="ph"><div><h1>활동 기록</h1><div className="ph-sub">최근 {filtered.length}건</div></div></div>
+      <div className="ph">
+        <div><h1>활동 기록</h1><div className="ph-sub">최근 {filtered.length}건</div></div>
+        {onFullBackup && <button className="btn btn-secondary btn-sm" onClick={onFullBackup}>💾 전체 백업 다운로드</button>}
+      </div>
       <div className="srch-wrap" style={{marginBottom:10}}>
         <span className="srch-icon">{IC.search}</span>
         <input className="srch-inp" placeholder="이름 또는 내용 검색" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
