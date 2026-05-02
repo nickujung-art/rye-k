@@ -48,6 +48,10 @@ export default function MonthlyReportsView({ students, teachers, attendance, cur
   const [localEdits, setLocalEdits] = useState({});
   const [saving, setSaving] = useState(new Set());
   const [error, setError] = useState({});
+  const [editingId, setEditingId] = useState(null);
+  const [bulkBusy, setBulkBusy] = useState(null); // null | "gen" | "pub"
+  const [bulkProgress, setBulkProgress] = useState({ done: 0, total: 0, errors: 0 });
+  const [confirmPubAll, setConfirmPubAll] = useState(false);
 
   const isAdmin = canManageAll(currentUser.role);
   const showBannerBase = new Date().getDate() === 1;
@@ -160,6 +164,110 @@ export default function MonthlyReportsView({ students, teachers, attendance, cur
     await onSaveAiReports(aiReports.map(r => r.id === report.id ? { ...r, status: "archived" } : r));
   };
 
+  const handleEditPublished = (report) => {
+    setEditingId(report.id);
+    setLocalEdits(prev => ({ ...prev, [report.id]: report.body }));
+  };
+
+  const handleCancelEdit = (report) => {
+    setEditingId(null);
+    setLocalEdits(prev => { const n = { ...prev }; delete n[report.id]; return n; });
+  };
+
+  const handleSavePublished = async (report) => {
+    if (localEdits[report.id] === undefined) { setEditingId(null); return; }
+    setSaving(prev => new Set([...prev, report.id]));
+    try {
+      await onSaveAiReports(aiReports.map(r => r.id === report.id ? { ...r, body: localEdits[report.id], updatedAt: Date.now() } : r));
+      setLocalEdits(prev => { const n = { ...prev }; delete n[report.id]; return n; });
+      setEditingId(null);
+    } finally {
+      setSaving(prev => { const n = new Set(prev); n.delete(report.id); return n; });
+    }
+  };
+
+  // Eligible for bulk gen: no existing report this month, AND has at least one lesson note OR attendance record
+  const bulkGenTargets = useMemo(() => {
+    return viewStudents.filter(s => {
+      if (reportsForMonth.find(r => r.studentId === s.id)) return false;
+      const recs = attendance.filter(a => a.studentId === s.id && a.date?.startsWith(selectedMonth));
+      if (recs.length === 0) return false;
+      return recs.some(a => a.lessonNote) || recs.length > 0;
+    });
+  }, [viewStudents, reportsForMonth, attendance, selectedMonth]);
+
+  const draftsThisMonth = useMemo(
+    () => reportsForMonth.filter(r => r.status === "draft"),
+    [reportsForMonth]
+  );
+
+  const handleBulkGenerate = async () => {
+    if (bulkBusy || bulkGenTargets.length === 0) return;
+    setBulkBusy("gen");
+    setBulkProgress({ done: 0, total: bulkGenTargets.length, errors: 0 });
+    let acc = [...aiReports];
+    let errs = 0;
+    for (let i = 0; i < bulkGenTargets.length; i++) {
+      const student = bulkGenTargets[i];
+      const monthRecs = attendance.filter(a => a.studentId === student.id && a.date?.startsWith(selectedMonth));
+      const summary = computeAttSummary(monthRecs);
+      const noteSummaries = monthRecs.filter(a => a.lessonNote).sort((a, b) => (a.date || "").localeCompare(b.date || "")).map(formatNoteForReport).filter(Boolean);
+      const commentCount = monthRecs.reduce((acc2, a) => acc2 + (a.comments?.length || 0), 0);
+      const instruments = (student.lessons || []).map(l => l.instrument).filter(Boolean);
+      const audience = getAudience(student);
+      setGenerating(prev => new Set([...prev, student.id]));
+      setError(prev => ({ ...prev, [student.id]: null }));
+      try {
+        const body = await aiGenerateMonthlyReport({
+          studentName: student.name, instruments, audience, month: selectedMonth,
+          attendanceSummary: summary.total > 0 ? summary : null,
+          conditionTrend: computeTrend(summary.rate),
+          noteSummaries: noteSummaries.length > 0 ? noteSummaries : null,
+          commentCount: commentCount > 0 ? commentCount : null,
+        });
+        const newReport = {
+          id: `rep_${uid()}`, studentId: student.id, month: selectedMonth,
+          audience, status: "draft", body, attendanceSummary: summary,
+          conditionTrend: computeTrend(summary.rate),
+          createdAt: Date.now(), createdBy: currentUser.id,
+        };
+        acc = [...acc, newReport];
+        await onSaveAiReports(acc);
+      } catch (e) {
+        errs++;
+        const msg = e.message === "rate_limited" ? "분당 제한" : e.message === "auth_required" ? "인증 필요" : "AI 오류";
+        setError(prev => ({ ...prev, [student.id]: msg }));
+      } finally {
+        setGenerating(prev => { const n = new Set(prev); n.delete(student.id); return n; });
+        setBulkProgress(p => ({ ...p, done: p.done + 1, errors: errs }));
+      }
+      if (i < bulkGenTargets.length - 1) await new Promise(r => setTimeout(r, 1500));
+    }
+    setBulkBusy(null);
+  };
+
+  const handleBulkPublish = async () => {
+    if (bulkBusy || draftsThisMonth.length === 0) return;
+    setBulkBusy("pub");
+    const draftIds = new Set(draftsThisMonth.map(d => d.id));
+    const now = Date.now();
+    const updated = aiReports.map(r => {
+      if (!draftIds.has(r.id)) return r;
+      return { ...r, status: "published", publishedAt: now, publishedBy: currentUser.id, body: localEdits[r.id] ?? r.body };
+    });
+    try {
+      await onSaveAiReports(updated);
+      setLocalEdits(prev => {
+        const n = { ...prev };
+        draftIds.forEach(id => delete n[id]);
+        return n;
+      });
+    } finally {
+      setBulkBusy(null);
+      setConfirmPubAll(false);
+    }
+  };
+
   return (
     <div>
       <div className="ph"><div><h1>월간 리포트</h1></div></div>
@@ -174,7 +282,7 @@ export default function MonthlyReportsView({ students, teachers, attendance, cur
         </div>
       )}
 
-      <div style={{display:"flex",gap:8,marginBottom:16,flexWrap:"wrap",alignItems:"center"}}>
+      <div style={{display:"flex",gap:8,marginBottom:12,flexWrap:"wrap",alignItems:"center"}}>
         <select className="inp" style={{width:"auto",minWidth:130}} value={selectedMonth} onChange={e => setSelectedMonth(e.target.value)}>
           {monthOptions.map(o => <option key={o.val} value={o.val}>{o.label}</option>)}
         </select>
@@ -187,6 +295,42 @@ export default function MonthlyReportsView({ students, teachers, attendance, cur
           </select>
         )}
         <span style={{fontSize:12,color:"var(--ink-30)",marginLeft:"auto"}}>{viewStudents.length}명 · 초안 {draftCount}건</span>
+      </div>
+
+      {/* 일괄 작업 바 */}
+      <div style={{display:"flex",gap:8,marginBottom:16,flexWrap:"wrap",alignItems:"center",background:"#F9FAFB",border:"1px solid #E5E7EB",borderRadius:10,padding:"10px 12px"}}>
+        <span style={{fontSize:12,color:"var(--ink-50)",fontWeight:600}}>일괄 작업</span>
+        <button
+          className="btn btn-sm"
+          onClick={handleBulkGenerate}
+          disabled={!!bulkBusy || bulkGenTargets.length === 0}
+          style={{background:bulkGenTargets.length>0?"var(--blue)":"#E5E7EB",color:bulkGenTargets.length>0?"#fff":"#9CA3AF",border:"none",cursor:bulkGenTargets.length>0&&!bulkBusy?"pointer":"not-allowed"}}
+        >
+          {bulkBusy === "gen" ? `생성 중… ${bulkProgress.done}/${bulkProgress.total}` : `✨ 일괄 초안 생성 (${bulkGenTargets.length}명)`}
+        </button>
+        {!confirmPubAll ? (
+          <button
+            className="btn btn-sm"
+            onClick={() => setConfirmPubAll(true)}
+            disabled={!!bulkBusy || draftsThisMonth.length === 0}
+            style={{background:draftsThisMonth.length>0?"#16A34A":"#E5E7EB",color:draftsThisMonth.length>0?"#fff":"#9CA3AF",border:"none",cursor:draftsThisMonth.length>0&&!bulkBusy?"pointer":"not-allowed"}}
+          >
+            📤 모두 공개 ({draftsThisMonth.length}건)
+          </button>
+        ) : (
+          <span style={{display:"inline-flex",gap:6,alignItems:"center",background:"#FEF3C7",border:"1px solid #FCD34D",borderRadius:8,padding:"4px 8px"}}>
+            <span style={{fontSize:12,color:"#92400E",fontWeight:600}}>{draftsThisMonth.length}건 모두 공개?</span>
+            <button className="btn btn-sm" onClick={handleBulkPublish} disabled={bulkBusy === "pub"} style={{background:"#16A34A",color:"#fff",border:"none",fontSize:11,padding:"3px 8px"}}>
+              {bulkBusy === "pub" ? "공개 중…" : "확인"}
+            </button>
+            <button className="btn btn-sm" onClick={() => setConfirmPubAll(false)} style={{background:"transparent",color:"#92400E",border:"1px solid #FCD34D",fontSize:11,padding:"3px 8px"}}>
+              취소
+            </button>
+          </span>
+        )}
+        {bulkBusy === "gen" && bulkProgress.errors > 0 && (
+          <span style={{fontSize:11,color:"var(--red)"}}>오류 {bulkProgress.errors}건</span>
+        )}
       </div>
 
       <div style={{display:"flex",flexDirection:"column",gap:12}}>
@@ -229,13 +373,16 @@ export default function MonthlyReportsView({ students, teachers, attendance, cur
                     onChange={e => setLocalEdits(prev => ({ ...prev, [report.id]: e.target.value }))}
                   />
                   <div style={{display:"flex",gap:8,marginTop:8,flexWrap:"wrap"}}>
-                    {localEdits[report.id] !== undefined && (
-                      <button className="btn btn-sm" onClick={() => handleSaveDraft(report)} disabled={saving.has(report.id)} style={{background:"var(--ink-10)",color:"var(--ink)"}}>
-                        {saving.has(report.id) ? "저장 중…" : "수정 저장"}
-                      </button>
-                    )}
+                    <button
+                      className="btn btn-sm"
+                      onClick={() => handleSaveDraft(report)}
+                      disabled={saving.has(report.id) || localEdits[report.id] === undefined}
+                      style={{background:localEdits[report.id]!==undefined?"var(--ink-10)":"#F3F4F6",color:localEdits[report.id]!==undefined?"var(--ink)":"#9CA3AF"}}
+                    >
+                      {saving.has(report.id) ? "저장 중…" : "💾 수정 저장"}
+                    </button>
                     <button className="btn btn-sm" onClick={() => handlePublish(report)} style={{background:"var(--blue)",color:"#fff",border:"none"}}>
-                      공개
+                      📤 공개
                     </button>
                     <button className="btn btn-sm" onClick={() => handleDelete(report)} style={{background:"transparent",color:"var(--red)",border:"1px solid var(--red)"}}>
                       삭제
@@ -244,14 +391,41 @@ export default function MonthlyReportsView({ students, teachers, attendance, cur
                 </>
               )}
 
-              {report?.status === "published" && (
+              {report?.status === "published" && editingId !== report.id && (
                 <>
                   <div style={{fontSize:13,color:"var(--ink-70)",lineHeight:1.7,whiteSpace:"pre-wrap",background:"var(--bg)",padding:"10px 12px",borderRadius:6,marginBottom:8}}>
                     {report.body}
                   </div>
-                  <button className="btn btn-sm" onClick={() => handleArchive(report)} style={{background:"transparent",color:"var(--ink-30)",border:"1px solid var(--border)",fontSize:11}}>
-                    보관 처리
-                  </button>
+                  {report.updatedAt && report.updatedAt > (report.publishedAt || 0) && (
+                    <div style={{fontSize:11,color:"var(--ink-30)",marginBottom:8}}>마지막 수정 {fmtDateShort(report.updatedAt)}</div>
+                  )}
+                  <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+                    <button className="btn btn-sm" onClick={() => handleEditPublished(report)} style={{background:"var(--ink-10)",color:"var(--ink)",fontSize:12}}>
+                      ✏️ 수정
+                    </button>
+                    <button className="btn btn-sm" onClick={() => handleArchive(report)} style={{background:"transparent",color:"var(--ink-30)",border:"1px solid var(--border)",fontSize:11}}>
+                      보관 처리
+                    </button>
+                  </div>
+                </>
+              )}
+
+              {report?.status === "published" && editingId === report.id && (
+                <>
+                  <textarea
+                    className="inp"
+                    style={{width:"100%",minHeight:200,fontSize:13,lineHeight:1.7,resize:"vertical",boxSizing:"border-box"}}
+                    value={localEdits[report.id] ?? report.body}
+                    onChange={e => setLocalEdits(prev => ({ ...prev, [report.id]: e.target.value }))}
+                  />
+                  <div style={{display:"flex",gap:8,marginTop:8,flexWrap:"wrap"}}>
+                    <button className="btn btn-sm" onClick={() => handleSavePublished(report)} disabled={saving.has(report.id)} style={{background:"var(--blue)",color:"#fff",border:"none"}}>
+                      {saving.has(report.id) ? "저장 중…" : "💾 저장"}
+                    </button>
+                    <button className="btn btn-sm" onClick={() => handleCancelEdit(report)} style={{background:"transparent",color:"var(--ink-50)",border:"1px solid var(--border)"}}>
+                      취소
+                    </button>
+                  </div>
                 </>
               )}
             </div>
