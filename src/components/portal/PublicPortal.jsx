@@ -579,6 +579,20 @@ export function PublicParentView() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
+  const TAB_ORDER = ["home","notice","att","notes","report","pay"];
+  const swipeRef = useRef({ x: 0, y: 0 });
+  const onTouchStart = (e) => {
+    swipeRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+  };
+  const onTouchEnd = (e) => {
+    const dx = e.changedTouches[0].clientX - swipeRef.current.x;
+    const dy = Math.abs(e.changedTouches[0].clientY - swipeRef.current.y);
+    if (Math.abs(dx) < 48 || Math.abs(dx) < dy) return;
+    const idx = TAB_ORDER.indexOf(tab);
+    if (dx < 0 && idx < TAB_ORDER.length - 1) handleTabChange(TAB_ORDER[idx + 1]);
+    if (dx > 0 && idx > 0) handleTabChange(TAB_ORDER[idx - 1]);
+  };
+
   // ── 로그인 최종 처리 (상태 체크 포함) ───────────────────────────────────────
   const doLogin = (found, errSetter = setLoginErr) => {
     const status = found.status || "active";
@@ -988,7 +1002,7 @@ export function PublicParentView() {
         </div>
       </div>
 
-      <div className="portal-body" style={{padding:16,maxWidth:640,margin:"0 auto"}}>
+      <div className="portal-body" style={{padding:16,maxWidth:640,margin:"0 auto"}} onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
         <div key={tab} className="fade-up">
         {/* Home Tab */}
         {tab === "home" && (
