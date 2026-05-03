@@ -89,7 +89,7 @@ input,select,textarea,button{font-family:inherit}
 .topbar-title{font-family:'Noto Serif KR',serif;font-size:14px;font-weight:700;color:var(--blue);flex:1}
 .topbar-btn{background:none;border:none;color:var(--ink-60);cursor:pointer;padding:6px;border-radius:var(--radius-sm);display:flex;align-items:center;justify-content:center;transition:background .12s}
 .topbar-btn:hover{background:var(--ink-10)}
-.main-scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:calc(var(--nav-h) + var(--safe-b) + 76px)}
+.main-scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:calc(var(--nav-h) + var(--safe-b) + 16px)}
 .main-content{padding:16px;animation:fadeUp var(--dur-slow) var(--ease-out) both}
 
 /* ── Bottom Nav ────────────────────────────────────────── */
@@ -376,7 +376,7 @@ input[type="date"]::-webkit-date-and-time-value{text-align:left}
   .sb-nav::-webkit-scrollbar-thumb{background:rgba(255,255,255,.15);border-radius:3px}
   .sb-nav::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,.3)}
   .app-wrap{flex-direction:row}
-  .main-scroll{margin-left:220px;padding-bottom:84px}
+  .main-scroll{margin-left:220px;padding-bottom:16px}
   .main-content{padding:28px 36px;max-width:960px}
   .topbar{display:none}
   .modal{max-width:600px;max-height:90vh;border-radius:var(--radius-lg);margin:auto;animation:scaleIn var(--dur-base) var(--ease-out) both}

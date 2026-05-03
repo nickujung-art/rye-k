@@ -827,11 +827,14 @@ export function StudentsView({ students, allStudents, teachers, categories, filt
       )}
       <div className="ph">
         <div><h1>회원 관리</h1><div className="ph-sub">재원 {activeCount}명{pausedCount > 0 && ` · 휴원 ${pausedCount}`}{withdrawnCount > 0 && ` · 퇴원 ${withdrawnCount}`}</div></div>
-        {currentUser && canManageAll(currentUser.role) && (
-          <button className="btn btn-gold btn-sm" onClick={() => setShowBulkFee(true)}>
-            ₩ 일괄 설정
-          </button>
-        )}
+        <div style={{display:"flex",gap:8,alignItems:"center",flexShrink:0}}>
+          {currentUser && canManageAll(currentUser.role) && (
+            <button className="btn btn-gold btn-sm" onClick={() => setShowBulkFee(true)}>
+              ₩ 일괄 설정
+            </button>
+          )}
+          <button className="btn btn-primary btn-sm" onClick={onAdd} style={{display:"flex",alignItems:"center",gap:4}}>{IC.plus}<span>추가</span></button>
+        </div>
       </div>
       <div className="srch-wrap">
         <span className="srch-icon">{IC.search}</span>
@@ -855,7 +858,6 @@ export function StudentsView({ students, allStudents, teachers, categories, filt
       ) : (
         <div className="s-grid">{statusFiltered.map(s => <StudentCard key={s.id} student={s} teachers={teachers} onClick={() => onSelect(s)} payStatus={getPayStatus(s.id)} />)}</div>
       )}
-      <button className="fab" onClick={onAdd}>{IC.plus}</button>
     </div>
   );
 }

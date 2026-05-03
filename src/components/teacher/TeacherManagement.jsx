@@ -167,7 +167,10 @@ export function TeachersView({ teachers, students, onAdd, onSelect, attendance =
   const todayDayName = ["일","월","화","수","목","금","토"][new Date(TODAY_STR + "T00:00:00").getDay()];
   return (
     <div>
-      <div className="ph"><div><h1>강사 · 매니저</h1><div className="ph-sub">전체 {teachers.length}명</div></div></div>
+      <div className="ph">
+        <div><h1>강사 · 매니저</h1><div className="ph-sub">전체 {teachers.length}명</div></div>
+        <button className="btn btn-primary btn-sm" onClick={onAdd} style={{display:"flex",alignItems:"center",gap:4,flexShrink:0}}>{IC.plus}<span>추가</span></button>
+      </div>
       <div className="srch-wrap"><span className="srch-icon">{IC.search}</span><input className="srch-inp" placeholder="이름, 전공 검색" value={search} onChange={e => setSearch(e.target.value)} /></div>
       {filtered.length === 0 ? (
         <div className="empty"><img src={knotLineSvg} style={{width:44,height:55,opacity:0.28,marginBottom:10}} alt="" /><div className="empty-txt">등록된 강사가 없습니다.</div></div>
@@ -206,7 +209,6 @@ export function TeachersView({ teachers, students, onAdd, onSelect, attendance =
           })}
         </div>
       )}
-      <button className="fab" onClick={onAdd}>{IC.plus}</button>
     </div>
   );
 }

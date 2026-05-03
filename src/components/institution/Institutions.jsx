@@ -411,6 +411,9 @@ export function InstitutionsView({ institutions, teachers, currentUser, onAdd, o
     <div>
       <div className="ph">
         <div><h1>기관 관리</h1><div className="ph-sub">진행중 {activeCount}곳{pausedCount > 0 && ` · 중단 ${pausedCount}`}{expiredCount > 0 && ` · 종료 ${expiredCount}`}</div></div>
+        {canManageAll(currentUser.role) && (
+          <button className="btn btn-primary btn-sm" onClick={onAdd} style={{display:"flex",alignItems:"center",gap:4,flexShrink:0}}>{IC.plus}<span>추가</span></button>
+        )}
       </div>
       <div className="srch-wrap">
         <span className="srch-icon">{IC.search}</span>
@@ -444,7 +447,6 @@ export function InstitutionsView({ institutions, teachers, currentUser, onAdd, o
       ) : (
         <div className="s-grid">{filtered.map(inst => <InstitutionCard key={inst.id} institution={inst} teachers={teachers} onClick={() => onSelect(inst)} />)}</div>
       )}
-      {canManageAll(currentUser.role) && <button className="fab" onClick={onAdd}>{IC.plus}</button>}
     </div>
   );
 }

@@ -113,7 +113,12 @@ export function NoticesView({ notices, currentUser, onAdd, onEdit, onDelete }) {
   const filtered = sq ? sorted.filter(n => n.title.includes(sq) || n.content.includes(sq)) : sorted;
   return (
     <div>
-      <div className="ph"><div><h1>공지사항</h1><div className="ph-sub">{notices.length}건</div></div></div>
+      <div className="ph">
+        <div><h1>공지사항</h1><div className="ph-sub">{notices.length}건</div></div>
+        {canManageAll(currentUser.role) && (
+          <button className="btn btn-primary btn-sm" onClick={onAdd} style={{display:"flex",alignItems:"center",gap:4,flexShrink:0}}>{IC.plus}<span>추가</span></button>
+        )}
+      </div>
       <div className="srch-wrap" style={{marginBottom:10}}>
         <span className="srch-icon">{IC.search}</span>
         <input className="srch-inp" placeholder="제목 또는 내용 검색" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
@@ -153,7 +158,6 @@ export function NoticesView({ notices, currentUser, onAdd, onEdit, onDelete }) {
           )}
         </div>
       ))}
-      {canManageAll(currentUser.role) && <button className="fab" onClick={onAdd}>{IC.plus}</button>}
     </div>
   );
 }
@@ -285,7 +289,12 @@ export function StudentNoticeManager({ notices, currentUser, students = [], teac
 
   return (
     <div>
-      <div className="ph"><div><h1>수강생 공지</h1><div className="ph-sub">My RYE-K 포털에 표시</div></div></div>
+      <div className="ph">
+        <div><h1>수강생 공지</h1><div className="ph-sub">My RYE-K 포털에 표시</div></div>
+        {canManage && (
+          <button className="btn btn-primary btn-sm" onClick={startNew} style={{display:"flex",alignItems:"center",gap:4,flexShrink:0}}>{IC.plus}<span>추가</span></button>
+        )}
+      </div>
       {sorted.length === 0 && (
         <div className="empty"><div className="empty-icon">📢</div><div className="empty-txt">등록된 공지가 없습니다.</div></div>
       )}
@@ -352,7 +361,6 @@ export function StudentNoticeManager({ notices, currentUser, students = [], teac
         );
       })}
 
-      {canManage && <button className="fab" onClick={startNew}>{IC.plus}</button>}
 
       {/* 공지 작성/수정 모달 */}
       {editing && (
