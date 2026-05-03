@@ -942,17 +942,29 @@ export function PublicParentView() {
 
   // Next lesson D-day
   const getNextLessonDate = () => {
-    const today = new Date();
+    const now = new Date();
+    const nowMin = now.getHours()*60 + now.getMinutes();
     for (let i = 0; i <= 7; i++) {
-      const d = new Date(today);
+      const d = new Date(now);
       d.setDate(d.getDate() + i);
       const dayName = ["일","월","화","수","목","금","토"][d.getDay()];
-      const hasLesson = (student.lessons || []).some(l => (l.schedule || []).some(sc => sc.day === dayName));
-      if (hasLesson && (i > 0 || d.getHours() < 22)) {
-        const lessons = (student.lessons || []).filter(l => (l.schedule || []).some(sc => sc.day === dayName));
-        const times = lessons.flatMap(l => (l.schedule||[]).filter(sc=>sc.day===dayName).map(sc=>sc.time)).filter(Boolean);
-        return { date: d, dDay: i, dayName, lessons, time: times[0] || "" };
+      const lessons = (student.lessons || []).filter(l => (l.schedule || []).some(sc => sc.day === dayName));
+      if (lessons.length === 0) continue;
+      let times = lessons.flatMap(l => (l.schedule||[]).filter(sc=>sc.day===dayName).map(sc=>sc.time)).filter(Boolean).sort();
+      if (i === 0) {
+        if (times.length > 0) {
+          const future = times.filter(t => {
+            const [h,m] = t.split(":").map(Number);
+            if (Number.isNaN(h) || Number.isNaN(m)) return true;
+            return (h*60+m) > nowMin;
+          });
+          if (future.length === 0) continue;
+          times = future;
+        } else if (now.getHours() >= 22) {
+          continue;
+        }
       }
+      return { date: d, dDay: i, dayName, lessons, time: times[0] || "" };
     }
     return null;
   };
@@ -1024,7 +1036,7 @@ export function PublicParentView() {
             <div style={{flex:1}}>
               <div className="hero-name" style={{fontFamily:"'Noto Serif KR',serif",fontSize:22,fontWeight:700,color:"var(--ink)",lineHeight:1.2}}>{student.name}</div>
               <div style={{display:"flex",gap:6,flexWrap:"wrap",marginTop:6}}>
-                {(student.lessons||[]).map(l => <span key={l.instrument} style={{background:"var(--blue-lt)",color:"var(--blue)",fontSize:11,padding:"3px 10px",borderRadius:12,fontWeight:500,maxWidth:120,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",display:"inline-block"}}>{l.instrument}</span>)}
+                {(student.lessons||[]).map((l,i) => <span key={`${l.instrument||""}-${l.teacherId||""}-${i}`} style={{background:"var(--blue-lt)",color:"var(--blue)",fontSize:11,padding:"3px 10px",borderRadius:12,fontWeight:500,maxWidth:120,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",display:"inline-block"}}>{l.instrument}</span>)}
               </div>
               <div style={{display:"flex",gap:8,alignItems:"center",marginTop:5,flexWrap:"wrap"}}>
                 {(() => {
@@ -1056,7 +1068,7 @@ export function PublicParentView() {
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",borderTop:"1px solid var(--border)",borderBottom:"1px solid var(--border)",padding:"14px 0"}}>
           <div style={{textAlign:"center",padding:"0 8px"}}>
             <div style={{fontSize:9,letterSpacing:"0.14em",fontWeight:600,color:"var(--ink-30)",textTransform:"uppercase",marginBottom:6}}>이달 출석률</div>
-            <div style={{fontFamily:"'Noto Serif KR',serif",fontSize:20,fontWeight:500,lineHeight:1,color:attRate&&attRate>=80?"var(--green)":attRate&&attRate>=60?"var(--gold-dk)":"var(--red)",fontVariantNumeric:"tabular-nums"}}>
+            <div style={{fontFamily:"'Noto Serif KR',serif",fontSize:20,fontWeight:500,lineHeight:1,color:attRate===null?"var(--ink-30)":attRate>=80?"var(--green)":attRate>=60?"var(--gold-dk)":"var(--red)",fontVariantNumeric:"tabular-nums"}}>
               {attRate!==null?animatedAttRate:"—"}{attRate!==null&&<span style={{fontSize:12,marginLeft:1,color:"var(--ink-30)",fontWeight:400}}>%</span>}
             </div>
             <div aria-hidden style={{fontSize:9,marginTop:6,minHeight:14,lineHeight:1.4,visibility:"hidden"}}>—</div>
@@ -1147,8 +1159,8 @@ export function PublicParentView() {
                 <div style={{width:3,height:14,background:"linear-gradient(180deg,var(--blue),var(--dancheong-blue))",borderRadius:2,flexShrink:0}}/>
                 <div style={{fontFamily:"'Noto Serif KR',serif",fontSize:14,fontWeight:500,color:"var(--ink)"}}>레슨 일정</div>
               </div>
-              {(student.lessons||[]).map(l => (
-                <div key={l.instrument} style={{background:"var(--paper)",borderRadius:"var(--radius)",padding:"14px 16px",marginBottom:6,boxShadow:"var(--shadow)",border:"1px solid var(--border)"}}>
+              {(student.lessons||[]).map((l,i) => (
+                <div key={`${l.instrument||""}-${l.teacherId||""}-${i}`} style={{background:"var(--paper)",borderRadius:"var(--radius)",padding:"14px 16px",marginBottom:6,boxShadow:"var(--shadow)",border:"1px solid var(--border)"}}>
                   <div style={{fontSize:14,fontWeight:600,color:"var(--blue)",marginBottom:6,fontFamily:"'Noto Serif KR',serif"}}>{l.instrument}</div>
                   <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
                     {(l.schedule||[]).filter(sc=>sc.day).map((sc,i) => (
@@ -1290,7 +1302,7 @@ export function PublicParentView() {
                   <div style={{fontSize:9,letterSpacing:"0.14em",color:"var(--gold-dk)",fontWeight:600,marginBottom:8}}>{isThisMonth?"이달 출석":`${dispMonthLabel} 출석 · 최근 기록`}</div>
                   <div style={{display:"flex",alignItems:"baseline",gap:14,flexWrap:"wrap"}}>
                     <div>
-                      <span style={{fontFamily:"'Noto Serif KR',serif",fontSize:28,fontWeight:500,color:dRate&&dRate>=80?"var(--green)":"var(--ink)",fontVariantNumeric:"tabular-nums"}}>{dRate ?? "—"}</span>
+                      <span style={{fontFamily:"'Noto Serif KR',serif",fontSize:28,fontWeight:500,color:dRate===null?"var(--ink-30)":dRate>=80?"var(--green)":dRate>=60?"var(--gold-dk)":"var(--red)",fontVariantNumeric:"tabular-nums"}}>{dRate ?? "—"}</span>
                       <span style={{fontSize:13,color:"var(--ink-30)",marginLeft:2}}>%</span>
                     </div>
                     <div style={{fontSize:11,color:"var(--ink-30)",letterSpacing:"0.04em"}}>
