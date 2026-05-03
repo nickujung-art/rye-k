@@ -2,6 +2,33 @@
 
 export const RELEASE_HISTORY = [
   {
+    version: "16.0.0",
+    date: "2026-05-03",
+    title: "K-Premium Heritage 디자인 전면 적용 — RYE-K v16.0",
+    isMajor: true,
+    target: ["admin", "teacher", "member"],
+    tags: ["디자인", "UX개선", "접근성"],
+    features: [
+      {
+        target: ["admin", "teacher", "member"],
+        text: "🎨 K-Premium Heritage 디자인 전면 적용\n단청 오방색·한지 질감·매듭 일러스트를 현대적 UI에 녹였습니다. 로그인 화면부터 수납 목록까지 전체 화면이 K-Culture 정체성을 갖춘 하나의 디자인 언어로 통일되었습니다."
+      },
+      {
+        target: ["member"],
+        text: "🏠 My RYE-K 포털 홈 개편\n상단 프로필 카드가 이름·선생님·수납 상태를 한눈에 보여주는 Heritage 카드로 격상되었습니다. 출석률·D-day·수납 현황 3종 통계가 바로 아래 표시됩니다."
+      },
+      {
+        target: ["admin", "teacher"],
+        text: "💳 수납 화면 — 이달 납부 총액 카드 추가\n수납 목록 상단에 '이달 총 납부액'을 확인하는 요약 카드가 추가되었습니다."
+      },
+      {
+        target: ["admin", "teacher", "member"],
+        text: "🌙 다크모드 단청 색 최적화\n다크모드에서도 단청 오방색·한지 그라디언트가 눈에 편안하게 표현됩니다."
+      }
+    ],
+    pmComment: "정보는 같아도 담는 그릇이 달라지면 다르게 보입니다. 국악 교육이라는 콘텐츠에 어울리는 화면을 만들고 싶었습니다. 써주시는 모든 분께 감사드립니다. 🎵"
+  },
+  {
     version: "15.1.0",
     date: "2026-05-02",
     title: "AI 소통 어시스턴트 — 강사·회원 소통 AI 보조 도입",
