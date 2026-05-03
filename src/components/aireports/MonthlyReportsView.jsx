@@ -293,11 +293,12 @@ export default function MonthlyReportsView({ students, teachers, attendance, cur
       <div className="ph"><div><h1>월간 리포트</h1></div></div>
 
       {showBanner && (
-        <div style={{background:"linear-gradient(135deg,#EFF6FF,#DBEAFE)",border:"1px solid #BFDBFE",borderRadius:"var(--radius)",padding:"12px 16px",marginBottom:16,display:"flex",gap:10,alignItems:"center"}}>
+        <div style={{background:"var(--hanji)",border:"1px solid var(--border)",borderRadius:"var(--radius-lg)",padding:"12px 16px",marginBottom:16,display:"flex",gap:10,alignItems:"center",boxShadow:"var(--shadow-lifted)",overflow:"hidden",position:"relative"}}>
+          <div style={{position:"absolute",top:0,left:0,right:0,height:3,background:"linear-gradient(90deg,var(--dancheong-blue),var(--dancheong-red),var(--dancheong-yellow))"}}/>
           <span style={{fontSize:20}}>📊</span>
           <div>
-            <div style={{fontWeight:600,fontSize:14}}>지난 달 리포트 {noReportCount}개 생성 가능</div>
-            <div style={{fontSize:12,color:"var(--ink-50)"}}>아래 학생 카드에서 초안을 생성하고 검토해주세요.</div>
+            <div style={{fontFamily:"'Noto Serif KR',serif",fontWeight:600,fontSize:14,color:"var(--ink)"}}>지난 달 리포트 {noReportCount}개 생성 가능</div>
+            <div style={{fontSize:12,color:"var(--ink-60)"}}>아래 학생 카드에서 초안을 생성하고 검토해주세요.</div>
           </div>
         </div>
       )}
@@ -407,8 +408,8 @@ export default function MonthlyReportsView({ students, teachers, attendance, cur
                     style={{width:16,height:16,accentColor:"var(--blue)",cursor:"pointer",flexShrink:0}}
                   />
                   <span style={{minWidth:0}}>
-                    <span style={{fontWeight:700,fontSize:15}}>{s.name}</span>
-                    {instruments.length > 0 && <span style={{fontSize:12,color:"var(--ink-50)",marginLeft:8}}>{instruments.join(", ")}</span>}
+                    <span style={{fontFamily:"'Noto Serif KR',serif",fontWeight:600,fontSize:15}}>{s.name}</span>
+                    {instruments.length > 0 && <span style={{fontSize:12,color:"var(--ink-60)",marginLeft:8}}>{instruments.join(", ")}</span>}
                     {teacher && isAdmin && <span style={{fontSize:11,color:"var(--ink-30)",marginLeft:6}}>({teacher.name})</span>}
                   </span>
                 </label>
@@ -456,7 +457,7 @@ export default function MonthlyReportsView({ students, teachers, attendance, cur
 
               {report?.status === "published" && editingId !== report.id && (
                 <>
-                  <div style={{fontSize:13,color:"var(--ink-70)",lineHeight:1.7,whiteSpace:"pre-wrap",background:"var(--bg)",padding:"10px 12px",borderRadius:6,marginBottom:8}}>
+                  <div style={{fontSize:13,color:"var(--ink)",lineHeight:1.75,whiteSpace:"pre-wrap",background:"var(--hanji)",padding:"12px 14px",borderRadius:"var(--radius-sm)",marginBottom:8,border:"1px solid var(--border)"}}>
                     {report.body}
                   </div>
                   {report.updatedAt && report.updatedAt > (report.publishedAt || 0) && (

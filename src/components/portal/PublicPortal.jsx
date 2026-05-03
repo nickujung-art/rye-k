@@ -1194,60 +1194,66 @@ export function PublicParentView() {
             return `${y}년 ${parseInt(mo, 10)}월`;
           };
           return (
-            <div>
-              <div style={{background:"linear-gradient(135deg,#EFF6FF,#E0F2FE)",borderRadius:14,padding:"16px 18px",marginBottom:16,border:"1px solid #BFDBFE"}}>
+            <div className="fade-up">
+              {/* 인트로 카드 */}
+              <div style={{background:"var(--hanji)",borderRadius:"var(--radius-lg)",padding:"18px 18px 16px",marginBottom:16,border:"1px solid var(--border)",boxShadow:"var(--shadow-lifted)",overflow:"hidden",position:"relative"}}>
+                <div style={{position:"absolute",top:0,left:0,right:0,height:3,background:"linear-gradient(90deg,var(--dancheong-blue),var(--dancheong-red),var(--dancheong-yellow))"}}/>
                 <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:6}}>
-                  <span style={{fontSize:22}}>📊</span>
-                  <div style={{fontSize:15,fontWeight:700,color:"var(--ink)"}}>월간 학습 리포트</div>
+                  <span style={{fontSize:20}}>📊</span>
+                  <div style={{fontFamily:"'Noto Serif KR',serif",fontSize:16,fontWeight:600,color:"var(--ink)"}}>월간 학습 리포트</div>
                 </div>
-                <div style={{fontSize:12,color:"var(--ink-50)",lineHeight:1.6}}>
+                <div style={{fontSize:12,color:"var(--ink-60)",lineHeight:1.65}}>
                   강사님이 한 달간의 학습을 정리해서 보내드립니다.<br/>
                   {myReports.length > 0 ? `현재까지 ${myReports.length}편의 리포트가 도착했어요.` : "아직 리포트가 없습니다. 첫 리포트가 도착하면 여기에 표시됩니다."}
                 </div>
               </div>
 
               {myReports.length === 0 ? (
-                <div style={{background:"#fff",borderRadius:14,padding:"40px 20px",textAlign:"center",border:"1px solid #F0F0F0"}}>
-                  <div style={{fontSize:36,marginBottom:10}}>📝</div>
-                  <div style={{fontSize:13,color:"var(--ink-50)",lineHeight:1.6}}>
+                <div style={{background:"var(--paper)",borderRadius:"var(--radius-lg)",padding:"40px 20px",textAlign:"center",border:"1px solid var(--border)"}}>
+                  <div style={{fontSize:32,marginBottom:10,opacity:.4}}>🎵</div>
+                  <div style={{fontFamily:"'Noto Serif KR',serif",fontSize:14,color:"var(--ink-60)",lineHeight:1.75}}>
                     아직 받으신 월간 리포트가 없습니다.<br/>
-                    매월 초, 지난 달의 학습 여정을<br/>강사님이 정성껏 정리해서 보내드릴 예정입니다.
+                    <span style={{fontSize:12,color:"var(--ink-30)"}}>매월 초, 지난 달의 학습 여정을 강사님이 정성껏 정리해서 보내드릴 예정입니다.</span>
                   </div>
                 </div>
               ) : (
                 <div style={{display:"flex",flexDirection:"column",gap:14}}>
                   {myReports.map((r, idx) => {
-                    const teacher = teachers.find(t => t.id === r.publishedBy) || teachers.find(t => t.id === student.teacherId);
+                    const rTeacher = teachers.find(t => t.id === r.publishedBy) || teachers.find(t => t.id === student.teacherId);
                     const att = r.attendanceSummary;
                     return (
-                      <div key={r.id} style={{background:"#fff",borderRadius:14,padding:"18px 18px 16px",border:idx===0?"2px solid var(--blue)":"1px solid #F0F0F0",boxShadow:idx===0?"0 2px 12px rgba(43,58,159,.08)":"0 1px 4px rgba(0,0,0,.03)",position:"relative"}}>
-                        {idx === 0 && (
-                          <div style={{position:"absolute",top:-10,left:14,background:"var(--blue)",color:"#fff",fontSize:10,fontWeight:700,padding:"3px 8px",borderRadius:8,letterSpacing:.3}}>최신</div>
-                        )}
-                        <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:8,marginBottom:12,paddingBottom:10,borderBottom:"1px solid #F4F4F5"}}>
-                          <div>
-                            <div style={{fontSize:18,fontWeight:700,color:"var(--ink)",letterSpacing:-.3}}>{fmtMonth(r.month)}</div>
-                            <div style={{fontSize:11,color:"var(--ink-30)",marginTop:2}}>
-                              {r.publishedAt && `발행 ${fmtDate(new Date(r.publishedAt).toISOString().slice(0,10))}`}
-                              {teacher && ` · ${teacher.name} 강사님`}
+                      <div key={r.id} style={{background:idx===0?"var(--hanji)":"var(--paper)",borderRadius:"var(--radius-lg)",border:idx===0?"1px solid rgba(31,61,122,.15)":"1px solid var(--border)",boxShadow:idx===0?"var(--shadow-lifted)":"var(--shadow)",overflow:"hidden",position:"relative"}}>
+                        {/* 단청 3색 상단 stripe */}
+                        <div style={{height:3,background:"linear-gradient(90deg,var(--dancheong-blue),var(--dancheong-red),var(--dancheong-yellow))"}}/>
+                        <div style={{padding:"16px 18px 14px"}}>
+                          {idx === 0 && (
+                            <div style={{display:"inline-block",background:"var(--dancheong-blue)",color:"#fff",fontSize:10,fontWeight:700,padding:"2px 8px",borderRadius:6,letterSpacing:.3,marginBottom:8}}>최신</div>
+                          )}
+                          <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:8,marginBottom:12,paddingBottom:10,borderBottom:"1px solid var(--border)"}}>
+                            <div>
+                              <div style={{fontFamily:"'Noto Serif KR',serif",fontSize:22,fontWeight:700,color:"var(--ink)",letterSpacing:-.5,lineHeight:1.2}}>{fmtMonth(r.month)}</div>
+                              <div style={{fontSize:11,color:"var(--ink-30)",marginTop:3}}>
+                                {r.publishedAt && `발행 ${fmtDate(new Date(r.publishedAt).toISOString().slice(0,10))}`}
+                                {rTeacher && ` · ${rTeacher.name} 강사님`}
+                              </div>
                             </div>
+                            {att && att.total > 0 && (
+                              <div style={{textAlign:"right",flexShrink:0}}>
+                                <div style={{fontSize:10,color:"var(--ink-30)"}}>출석률</div>
+                                <div style={{fontFamily:"'Noto Serif KR',serif",fontSize:22,fontWeight:700,fontVariantNumeric:"tabular-nums",color:att.rate>=85?"var(--green)":att.rate>=60?"var(--gold-dk)":"var(--red)"}}>{att.rate}%</div>
+                              </div>
+                            )}
                           </div>
                           {att && att.total > 0 && (
-                            <div style={{textAlign:"right",flexShrink:0}}>
-                              <div style={{fontSize:10,color:"var(--ink-30)"}}>출석률</div>
-                              <div style={{fontSize:16,fontWeight:700,color:att.rate>=85?"var(--green)":att.rate>=60?"var(--gold)":"var(--red)"}}>{att.rate}%</div>
+                            <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:12,fontSize:11}}>
+                              <span style={{background:"var(--green-lt)",color:"var(--green)",padding:"3px 8px",borderRadius:6,fontWeight:600}}>출석 {att.present}</span>
+                              {att.late > 0 && <span style={{background:"var(--gold-lt)",color:"var(--gold-dk)",padding:"3px 8px",borderRadius:6,fontWeight:600}}>지각 {att.late}</span>}
+                              {att.absent > 0 && <span style={{background:"var(--red-lt)",color:"var(--red)",padding:"3px 8px",borderRadius:6,fontWeight:600}}>결석 {att.absent}</span>}
+                              {att.excused > 0 && <span style={{background:"var(--ink-10)",color:"var(--ink-60)",padding:"3px 8px",borderRadius:6,fontWeight:600}}>사유결석 {att.excused}</span>}
                             </div>
                           )}
+                          <div style={{fontSize:13.5,color:"var(--ink)",lineHeight:1.85,whiteSpace:"pre-wrap"}}>{r.body}</div>
                         </div>
-                        {att && att.total > 0 && (
-                          <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:12,fontSize:11}}>
-                            <span style={{background:"var(--green-lt)",color:"var(--green)",padding:"3px 8px",borderRadius:6,fontWeight:600}}>출석 {att.present}</span>
-                            {att.late > 0 && <span style={{background:"var(--gold-lt)",color:"var(--gold-dk)",padding:"3px 8px",borderRadius:6,fontWeight:600}}>지각 {att.late}</span>}
-                            {att.absent > 0 && <span style={{background:"var(--red-lt)",color:"var(--red-dk)",padding:"3px 8px",borderRadius:6,fontWeight:600}}>결석 {att.absent}</span>}
-                            {att.excused > 0 && <span style={{background:"var(--bg)",color:"var(--ink-60)",padding:"3px 8px",borderRadius:6,fontWeight:600}}>사유결석 {att.excused}</span>}
-                          </div>
-                        )}
-                        <div style={{fontSize:13.5,color:"var(--ink-70)",lineHeight:1.85,whiteSpace:"pre-wrap"}}>{r.body}</div>
                       </div>
                     );
                   })}
