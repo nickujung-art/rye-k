@@ -550,6 +550,26 @@ input[type="date"]::-webkit-date-and-time-value{text-align:left}
 .fade-up{animation:fadeUp var(--dur-base) var(--ease-out) both}
 .scale-in{animation:scaleIn var(--dur-base) var(--ease-out) both}
 
+/* ── Premium Motion: Portal hero · stats · tabs ───────────── */
+@keyframes stripeWipe{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+@keyframes fadeOnly{from{opacity:0}to{opacity:1}}
+.hero-card{animation:fadeUp 320ms var(--ease-out) both}
+.hero-stripe{transform-origin:left center;animation:stripeWipe 480ms var(--ease-out) 120ms both}
+.hero-name{animation:fadeOnly 400ms var(--ease-out) 200ms both}
+.p-stat{animation:fadeUp 320ms var(--ease-out) both;transition:transform var(--dur-fast) var(--ease-out)}
+.p-stat:nth-child(1){animation-delay:0ms}
+.p-stat:nth-child(2){animation-delay:80ms}
+.p-stat:nth-child(3){animation-delay:160ms}
+.p-stat:active{transform:scale(.98)}
+.tab-bar{position:relative}
+.tab-bar-btn{position:relative;transition:color var(--dur-fast) var(--ease-out),transform var(--dur-fast) var(--ease-out);border-bottom:2px solid transparent !important}
+.tab-bar-btn:active{transform:scale(.97)}
+.tab-indicator{position:absolute;bottom:0;left:0;height:2px;background:var(--blue);border-radius:2px 2px 0 0;pointer-events:none;will-change:transform,width;transition:transform 320ms var(--ease-out),width 320ms var(--ease-out)}
+@media(prefers-reduced-motion:reduce){
+  .hero-card,.hero-stripe,.hero-name,.p-stat,.fade-up,.scale-in{animation:none !important}
+  .p-stat{transform:none !important}
+  .tab-indicator{transition:none !important}}
+
 /* ── BulkFee Modal (일괄 수강료 설정) ───────────────────── */
 .bf-overlay{position:fixed;inset:0;z-index:500;background:var(--bg);display:flex;flex-direction:column;overflow:hidden}
 .bf-header{display:flex;align-items:center;gap:12px;padding:14px 20px;background:var(--paper);border-bottom:1px solid var(--border);flex-shrink:0}

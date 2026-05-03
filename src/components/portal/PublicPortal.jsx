@@ -1,5 +1,5 @@
 ﻿import { UpdatePopup } from "../updates/UpdatePopup";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useLayoutEffect } from "react";
 import { db, doc, setDoc, onSnapshot, firebaseSignInAnon, runTransaction } from "../../firebase.js";
 import { DEFAULT_CATEGORIES, TODAY_STR, CSS, DAYS, THIS_MONTH } from "../../constants.jsx";
 import { compressImage, fmtPhone, uid, fmtDate, fmtDateShort, fmtDateTime, fmtMoney, monthLabel, allLessonInsts, allLessonDays, getBirthPassword } from "../../utils.js";
@@ -275,6 +275,84 @@ function PortalHeatmap({ sAtt }) {
   );
 }
 
+function MonthlyAttendanceHeatmap({ studentId, attendance }) {
+  const [viewDate, setViewDate] = useState(() => {
+    const t = new Date();
+    return new Date(t.getFullYear(), t.getMonth(), 1);
+  });
+  const year = viewDate.getFullYear();
+  const month = viewDate.getMonth();
+  const monthStr = `${year}-${String(month + 1).padStart(2, "0")}`;
+  const today = new Date();
+  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+  const atOrAfterCurrentMonth = monthStr >= todayStr.slice(0, 7);
+
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const firstDay = new Date(year, month, 1).getDay();
+  const mondayOffset = firstDay === 0 ? 6 : firstDay - 1;
+
+  const monthAtt = attendance.filter(a => a.studentId === studentId && a.date?.startsWith(monthStr));
+  const attMap = Object.fromEntries(monthAtt.map(a => [a.date, a.status]));
+  const counts = {
+    present: monthAtt.filter(a => a.status === "present").length,
+    late: monthAtt.filter(a => a.status === "late").length,
+    excused: monthAtt.filter(a => a.status === "excused").length,
+    absent: monthAtt.filter(a => a.status === "absent").length,
+  };
+
+  const cellStyle = (status, isFuture, isToday) => {
+    const base = {
+      aspectRatio: "1",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      borderRadius: 6,
+      fontSize: 12,
+      fontFamily: "'Noto Serif KR',serif",
+      fontVariantNumeric: "tabular-nums",
+      border: isToday ? "1.5px solid var(--blue)" : "1.5px solid transparent",
+    };
+    if (isFuture) return { ...base, color: "var(--ink-30)", opacity: 0.45 };
+    if (status === "present") return { ...base, background: "var(--dancheong-blue)", color: "#fff", fontWeight: 700 };
+    if (status === "late") return { ...base, background: "var(--dancheong-yellow)", color: "var(--ink)", fontWeight: 700 };
+    if (status === "excused") return { ...base, background: "var(--green-lt)", color: "var(--green)", fontWeight: 600 };
+    if (status === "absent") return { ...base, background: "rgba(168,33,27,0.15)", color: "var(--dancheong-red)", fontWeight: 600 };
+    return { ...base, color: "var(--ink-30)" };
+  };
+
+  return (
+    <div style={{ background: "var(--paper)", borderRadius: "var(--radius-lg)", padding: 16, border: "1px solid var(--border)", boxShadow: "var(--shadow)" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+        <button onClick={() => setViewDate(new Date(year, month - 1, 1))} aria-label="이전 달" style={{ background: "transparent", border: "none", fontSize: 20, lineHeight: 1, color: "var(--ink-60)", cursor: "pointer", padding: "4px 14px", fontFamily: "inherit", borderRadius: 6 }}>‹</button>
+        <div style={{ fontFamily: "'Noto Serif KR',serif", fontSize: 15, fontWeight: 600, color: "var(--ink)", fontVariantNumeric: "tabular-nums" }}>{year}년 {month + 1}월</div>
+        <button onClick={() => setViewDate(new Date(year, month + 1, 1))} disabled={atOrAfterCurrentMonth} aria-label="다음 달" style={{ background: "transparent", border: "none", fontSize: 20, lineHeight: 1, color: atOrAfterCurrentMonth ? "var(--ink-30)" : "var(--ink-60)", cursor: atOrAfterCurrentMonth ? "not-allowed" : "pointer", padding: "4px 14px", fontFamily: "inherit", borderRadius: 6 }}>›</button>
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 4, marginBottom: 4 }}>
+        {["월","화","수","목","금","토","일"].map((d, i) => (
+          <div key={d} style={{ textAlign: "center", fontSize: 10, color: i >= 5 ? "var(--ink-30)" : "var(--ink-60)", fontWeight: 600, paddingBottom: 2 }}>{d}</div>
+        ))}
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 4 }}>
+        {Array.from({ length: mondayOffset }).map((_, i) => <div key={`b-${i}`} />)}
+        {Array.from({ length: daysInMonth }).map((_, i) => {
+          const day = i + 1;
+          const dateStr = `${monthStr}-${String(day).padStart(2, "0")}`;
+          return <div key={dateStr} style={cellStyle(attMap[dateStr], dateStr > todayStr, dateStr === todayStr)}>{day}</div>;
+        })}
+      </div>
+
+      <div style={{ display: "flex", gap: 12, marginTop: 14, fontSize: 11, color: "var(--ink-60)", flexWrap: "wrap", justifyContent: "center" }}>
+        <span style={{ display: "flex", alignItems: "center", gap: 4 }}><span style={{ width: 10, height: 10, borderRadius: 3, background: "var(--dancheong-blue)" }}/>출석 {counts.present}</span>
+        <span style={{ display: "flex", alignItems: "center", gap: 4 }}><span style={{ width: 10, height: 10, borderRadius: 3, background: "var(--dancheong-yellow)" }}/>지각 {counts.late}</span>
+        <span style={{ display: "flex", alignItems: "center", gap: 4 }}><span style={{ width: 10, height: 10, borderRadius: 3, background: "var(--green-lt)" }}/>보강 {counts.excused}</span>
+        <span style={{ display: "flex", alignItems: "center", gap: 4 }}><span style={{ width: 10, height: 10, borderRadius: 3, background: "rgba(168,33,27,0.15)" }}/>결석 {counts.absent}</span>
+      </div>
+    </div>
+  );
+}
+
 export function PublicParentView() {
   const [students, setStudents] = useState([]);
   const [attendance, setAttendance] = useState([]);
@@ -312,6 +390,28 @@ export function PublicParentView() {
   const [readNoticeIds, setReadNoticeIds] = useState(new Set()); // 읽은 공지 ID set
   const [expandedNotice, setExpandedNotice] = useState(null);  // 공지 상세 열기
   const saveAttendance = async (upd) => { setAttendance(upd); await sSet("rye-attendance", upd); };
+
+  const [animatedAttRate, setAnimatedAttRate] = useState(0);
+  const animRafRef = useRef(null);
+  useEffect(() => {
+    if (!student) { setAnimatedAttRate(0); return; }
+    const attThisMonth = attendance.filter(a => a.studentId === student.id && a.date?.startsWith(THIS_MONTH));
+    const present = attThisMonth.filter(a => a.status === "present").length;
+    const late = attThisMonth.filter(a => a.status === "late").length;
+    const total = attThisMonth.length;
+    const target = total > 0 ? Math.round((present + late) / total * 100) : null;
+    if (target == null || target === 0) { setAnimatedAttRate(target ?? 0); return; }
+    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) { setAnimatedAttRate(target); return; }
+    if (animRafRef.current) cancelAnimationFrame(animRafRef.current);
+    const start = performance.now();
+    const tick = (now) => {
+      const t = Math.min(1, (now - start) / 600);
+      setAnimatedAttRate(Math.round(target * (1 - Math.pow(1 - t, 3))));
+      if (t < 1) animRafRef.current = requestAnimationFrame(tick);
+    };
+    animRafRef.current = requestAnimationFrame(tick);
+    return () => { if (animRafRef.current) cancelAnimationFrame(animRafRef.current); };
+  }, [student?.id, attendance]); // THIS_MONTH은 모듈 상수라 deps 제외
 
   // 읽음 상태 localStorage에서 복원 (로그인 후 호출)
   const initReadState = (sid) => {
@@ -495,6 +595,14 @@ export function PublicParentView() {
     if (tabId === "notes") markNotesRead(student.id);
     if (tabId === "notice") markNoticesRead(student.id, visibleNotices.map(n => n.id));
   };
+
+  const tabBarRef = useRef(null);
+  const tabBtnRefs = useRef({});
+  const [indicator, setIndicator] = useState({ left: 0, width: 0 });
+  useLayoutEffect(() => {
+    const btn = tabBtnRefs.current[tab];
+    if (btn) setIndicator({ left: btn.offsetLeft, width: btn.offsetWidth });
+  }, [tab]);
 
   if (loading) return <><style>{CSS}</style><div className="loading-screen"><div className="loading-logo"><Logo size={56} /></div><div className="loading-text">RYE-K</div></div></>;
 
@@ -690,12 +798,12 @@ export function PublicParentView() {
       {/* Student Info Card — Heritage Hero */}
       {/* ⛔ student.notes는 강사/매니저 전용 내부 메모 — 절대 렌더링 금지 */}
       <div className="portal-body" style={{padding:"16px 16px 0",maxWidth:640,margin:"0 auto"}}>
-        <div style={{background:"var(--hanji)",borderRadius:"var(--radius-lg)",padding:"20px",boxShadow:"var(--shadow-lifted)",border:"1px solid var(--border)",overflow:"hidden",position:"relative"}}>
-          <div style={{position:"absolute",top:0,left:0,right:0,height:3,background:"linear-gradient(90deg,var(--dancheong-blue),var(--dancheong-red),var(--dancheong-yellow),var(--dancheong-white),var(--dancheong-black))"}}/>
+        <div key={student.id} className="hero-card" style={{background:"var(--hanji)",borderRadius:"var(--radius-lg)",padding:"20px",boxShadow:"var(--shadow-lifted)",border:"1px solid var(--border)",overflow:"hidden",position:"relative"}}>
+          <div className="hero-stripe" style={{position:"absolute",top:0,left:0,right:0,height:3,background:"linear-gradient(90deg,var(--dancheong-blue),var(--dancheong-red),var(--dancheong-yellow),var(--dancheong-white),var(--dancheong-black))"}}/>
           <div style={{display:"flex",alignItems:"center",gap:14}}>
             <Av photo={student.photo} name={student.name} size="av-lg" />
             <div style={{flex:1}}>
-              <div style={{fontFamily:"'Noto Serif KR',serif",fontSize:22,fontWeight:700,color:"var(--ink)",lineHeight:1.2}}>{student.name}</div>
+              <div className="hero-name" style={{fontFamily:"'Noto Serif KR',serif",fontSize:22,fontWeight:700,color:"var(--ink)",lineHeight:1.2}}>{student.name}</div>
               <div style={{display:"flex",gap:6,flexWrap:"wrap",marginTop:6}}>
                 {(student.lessons||[]).map(l => <span key={l.instrument} style={{background:"var(--blue-lt)",color:"var(--blue)",fontSize:11,padding:"3px 10px",borderRadius:12,fontWeight:500,maxWidth:120,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",display:"inline-block"}}>{l.instrument}</span>)}
               </div>
@@ -718,35 +826,45 @@ export function PublicParentView() {
 
       {/* Quick Stats: 출석률 · D-day · 수납 */}
       <div style={{padding:"10px 16px 0",display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,maxWidth:640,margin:"0 auto"}}>
-        <div style={{background:"var(--paper)",borderRadius:"var(--radius)",padding:"13px 10px",textAlign:"center",boxShadow:"var(--shadow)",border:"1px solid var(--border)"}}>
-          <div style={{fontFamily:"'Noto Serif KR',serif",fontSize:22,fontWeight:700,color:attRate&&attRate>=80?"var(--green)":attRate&&attRate>=60?"var(--gold-dk)":"var(--red)",fontVariantNumeric:"tabular-nums",lineHeight:1}}>{attRate!==null?`${attRate}%`:"—"}</div>
+        <div className="p-stat" style={{background:"var(--paper)",borderRadius:"var(--radius)",padding:"13px 10px",textAlign:"center",boxShadow:"var(--shadow)",border:"1px solid var(--border)"}}>
+          <div style={{fontFamily:"'Noto Serif KR',serif",fontSize:22,fontWeight:700,color:attRate&&attRate>=80?"var(--green)":attRate&&attRate>=60?"var(--gold-dk)":"var(--red)",fontVariantNumeric:"tabular-nums",lineHeight:1}}>{attRate!==null?`${animatedAttRate}%`:"—"}</div>
           <div style={{fontSize:10,color:"var(--ink-30)",marginTop:4}}>이달 출석률</div>
         </div>
-        <div style={{background:"var(--paper)",borderRadius:"var(--radius)",padding:"13px 10px",textAlign:"center",boxShadow:"var(--shadow)",border:"1px solid var(--border)"}}>
+        <div className="p-stat" style={{background:"var(--paper)",borderRadius:"var(--radius)",padding:"13px 10px",textAlign:"center",boxShadow:"var(--shadow)",border:"1px solid var(--border)"}}>
           <div style={{fontFamily:"'Noto Serif KR',serif",fontSize:22,fontWeight:700,color:"var(--blue)",fontVariantNumeric:"tabular-nums",lineHeight:1}}>{nextLesson ? (nextLesson.dDay === 0 ? "오늘" : `D-${nextLesson.dDay}`) : "—"}</div>
           <div style={{fontSize:10,color:"var(--ink-30)",marginTop:4}}>다음 레슨</div>
         </div>
-        <div onClick={()=>setTab("pay")} style={{background:"var(--paper)",borderRadius:"var(--radius)",padding:"13px 10px",textAlign:"center",boxShadow:"var(--shadow)",border:"1px solid var(--border)",cursor:"pointer"}}>
+        <div className="p-stat" onClick={()=>setTab("pay")} style={{background:"var(--paper)",borderRadius:"var(--radius)",padding:"13px 10px",textAlign:"center",boxShadow:"var(--shadow)",border:"1px solid var(--border)",cursor:"pointer"}}>
           <div style={{fontFamily:"'Noto Serif KR',serif",fontSize:22,fontWeight:700,color:thisMonthPay?.paid?"var(--green)":"var(--gold-dk)",lineHeight:1}}>{thisMonthPay?.paid?"완납":"미납"}</div>
           <div style={{fontSize:10,color:"var(--ink-30)",marginTop:4}}>이달 수납</div>
         </div>
       </div>
 
       {/* Tabs */}
-      <div style={{display:"flex",gap:0,padding:"14px 16px 0",maxWidth:640,margin:"0 auto"}}>
+      <div ref={tabBarRef} className="tab-bar" style={{display:"flex",gap:0,padding:"14px 16px 0",maxWidth:640,margin:"0 auto"}}>
         {[{id:"home",label:"홈"},{id:"notice",label:"공지"},{id:"att",label:"출석"},{id:"notes",label:"레슨노트"},{id:"report",label:"리포트"},{id:"pay",label:"수납"}].map(t=>(
-          <button key={t.id} onClick={()=>handleTabChange(t.id)} style={{flex:1,padding:"10px 0",fontSize:12.5,fontWeight:tab===t.id?600:400,color:tab===t.id?"var(--blue)":"var(--ink-30)",background:"transparent",border:"none",borderBottom:tab===t.id?"2px solid var(--blue)":"2px solid transparent",cursor:"pointer",fontFamily:"inherit",transition:"all .12s",position:"relative"}}>
+          <button key={t.id} ref={el=>{if(el)tabBtnRefs.current[t.id]=el;}} onClick={()=>handleTabChange(t.id)} className="tab-bar-btn" style={{flex:1,padding:"10px 0",fontSize:12.5,fontWeight:tab===t.id?600:400,color:tab===t.id?"var(--blue)":"var(--ink-30)",background:"transparent",border:"none",cursor:"pointer",fontFamily:"inherit"}}>
             {t.label}
             {t.id==="notice" && unreadNoticeCount > 0 && <span style={{position:"absolute",top:6,right:"50%",transform:"translateX(calc(50% + 14px))",background:"var(--red)",color:"#fff",fontSize:9,fontWeight:700,padding:"1px 5px",borderRadius:8,lineHeight:1.4}}>{unreadNoticeCount}</span>}
             {t.id==="notes" && unreadCommentCount > 0 && <span style={{position:"absolute",top:6,right:"50%",transform:"translateX(calc(50% + 20px))",background:"var(--blue)",color:"#fff",fontSize:9,fontWeight:700,padding:"1px 5px",borderRadius:8,lineHeight:1.4}}>{unreadCommentCount}</span>}
           </button>
         ))}
+        <div className="tab-indicator" style={{transform:`translateX(${indicator.left}px)`,width:indicator.width}}/>
       </div>
 
       <div className="portal-body" style={{padding:16,maxWidth:640,margin:"0 auto"}}>
+        <div key={tab} className="fade-up">
         {/* Home Tab */}
         {tab === "home" && (
-          <div className="fade-up">
+          <div>
+            {/* 이달 출석 */}
+            <div style={{marginBottom:16}}>
+              <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
+                <div style={{width:3,height:14,background:"linear-gradient(180deg,var(--dancheong-blue),var(--dancheong-red))",borderRadius:2,flexShrink:0}}/>
+                <div style={{fontFamily:"'Noto Serif KR',serif",fontSize:14,fontWeight:500,color:"var(--ink)"}}>이달 출석</div>
+              </div>
+              <MonthlyAttendanceHeatmap studentId={student.id} attendance={attendance} />
+            </div>
             {/* 공지사항 */}
             {visibleNotices.length > 0 && (
               <div style={{marginBottom:16}}>
@@ -1140,7 +1258,7 @@ export function PublicParentView() {
             return `${y}년 ${parseInt(mo, 10)}월`;
           };
           return (
-            <div className="fade-up">
+            <div>
               {/* 인트로 카드 */}
               <div style={{background:"var(--hanji)",borderRadius:"var(--radius-lg)",padding:"18px 18px 16px",marginBottom:16,border:"1px solid var(--border)",boxShadow:"var(--shadow-lifted)",overflow:"hidden",position:"relative"}}>
                 <div style={{position:"absolute",top:0,left:0,right:0,height:3,background:"linear-gradient(90deg,var(--dancheong-blue),var(--dancheong-red),var(--dancheong-yellow))"}}/>
@@ -1276,6 +1394,7 @@ export function PublicParentView() {
             }
           </div>
         )}
+        </div>
 
         <div style={{textAlign:"center",padding:"24px 0 calc(24px + env(safe-area-inset-bottom,0px))",fontSize:11,color:"var(--ink-30)"}}>
           My RYE-K · RYE-K K-Culture Center
