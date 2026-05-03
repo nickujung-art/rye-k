@@ -335,7 +335,7 @@ function PortalEmptyState({ title, sub }) {
   );
 }
 
-function MonthlyAttendanceHeatmap({ studentId, attendance }) {
+function MonthlyAttendanceHeatmap({ studentId, attendance, lessons = [] }) {
   const [isOpen, setIsOpen] = useState(false);
   const [viewDate, setViewDate] = useState(() => {
     const t = new Date();
@@ -368,8 +368,12 @@ function MonthlyAttendanceHeatmap({ studentId, attendance }) {
     absent: thisMonthAtt.filter(a => a.status === "absent").length,
   };
 
+  const lessonDaySet = new Set((lessons || []).flatMap(l => (l.schedule || []).map(s => s.day)).filter(Boolean));
+  const dowKor = ["일","월","화","수","목","금","토"];
+
   const cellStyle = (status, isFuture, isToday) => {
     const base = {
+      position: "relative",
       aspectRatio: "1",
       display: "flex",
       alignItems: "center",
@@ -436,7 +440,18 @@ function MonthlyAttendanceHeatmap({ studentId, attendance }) {
             {Array.from({ length: daysInMonth }).map((_, i) => {
               const day = i + 1;
               const dateStr = `${monthStr}-${String(day).padStart(2, "0")}`;
-              return <div key={dateStr} style={cellStyle(attMap[dateStr], dateStr > todayStr, dateStr === todayStr)}>{day}</div>;
+              const dow = new Date(year, month, day).getDay();
+              const isLessonDay = lessonDaySet.has(dowKor[dow]);
+              const status = attMap[dateStr];
+              const isFuture = dateStr > todayStr;
+              return (
+                <div key={dateStr} style={cellStyle(status, isFuture, dateStr === todayStr)}>
+                  {day}
+                  {isLessonDay && !status && (
+                    <span style={{ position: "absolute", bottom: 3, left: "50%", transform: "translateX(-50%)", width: 4, height: 4, borderRadius: "50%", background: "var(--dancheong-blue)", opacity: isFuture ? 0.5 : 0.75 }} />
+                  )}
+                </div>
+              );
             })}
           </div>
 
@@ -446,6 +461,7 @@ function MonthlyAttendanceHeatmap({ studentId, attendance }) {
             <span style={{ display: "flex", alignItems: "center", gap: 4 }}><span style={{ width: 10, height: 10, borderRadius: 3, background: "var(--dancheong-yellow)" }}/>지각 {counts.late}</span>
             <span style={{ display: "flex", alignItems: "center", gap: 4 }}><span style={{ width: 10, height: 10, borderRadius: 3, background: "var(--green-lt)" }}/>보강 {counts.excused}</span>
             <span style={{ display: "flex", alignItems: "center", gap: 4 }}><span style={{ width: 10, height: 10, borderRadius: 3, background: "rgba(168,33,27,0.15)" }}/>결석 {counts.absent}</span>
+            {lessonDaySet.size > 0 && <span style={{ display: "flex", alignItems: "center", gap: 4 }}><span style={{ width: 4, height: 4, borderRadius: "50%", background: "var(--dancheong-blue)", opacity: 0.75 }}/>레슨일</span>}
           </div>
         </div>
       </div>
@@ -1036,7 +1052,7 @@ export function PublicParentView() {
           <div>
             {/* 이달 출석 */}
             <div style={{marginBottom:16}}>
-              <MonthlyAttendanceHeatmap studentId={student.id} attendance={attendance} />
+              <MonthlyAttendanceHeatmap studentId={student.id} attendance={attendance} lessons={student.lessons || []} />
             </div>
             {/* 공지사항 */}
             {visibleNotices.length > 0 && (
