@@ -1042,18 +1042,26 @@ export function PublicParentView() {
       </div>
 
       {/* Quick Stats: 출석률 · D-day · 수납 */}
-      <div style={{padding:"10px 16px 0",display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,maxWidth:640,margin:"0 auto"}}>
-        <div className="p-stat" style={{background:"var(--paper)",borderRadius:"var(--radius)",padding:"13px 10px",textAlign:"center",boxShadow:"var(--shadow)",border:"1px solid var(--border)"}}>
-          <div style={{fontFamily:"'Noto Serif KR',serif",fontSize:22,fontWeight:700,color:attRate&&attRate>=80?"var(--green)":attRate&&attRate>=60?"var(--gold-dk)":"var(--red)",fontVariantNumeric:"tabular-nums",lineHeight:1}}>{attRate!==null?`${animatedAttRate}%`:"—"}</div>
-          <div style={{fontSize:10,color:"var(--ink-30)",marginTop:4}}>이달 출석률</div>
-        </div>
-        <div className="p-stat" style={{background:"var(--paper)",borderRadius:"var(--radius)",padding:"13px 10px",textAlign:"center",boxShadow:"var(--shadow)",border:"1px solid var(--border)"}}>
-          <div style={{fontFamily:"'Noto Serif KR',serif",fontSize:22,fontWeight:700,color:"var(--blue)",fontVariantNumeric:"tabular-nums",lineHeight:1}}>{nextLesson ? (nextLesson.dDay === 0 ? "오늘" : `D-${nextLesson.dDay}`) : "—"}</div>
-          <div style={{fontSize:10,color:"var(--ink-30)",marginTop:4}}>다음 레슨</div>
-        </div>
-        <div className="p-stat" onClick={()=>setTab("pay")} style={{background:"var(--paper)",borderRadius:"var(--radius)",padding:"13px 10px",textAlign:"center",boxShadow:"var(--shadow)",border:"1px solid var(--border)",cursor:"pointer"}}>
-          <div style={{fontFamily:"'Noto Serif KR',serif",fontSize:22,fontWeight:700,color:thisMonthPay?.paid?"var(--green)":"var(--gold-dk)",lineHeight:1}}>{thisMonthPay?.paid?"완납":"미납"}</div>
-          <div style={{fontSize:10,color:"var(--ink-30)",marginTop:4}}>이달 수납</div>
+      <div style={{padding:"10px 16px 0",maxWidth:640,margin:"0 auto"}}>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",borderTop:"1px solid var(--border)",borderBottom:"1px solid var(--border)",padding:"14px 0"}}>
+          <div style={{textAlign:"center",padding:"0 8px"}}>
+            <div style={{fontSize:9,letterSpacing:"0.14em",fontWeight:600,color:"var(--ink-30)",textTransform:"uppercase",marginBottom:6}}>이달 출석률</div>
+            <div style={{fontFamily:"'Noto Serif KR',serif",fontSize:20,fontWeight:500,lineHeight:1,color:attRate&&attRate>=80?"var(--green)":attRate&&attRate>=60?"var(--gold-dk)":"var(--red)",fontVariantNumeric:"tabular-nums"}}>
+              {attRate!==null?animatedAttRate:"—"}{attRate!==null&&<span style={{fontSize:12,marginLeft:1,color:"var(--ink-30)",fontWeight:400}}>%</span>}
+            </div>
+          </div>
+          <div style={{textAlign:"center",padding:"0 8px",borderLeft:"1px solid var(--border)"}}>
+            <div style={{fontSize:9,letterSpacing:"0.14em",fontWeight:600,color:"var(--ink-30)",textTransform:"uppercase",marginBottom:6}}>다음 레슨</div>
+            <div style={{fontFamily:"'Noto Serif KR',serif",fontSize:20,fontWeight:500,lineHeight:1,color:"var(--ink)",fontVariantNumeric:"tabular-nums"}}>
+              {nextLesson ? (nextLesson.dDay === 0 ? "오늘" : `D-${nextLesson.dDay}`) : "—"}
+            </div>
+          </div>
+          <div onClick={()=>setTab("pay")} style={{textAlign:"center",padding:"0 8px",borderLeft:"1px solid var(--border)",cursor:"pointer"}}>
+            <div style={{fontSize:9,letterSpacing:"0.14em",fontWeight:600,color:"var(--ink-30)",textTransform:"uppercase",marginBottom:6}}>이달 수납</div>
+            <div style={{fontFamily:"'Noto Serif KR',serif",fontSize:20,fontWeight:500,lineHeight:1,color:thisMonthPay?.paid?"var(--green)":"var(--gold-dk)"}}>
+              {thisMonthPay?.paid?"완납":"미납"}
+            </div>
+          </div>
         </div>
       </div>
 
@@ -1232,7 +1240,7 @@ export function PublicParentView() {
           </div>
         )}
 
-        {/* Attendance Tab — 월별 도트 뷰 */}
+        {/* Attendance Tab — 미니멀 타임라인 */}
         {tab === "att" && (() => {
           const byMonth = {};
           sAtt.forEach(a => {
@@ -1240,38 +1248,64 @@ export function PublicParentView() {
             if (m) { if (!byMonth[m]) byMonth[m] = []; byMonth[m].push(a); }
           });
           const months = Object.keys(byMonth).sort().reverse().slice(0, 6);
-          const DOT = {
-            present: { color:"var(--green)", sym:"●" },
-            absent:  { color:"var(--red)", sym:"✕" },
-            late:    { color:"var(--gold)", sym:"△" },
-            excused: { color:"var(--blue)", sym:"○" },
+          const MARK = {
+            present: { bg:"var(--green)" },
+            absent:  { bg:"var(--red)" },
+            late:    { bg:"var(--gold)" },
+            excused: { bg:"transparent", border:"1px solid var(--blue)" },
           };
           return (
             <div>
-              <div style={{fontSize:13,fontWeight:600,color:"var(--ink)",marginBottom:10}}>월별 출석 현황</div>
+              {/* 이달 요약 헤더 */}
+              {attThisMonth.length > 0 && (
+                <div style={{background:"var(--hanji)",borderRadius:"var(--radius-lg)",padding:"18px 20px",marginBottom:14,border:"1px solid var(--border)"}}>
+                  <div style={{fontSize:9,letterSpacing:"0.14em",color:"var(--gold-dk)",fontWeight:600,marginBottom:8}}>이달 출석</div>
+                  <div style={{display:"flex",alignItems:"baseline",gap:14,flexWrap:"wrap"}}>
+                    <div>
+                      <span style={{fontFamily:"'Noto Serif KR',serif",fontSize:28,fontWeight:500,color:attRate&&attRate>=80?"var(--green)":"var(--ink)",fontVariantNumeric:"tabular-nums"}}>{attRate ?? "—"}</span>
+                      <span style={{fontSize:13,color:"var(--ink-30)",marginLeft:2}}>%</span>
+                    </div>
+                    <div style={{fontSize:11,color:"var(--ink-30)",letterSpacing:"0.04em"}}>출석 {presentCount} · 결석 {absentCount} · 지각 {lateCount}</div>
+                  </div>
+                  <div style={{height:2,background:"var(--ink-10)",marginTop:12,borderRadius:1,overflow:"hidden"}}>
+                    <div style={{width:`${attRate||0}%`,height:"100%",background:"var(--green)",transition:"width .6s var(--ease-out)"}}/>
+                  </div>
+                </div>
+              )}
+              {/* 범례 */}
+              {months.length > 0 && (
+                <div style={{display:"flex",gap:14,justifyContent:"center",fontSize:10,color:"var(--ink-30)",letterSpacing:"0.04em",margin:"0 0 14px"}}>
+                  <span style={{display:"inline-flex",alignItems:"center",gap:4}}><span style={{width:6,height:6,borderRadius:1.5,background:"var(--green)",display:"inline-block"}}/>출석</span>
+                  <span style={{display:"inline-flex",alignItems:"center",gap:4}}><span style={{width:6,height:6,borderRadius:1.5,background:"var(--red)",display:"inline-block"}}/>결석</span>
+                  <span style={{display:"inline-flex",alignItems:"center",gap:4}}><span style={{width:6,height:6,borderRadius:1.5,background:"var(--gold)",display:"inline-block"}}/>지각</span>
+                  <span style={{display:"inline-flex",alignItems:"center",gap:4}}><span style={{width:6,height:6,borderRadius:1.5,border:"1px solid var(--blue)",display:"inline-block"}}/>보강</span>
+                </div>
+              )}
               {months.length === 0 ? (
                 <PortalEmptyState title="출석 기록이 없습니다" sub="레슨 출석 정보가 입력되면 이곳에서 확인하실 수 있어요." />
-              ) : months.map(m => {
+              ) : months.map((m,idx) => {
                 const recs = byMonth[m].slice().sort((a,b)=>a.date.localeCompare(b.date));
                 const okN = recs.filter(a=>a.status==="present"||a.status==="late").length;
-                const abN = recs.filter(a=>a.status==="absent").length;
+                const total = recs.length;
+                const rate = total>0 ? Math.round(okN/total*100) : 0;
                 return (
-                  <div key={m} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",background:"#fff",borderRadius:12,marginBottom:6,border:"1px solid #F0F0F0"}}>
-                    <div style={{width:28,flexShrink:0,fontSize:12,fontWeight:700,color:"var(--ink-30)"}}>{parseInt(m.slice(5))}월</div>
-                    <div style={{display:"flex",gap:6,flex:1,flexWrap:"wrap",alignItems:"center"}}>
+                  <div key={m} style={{display:"flex",alignItems:"center",gap:14,padding:"14px 4px",borderTop:idx===0?"1px solid var(--border)":"none",borderBottom:"1px solid var(--border)"}}>
+                    <div style={{minWidth:46,flexShrink:0}}>
+                      <div style={{fontFamily:"'Noto Serif KR',serif",fontSize:18,fontWeight:500,color:"var(--ink)",lineHeight:1}}>
+                        {parseInt(m.slice(5))}<span style={{fontSize:10,color:"var(--ink-30)",marginLeft:1}}>월</span>
+                      </div>
+                      <div style={{fontSize:9,color:"var(--ink-30)",letterSpacing:"0.08em",marginTop:3}}>{rate}%</div>
+                    </div>
+                    <div style={{display:"flex",gap:4,flex:1,flexWrap:"wrap",alignItems:"center"}}>
                       {recs.map((a,i) => {
-                        const d = DOT[a.status] || { color:"var(--ink-30)", sym:"·" };
-                        return <span key={i} title={fmtDateShort(a.date)} style={{fontSize:15,color:d.color,fontWeight:700,cursor:"default",lineHeight:1}}>{d.sym}</span>;
+                        const cfg = MARK[a.status] || { bg:"var(--ink-10)" };
+                        return <span key={i} title={`${fmtDateShort(a.date)} · ${attStatusStyle[a.status]?.text||""}`} style={{width:6,height:6,borderRadius:1.5,background:cfg.bg,border:cfg.border||"none",display:"inline-block"}}/>;
                       })}
                     </div>
-                    <div style={{fontSize:11,color:"var(--ink-30)",flexShrink:0,textAlign:"right"}}>
-                      <span style={{color:"var(--green)",fontWeight:600}}>{okN}출</span>
-                      {abN>0 && <span style={{color:"var(--red)",fontWeight:600}}> {abN}결</span>}
-                    </div>
+                    <div style={{fontSize:10,color:"var(--ink-30)",flexShrink:0,letterSpacing:"0.04em"}}>{okN}<span style={{margin:"0 2px"}}>/</span>{total}</div>
                   </div>
                 );
               })}
-              <div style={{fontSize:10.5,color:"var(--ink-30)",textAlign:"center",marginTop:4}}>● 출석 ✕ 결석 △ 지각 ○ 보강</div>
             </div>
           );
         })()}
