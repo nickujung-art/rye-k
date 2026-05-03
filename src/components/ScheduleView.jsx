@@ -1,4 +1,5 @@
 import { useState } from "react";
+import knotLineSvg from "../assets/heritage/knot-line.svg";
 import { DAYS, TODAY_STR, IC } from "../constants.jsx";
 import { canManageAll, allLessonInsts, uid, fmtDateShort } from "../utils.js";
 import { Av } from "./shared/CommonUI.jsx";
@@ -157,7 +158,7 @@ function ScheduleView({ students, teachers, currentUser, attendance, onSaveAtten
                 );
               })}
               {all.length === 0 ? (
-                <div className="sched-empty">레슨 없음</div>
+                <div className="sched-empty"><img src={knotLineSvg} style={{width:32,height:40,opacity:0.22}} alt="" />레슨 없음</div>
               ) : all.map((entry, i) => {
                 const badge = !entry.isMakeup ? getAttBadge(entry.studentId, date) : null;
                 return (
@@ -329,7 +330,7 @@ function ScheduleView({ students, teachers, currentUser, attendance, onSaveAtten
                 })}
               </div>
             )}
-            {all.length === 0 ? <div className="sched-empty" style={{padding:16}}>레슨 없음</div> :
+            {all.length === 0 ? <div className="sched-empty" style={{padding:16}}><img src={knotLineSvg} style={{width:32,height:40,opacity:0.22}} alt="" />레슨 없음</div> :
               all.map((entry, i) => {
                 const badge = !entry.isMakeup ? getAttBadge(entry.studentId, dayDetail) : null;
                 return (

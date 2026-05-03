@@ -493,6 +493,7 @@ input[type="date"]::-webkit-date-and-time-value{text-align:left}
 .sched-day-date{font-size:11px;color:var(--ink-30)}
 .sched-day-hd.today .sched-day-name{color:var(--blue)}
 .sched-day-hd.today .sched-day-date{color:var(--blue);font-weight:600}
+.sched-day-hd.today{border-bottom-color:var(--dancheong-blue)}
 .sched-lesson{display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--paper);border:1px solid var(--border);border-radius:var(--radius-sm);margin-bottom:6px;border-left:3px solid var(--blue)}
 .sched-lesson.makeup{border-left-color:var(--gold)}
 .sched-time{font-size:12px;color:var(--ink-60);width:44px;flex-shrink:0;font-variant-numeric:tabular-nums}
@@ -501,7 +502,7 @@ input[type="date"]::-webkit-date-and-time-value{text-align:left}
 .sched-inst{font-size:11px;color:var(--blue);margin-top:1px}
 .sched-teacher{font-size:11px;color:var(--ink-30);margin-top:1px}
 .sched-makeup-badge{background:var(--gold-lt);color:var(--gold-dk);font-size:10px;font-weight:600;padding:2px 8px;border-radius:6px;flex-shrink:0}
-.sched-empty{background:var(--paper);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;font-size:12px;color:var(--ink-30);text-align:center}
+.sched-empty{background:var(--paper);border:1px solid var(--border);border-radius:var(--radius);padding:18px 16px;font-size:12px;color:var(--ink-30);text-align:center;display:flex;flex-direction:column;align-items:center;gap:6px;font-family:'Noto Serif KR',serif}
 .teacher-color-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
 .sched-filter{padding:7px 12px;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-size:12.5px;color:var(--ink);background:var(--paper);outline:none;cursor:pointer;font-family:inherit}
 .sched-month-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:16px}
