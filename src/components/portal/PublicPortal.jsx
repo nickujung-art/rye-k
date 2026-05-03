@@ -276,6 +276,7 @@ function PortalHeatmap({ sAtt }) {
 }
 
 function MonthlyAttendanceHeatmap({ studentId, attendance }) {
+  const [isOpen, setIsOpen] = useState(false);
   const [viewDate, setViewDate] = useState(() => {
     const t = new Date();
     return new Date(t.getFullYear(), t.getMonth(), 1);
@@ -291,6 +292,7 @@ function MonthlyAttendanceHeatmap({ studentId, attendance }) {
   const firstDay = new Date(year, month, 1).getDay();
   const mondayOffset = firstDay === 0 ? 6 : firstDay - 1;
 
+  const thisMonthAtt = attendance.filter(a => a.studentId === studentId && a.date?.startsWith(todayStr.slice(0, 7)));
   const monthAtt = attendance.filter(a => a.studentId === studentId && a.date?.startsWith(monthStr));
   const attMap = Object.fromEntries(monthAtt.map(a => [a.date, a.status]));
   const counts = {
@@ -298,6 +300,12 @@ function MonthlyAttendanceHeatmap({ studentId, attendance }) {
     late: monthAtt.filter(a => a.status === "late").length,
     excused: monthAtt.filter(a => a.status === "excused").length,
     absent: monthAtt.filter(a => a.status === "absent").length,
+  };
+  const thisMonthCounts = {
+    present: thisMonthAtt.filter(a => a.status === "present").length,
+    late: thisMonthAtt.filter(a => a.status === "late").length,
+    excused: thisMonthAtt.filter(a => a.status === "excused").length,
+    absent: thisMonthAtt.filter(a => a.status === "absent").length,
   };
 
   const cellStyle = (status, isFuture, isToday) => {
@@ -320,34 +328,66 @@ function MonthlyAttendanceHeatmap({ studentId, attendance }) {
     return { ...base, color: "var(--ink-30)" };
   };
 
+  const Dot = ({ color }) => <span style={{ width: 7, height: 7, borderRadius: 2, background: color, display: "inline-block", flexShrink: 0 }} />;
+
   return (
-    <div style={{ background: "var(--paper)", borderRadius: "var(--radius-lg)", padding: 16, border: "1px solid var(--border)", boxShadow: "var(--shadow)" }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-        <button onClick={() => setViewDate(new Date(year, month - 1, 1))} aria-label="이전 달" style={{ background: "transparent", border: "none", fontSize: 20, lineHeight: 1, color: "var(--ink-60)", cursor: "pointer", padding: "4px 14px", fontFamily: "inherit", borderRadius: 6 }}>‹</button>
-        <div style={{ fontFamily: "'Noto Serif KR',serif", fontSize: 15, fontWeight: 600, color: "var(--ink)", fontVariantNumeric: "tabular-nums" }}>{year}년 {month + 1}월</div>
-        <button onClick={() => setViewDate(new Date(year, month + 1, 1))} disabled={atOrAfterCurrentMonth} aria-label="다음 달" style={{ background: "transparent", border: "none", fontSize: 20, lineHeight: 1, color: atOrAfterCurrentMonth ? "var(--ink-30)" : "var(--ink-60)", cursor: atOrAfterCurrentMonth ? "not-allowed" : "pointer", padding: "4px 14px", fontFamily: "inherit", borderRadius: 6 }}>›</button>
-      </div>
+    <div style={{ background: "var(--paper)", borderRadius: "var(--radius-lg)", border: "1px solid var(--border)", boxShadow: "var(--shadow)", overflow: "hidden" }}>
+      {/* 한 줄 요약 헤더 — 항상 표시, 클릭 시 캘린더 토글 */}
+      <button
+        onClick={() => setIsOpen(o => !o)}
+        style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", background: "transparent", border: "none", padding: "12px 16px", cursor: "pointer", fontFamily: "inherit", WebkitTapHighlightColor: "transparent" }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <div style={{ width: 3, height: 14, background: "linear-gradient(180deg,var(--dancheong-blue),var(--dancheong-red))", borderRadius: 2, flexShrink: 0 }} />
+          <div style={{ fontFamily: "'Noto Serif KR',serif", fontSize: 14, fontWeight: 500, color: "var(--ink)" }}>이달 출석</div>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: "var(--ink-60)" }}>
+            {thisMonthCounts.present > 0 && <span style={{ display: "flex", alignItems: "center", gap: 3 }}><Dot color="var(--dancheong-blue)" />{thisMonthCounts.present}</span>}
+            {thisMonthCounts.late > 0 && <span style={{ display: "flex", alignItems: "center", gap: 3 }}><Dot color="var(--dancheong-yellow)" />{thisMonthCounts.late}</span>}
+            {thisMonthCounts.excused > 0 && <span style={{ display: "flex", alignItems: "center", gap: 3 }}><Dot color="var(--green)" />{thisMonthCounts.excused}</span>}
+            {thisMonthCounts.absent > 0 && <span style={{ display: "flex", alignItems: "center", gap: 3 }}><Dot color="var(--dancheong-red)" />{thisMonthCounts.absent}</span>}
+            {thisMonthCounts.present === 0 && thisMonthCounts.late === 0 && thisMonthCounts.excused === 0 && thisMonthCounts.absent === 0 && <span style={{ color: "var(--ink-30)" }}>기록 없음</span>}
+          </div>
+          <span style={{ display: "inline-block", transform: isOpen ? "rotate(-90deg)" : "rotate(90deg)", transition: "transform 280ms var(--ease-out)", fontSize: 16, color: "var(--ink-30)", lineHeight: 1 }}>›</span>
+        </div>
+      </button>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 4, marginBottom: 4 }}>
-        {["월","화","수","목","금","토","일"].map((d, i) => (
-          <div key={d} style={{ textAlign: "center", fontSize: 10, color: i >= 5 ? "var(--ink-30)" : "var(--ink-60)", fontWeight: 600, paddingBottom: 2 }}>{d}</div>
-        ))}
-      </div>
+      {/* 펼쳐지는 캘린더 본체 */}
+      <div style={{ maxHeight: isOpen ? "520px" : "0", overflow: "hidden", transition: "max-height 360ms var(--ease-out)" }}>
+        <div style={{ padding: "0 16px 16px" }}>
+          {/* 월 이동 헤더 */}
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14, paddingTop: 4 }}>
+            <button onClick={e => { e.stopPropagation(); setViewDate(new Date(year, month - 1, 1)); }} aria-label="이전 달" style={{ background: "transparent", border: "none", fontSize: 20, lineHeight: 1, color: "var(--ink-60)", cursor: "pointer", padding: "4px 14px", fontFamily: "inherit", borderRadius: 6 }}>‹</button>
+            <div style={{ fontFamily: "'Noto Serif KR',serif", fontSize: 14, fontWeight: 600, color: "var(--ink)", fontVariantNumeric: "tabular-nums" }}>{year}년 {month + 1}월</div>
+            <button onClick={e => { e.stopPropagation(); setViewDate(new Date(year, month + 1, 1)); }} disabled={atOrAfterCurrentMonth} aria-label="다음 달" style={{ background: "transparent", border: "none", fontSize: 20, lineHeight: 1, color: atOrAfterCurrentMonth ? "var(--ink-30)" : "var(--ink-60)", cursor: atOrAfterCurrentMonth ? "not-allowed" : "pointer", padding: "4px 14px", fontFamily: "inherit", borderRadius: 6 }}>›</button>
+          </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 4 }}>
-        {Array.from({ length: mondayOffset }).map((_, i) => <div key={`b-${i}`} />)}
-        {Array.from({ length: daysInMonth }).map((_, i) => {
-          const day = i + 1;
-          const dateStr = `${monthStr}-${String(day).padStart(2, "0")}`;
-          return <div key={dateStr} style={cellStyle(attMap[dateStr], dateStr > todayStr, dateStr === todayStr)}>{day}</div>;
-        })}
-      </div>
+          {/* 요일 헤더 */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 4, marginBottom: 4 }}>
+            {["월","화","수","목","금","토","일"].map((d, i) => (
+              <div key={d} style={{ textAlign: "center", fontSize: 10, color: i >= 5 ? "var(--ink-30)" : "var(--ink-60)", fontWeight: 600, paddingBottom: 2 }}>{d}</div>
+            ))}
+          </div>
 
-      <div style={{ display: "flex", gap: 12, marginTop: 14, fontSize: 11, color: "var(--ink-60)", flexWrap: "wrap", justifyContent: "center" }}>
-        <span style={{ display: "flex", alignItems: "center", gap: 4 }}><span style={{ width: 10, height: 10, borderRadius: 3, background: "var(--dancheong-blue)" }}/>출석 {counts.present}</span>
-        <span style={{ display: "flex", alignItems: "center", gap: 4 }}><span style={{ width: 10, height: 10, borderRadius: 3, background: "var(--dancheong-yellow)" }}/>지각 {counts.late}</span>
-        <span style={{ display: "flex", alignItems: "center", gap: 4 }}><span style={{ width: 10, height: 10, borderRadius: 3, background: "var(--green-lt)" }}/>보강 {counts.excused}</span>
-        <span style={{ display: "flex", alignItems: "center", gap: 4 }}><span style={{ width: 10, height: 10, borderRadius: 3, background: "rgba(168,33,27,0.15)" }}/>결석 {counts.absent}</span>
+          {/* 날짜 셀 */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 4 }}>
+            {Array.from({ length: mondayOffset }).map((_, i) => <div key={`b-${i}`} />)}
+            {Array.from({ length: daysInMonth }).map((_, i) => {
+              const day = i + 1;
+              const dateStr = `${monthStr}-${String(day).padStart(2, "0")}`;
+              return <div key={dateStr} style={cellStyle(attMap[dateStr], dateStr > todayStr, dateStr === todayStr)}>{day}</div>;
+            })}
+          </div>
+
+          {/* 범례 */}
+          <div style={{ display: "flex", gap: 12, marginTop: 14, fontSize: 11, color: "var(--ink-60)", flexWrap: "wrap", justifyContent: "center" }}>
+            <span style={{ display: "flex", alignItems: "center", gap: 4 }}><span style={{ width: 10, height: 10, borderRadius: 3, background: "var(--dancheong-blue)" }}/>출석 {counts.present}</span>
+            <span style={{ display: "flex", alignItems: "center", gap: 4 }}><span style={{ width: 10, height: 10, borderRadius: 3, background: "var(--dancheong-yellow)" }}/>지각 {counts.late}</span>
+            <span style={{ display: "flex", alignItems: "center", gap: 4 }}><span style={{ width: 10, height: 10, borderRadius: 3, background: "var(--green-lt)" }}/>보강 {counts.excused}</span>
+            <span style={{ display: "flex", alignItems: "center", gap: 4 }}><span style={{ width: 10, height: 10, borderRadius: 3, background: "rgba(168,33,27,0.15)" }}/>결석 {counts.absent}</span>
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -859,10 +899,6 @@ export function PublicParentView() {
           <div>
             {/* 이달 출석 */}
             <div style={{marginBottom:16}}>
-              <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
-                <div style={{width:3,height:14,background:"linear-gradient(180deg,var(--dancheong-blue),var(--dancheong-red))",borderRadius:2,flexShrink:0}}/>
-                <div style={{fontFamily:"'Noto Serif KR',serif",fontSize:14,fontWeight:500,color:"var(--ink)"}}>이달 출석</div>
-              </div>
               <MonthlyAttendanceHeatmap studentId={student.id} attendance={attendance} />
             </div>
             {/* 공지사항 */}
