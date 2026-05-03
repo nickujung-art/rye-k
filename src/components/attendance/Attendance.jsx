@@ -136,11 +136,9 @@ function LessonNoteModal({ student, teacher, date, existingNote, onSave, onClose
             <textarea className="inp" value={form.managerReport} onChange={e=>set("managerReport",e.target.value)} placeholder="매니저에게 전달할 사항 (학부모 상담 필요, 수강료 관련 등)" rows={2} style={{background:"var(--gold-lt)",borderColor:"rgba(245,168,0,.3)"}} />
           </div>
           {aiError && <div style={{fontSize:12,color:"var(--red)",marginTop:4}}>{aiError}</div>}
-        </div>
-        <div className="modal-f" style={{flexDirection:"column",gap:0,padding:0}}>
-          {/* 댓글 패널 */}
+          {/* 댓글 패널 (본문 끝 인라인) */}
           {(comments?.length > 0 || onAddComment) && (
-            <div style={{padding:"10px 20px",borderBottom:"1px solid var(--border)"}}>
+            <div style={{marginTop:16,paddingTop:16,borderTop:"1px solid var(--border)"}}>
               <NoteCommentsPanel
                 comments={comments || []}
                 onAddComment={onAddComment}
@@ -154,10 +152,10 @@ function LessonNoteModal({ student, teacher, date, existingNote, onSave, onClose
               />
             </div>
           )}
-          <div style={{display:"flex",gap:8,padding:"14px 20px",paddingBottom:"calc(24px + var(--safe-b))"}}>
-            <button className="btn btn-secondary" style={{flex:1}} onClick={onClose}>취소</button>
-            <button className="btn btn-primary" style={{flex:1}} onClick={handleSave} disabled={saving}>{saving ? "저장 중…" : "저장"}</button>
-          </div>
+        </div>
+        <div className="modal-f">
+          <button className="btn btn-secondary" onClick={onClose}>취소</button>
+          <button className="btn btn-primary" onClick={handleSave} disabled={saving}>{saving ? "저장 중…" : "저장"}</button>
         </div>
       </div>
     </div>

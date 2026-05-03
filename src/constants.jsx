@@ -90,7 +90,7 @@ input,select,textarea,button{font-family:inherit}
 .topbar-btn{background:none;border:none;color:var(--ink-60);cursor:pointer;padding:6px;border-radius:var(--radius-sm);display:flex;align-items:center;justify-content:center;transition:background .12s}
 .topbar-btn:hover{background:var(--ink-10)}
 .main-scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:calc(var(--nav-h) + var(--safe-b) + 16px)}
-.main-content{padding:16px;animation:fadeUp var(--dur-slow) var(--ease-out) both}
+.main-content{padding:16px;animation:fadeOnly var(--dur-slow) var(--ease-out) both}
 
 /* ── Bottom Nav ────────────────────────────────────────── */
 .bnav{position:fixed;bottom:0;left:0;right:0;height:calc(var(--nav-h) + var(--safe-b));background:var(--paper);border-top:1px solid var(--border);display:flex;align-items:flex-start;padding-top:6px;padding-bottom:var(--safe-b);z-index:200;box-shadow:0 -2px 10px rgba(0,0,0,.04)}
