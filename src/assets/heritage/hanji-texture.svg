@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80">
+  <defs>
+    <!-- 한지 결 패턴: 가로/세로 미세 섬유 느낌 -->
+    <pattern id="hanji-h" x="0" y="0" width="10" height="4" patternUnits="userSpaceOnUse">
+      <line x1="0" y1="2" x2="10" y2="2.4" stroke="#B8A98A" stroke-width="0.3" opacity="0.35"/>
+    </pattern>
+    <pattern id="hanji-v" x="0" y="0" width="6" height="10" patternUnits="userSpaceOnUse">
+      <line x1="3" y1="0" x2="3.2" y2="10" stroke="#B8A98A" stroke-width="0.2" opacity="0.2"/>
+    </pattern>
+  </defs>
+  <rect width="80" height="80" fill="#FAF7F0"/>
+  <rect width="80" height="80" fill="url(#hanji-h)"/>
+  <rect width="80" height="80" fill="url(#hanji-v)"/>
+</svg>

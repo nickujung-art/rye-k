@@ -54,8 +54,11 @@ export const CSS = `
   --green:#1A7A40;--green-lt:#EDFAEF;
   --ink:#18181B;--ink-60:#52525B;--ink-30:#A1A1AA;--ink-10:#F4F4F5;
   --paper:#FFFFFF;--bg:#F5F6FA;--border:#E4E4E7;
-  --shadow:0 1px 3px rgba(0,0,0,.06);--shadow-md:0 4px 16px rgba(0,0,0,.1);
+  --shadow:0 1px 3px rgba(0,0,0,.06);--shadow-md:0 4px 16px rgba(0,0,0,.1);--shadow-lifted:0 8px 32px rgba(31,61,122,.08);
   --radius:12px;--radius-sm:8px;--radius-lg:16px;--radius-xs:6px;--radius-xl:20px;
+  --dancheong-blue:#1F3D7A;--dancheong-red:#A8211B;--dancheong-yellow:#D4A02C;--dancheong-white:#F8F4EC;--dancheong-black:#1A1A1A;
+  --hanji:linear-gradient(135deg,#FAF7F0,#F5F0E5);
+  --ease-out:cubic-bezier(0.22,1,0.36,1);--dur-fast:120ms;--dur-base:200ms;--dur-slow:320ms;
   --safe-b:env(safe-area-inset-bottom,0px);
   --nav-h:60px;--topbar-h:52px;
 }
@@ -516,6 +519,18 @@ input[type="date"]::-webkit-date-and-time-value{text-align:left}
 /* ── 휴강 버튼 ───────────────────────────────────────────── */
 .att-btn.cancelled{background:var(--ink-10);border-color:var(--ink-30);color:var(--ink-60)}
 .att-btn.cancelled:hover{background:var(--border);color:var(--ink)}
+
+/* ── Heritage: 단청 그라디언트 ──────────────────────────── */
+.dancheong-stripe-3{background:linear-gradient(90deg,var(--dancheong-blue),var(--dancheong-red),var(--dancheong-yellow));height:3px;border-radius:2px;flex-shrink:0}
+.dancheong-stripe-5{background:linear-gradient(90deg,var(--dancheong-blue),var(--dancheong-red),var(--dancheong-yellow),var(--dancheong-white),var(--dancheong-black));height:1px;flex-shrink:0}
+.dancheong-corner{position:relative;overflow:hidden}
+.dancheong-corner::before{content:'';position:absolute;top:0;left:0;width:18px;height:18px;background:linear-gradient(135deg,var(--dancheong-blue) 33%,var(--dancheong-red) 33% 66%,var(--dancheong-yellow) 66%);opacity:.25;pointer-events:none;z-index:1}
+
+/* ── Heritage: 마이크로 모션 ────────────────────────────── */
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@keyframes scaleIn{from{opacity:0;transform:scale(.96)}to{opacity:1;transform:scale(1)}}
+.fade-up{animation:fadeUp var(--dur-base) var(--ease-out) both}
+.scale-in{animation:scaleIn var(--dur-base) var(--ease-out) both}
 
 /* ── BulkFee Modal (일괄 수강료 설정) ───────────────────── */
 .bf-overlay{position:fixed;inset:0;z-index:500;background:var(--bg);display:flex;flex-direction:column;overflow:hidden}

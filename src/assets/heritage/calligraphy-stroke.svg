@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 20" fill="none">
+  <!-- 서예 붓터치 메인 획 — 왼쪽 두껍고 오른쪽 얇아지는 전통 필묵 느낌 -->
+  <path d="M2 14 Q30 8 70 11 Q110 14 160 10 Q180 8 198 9" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.22"/>
+  <path d="M2 15 Q30 10 70 13 Q110 16 160 12 Q180 10 198 11" stroke="currentColor" stroke-width="0.8" stroke-linecap="round" opacity="0.1"/>
+</svg>
