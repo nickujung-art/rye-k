@@ -275,6 +275,39 @@ function PortalHeatmap({ sAtt }) {
   );
 }
 
+function PortalSheet({ notice, onClose }) {
+  const [visible, setVisible] = useState(false);
+  useEffect(() => {
+    const raf = requestAnimationFrame(() => setVisible(true));
+    return () => cancelAnimationFrame(raf);
+  }, []);
+  const dismiss = () => { setVisible(false); setTimeout(onClose, 300); };
+  return (
+    <div onClick={dismiss} style={{position:"fixed",inset:0,zIndex:800,background:"rgba(0,0,0,.5)",opacity:visible?1:0,transition:"opacity 280ms var(--ease-out)",display:"flex",alignItems:"flex-end"}}>
+      <div onClick={e=>e.stopPropagation()} style={{width:"100%",maxHeight:"85dvh",background:"var(--paper)",borderRadius:"var(--radius-lg) var(--radius-lg) 0 0",overflowY:"auto",WebkitOverflowScrolling:"touch",transform:visible?"translateY(0)":"translateY(100%)",transition:"transform 320ms var(--ease-out)"}}>
+        {/* 드래그 핸들 */}
+        <div style={{display:"flex",justifyContent:"center",padding:"12px 0 0"}}>
+          <div style={{width:36,height:4,borderRadius:2,background:"var(--border)"}}/>
+        </div>
+        {/* 헤더 */}
+        <div style={{padding:"14px 20px 14px",borderBottom:"1px solid var(--border)"}}>
+          <div style={{display:"flex",alignItems:"flex-start",gap:8,marginBottom:4}}>
+            {notice.pinned && <span style={{fontSize:13,flexShrink:0}}>📌</span>}
+            <div style={{fontFamily:"'Noto Serif KR',serif",fontSize:17,fontWeight:700,color:"var(--ink)",flex:1,lineHeight:1.4}}>{notice.title}</div>
+            <button onClick={dismiss} style={{background:"transparent",border:"none",color:"var(--ink-30)",fontSize:20,cursor:"pointer",padding:0,lineHeight:1,flexShrink:0}}>✕</button>
+          </div>
+          <div style={{fontSize:11,color:"var(--ink-30)"}}>{notice.authorName} · {fmtDateTime(notice.createdAt)}</div>
+        </div>
+        {/* 본문 */}
+        <div style={{padding:"18px 20px 40px"}}>
+          <div style={{fontSize:14,color:"var(--ink-60)",lineHeight:1.85,whiteSpace:"pre-wrap"}}>{notice.content}</div>
+          {notice.imageBase64 && <img src={notice.imageBase64} alt="공지 이미지" style={{width:"100%",borderRadius:10,marginTop:16,objectFit:"cover"}}/>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function MonthlyAttendanceHeatmap({ studentId, attendance }) {
   const [isOpen, setIsOpen] = useState(false);
   const [viewDate, setViewDate] = useState(() => {
@@ -428,7 +461,7 @@ export function PublicParentView() {
   // 읽음 추적 — localStorage에 학생별 저장
   const [lastNoteRead, setLastNoteRead] = useState(0);       // 강사 댓글 마지막 읽은 시각
   const [readNoticeIds, setReadNoticeIds] = useState(new Set()); // 읽은 공지 ID set
-  const [expandedNotice, setExpandedNotice] = useState(null);  // 공지 상세 열기
+  const [sheetNotice, setSheetNotice] = useState(null);  // 공지 Bottom Sheet
   const saveAttendance = async (upd) => { setAttendance(upd); await sSet("rye-attendance", upd); };
 
   const [animatedAttRate, setAnimatedAttRate] = useState(0);
@@ -478,8 +511,7 @@ export function PublicParentView() {
   };
 
   const handleNoticeOpen = async (n) => {
-    if (expandedNotice === n.id) { setExpandedNotice(null); return; }
-    setExpandedNotice(n.id);
+    setSheetNotice(n);
     markNoticesRead(student.id, [n.id]);
     // readBy Firestore 업데이트
     if (!(n.readBy||[]).includes(student.id)) {
@@ -1099,27 +1131,16 @@ export function PublicParentView() {
             <div style={{fontSize:13,fontWeight:600,color:"var(--ink)",marginBottom:10}}>공지사항</div>
             {visibleNotices.length === 0 ? <div className="empty"><div className="empty-icon">📋</div><div className="empty-txt">등록된 공지가 없습니다.</div></div> :
               visibleNotices.map(n => {
-                const isExpanded = expandedNotice === n.id;
                 const isUnread = !readNoticeIds.has(n.id);
                 return (
-                  <div key={n.id} onClick={() => handleNoticeOpen(n)} style={{background:"#fff",borderRadius:12,padding:0,marginBottom:8,overflow:"hidden",boxShadow:"0 1px 4px rgba(0,0,0,.03)",border:n.pinned?"1px solid rgba(245,168,0,.3)":isUnread?"1px solid rgba(43,58,159,.2)":"1px solid #F0F0F0",cursor:"pointer"}}>
-                    <div style={{padding:"14px 16px",borderBottom:isExpanded?"1px solid #F5F5F5":"none"}}>
-                      <div style={{display:"flex",alignItems:"center",gap:6}}>
-                        {n.pinned && <span style={{fontSize:11}}>📌</span>}
-                        {isUnread && <span style={{width:7,height:7,borderRadius:"50%",background:"var(--blue)",display:"inline-block",flexShrink:0}} />}
-                        <span style={{fontSize:14,fontWeight:isUnread?700:600,color:"var(--ink)",flex:1}}>{n.title}</span>
-                        <span style={{fontSize:13,color:"var(--ink-30)",flexShrink:0}}>{isExpanded ? "▲" : "▼"}</span>
-                      </div>
-                      <div style={{fontSize:11,color:"var(--ink-30)",marginTop:3}}>{n.authorName} · {fmtDateTime(n.createdAt)}</div>
+                  <div key={n.id} onClick={() => handleNoticeOpen(n)} style={{background:"var(--paper)",borderRadius:12,padding:"14px 16px",marginBottom:8,boxShadow:"0 1px 4px rgba(0,0,0,.03)",border:n.pinned?"1px solid rgba(245,168,0,.3)":isUnread?"1px solid rgba(43,58,159,.2)":"1px solid var(--border)",cursor:"pointer",display:"flex",alignItems:"center",gap:8,transition:"background var(--dur-fast) var(--ease-out)"}}>
+                    {n.pinned && <span style={{fontSize:11,flexShrink:0}}>📌</span>}
+                    {isUnread && <span style={{width:7,height:7,borderRadius:"50%",background:"var(--blue)",display:"inline-block",flexShrink:0}}/>}
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{fontSize:14,fontWeight:isUnread?700:500,color:"var(--ink)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{n.title}</div>
+                      <div style={{fontSize:11,color:"var(--ink-30)",marginTop:2}}>{n.authorName} · {fmtDateTime(n.createdAt)}</div>
                     </div>
-                    {isExpanded && (
-                      <div style={{padding:"14px 16px"}}>
-                        <div style={{fontSize:13.5,color:"var(--ink-60)",lineHeight:1.8,whiteSpace:"pre-wrap"}}>{n.content}</div>
-                        {n.imageBase64 && (
-                          <img src={n.imageBase64} alt="공지 이미지" style={{width:"100%",borderRadius:10,marginTop:12,objectFit:"cover",maxHeight:320}} />
-                        )}
-                      </div>
-                    )}
+                    <span style={{fontSize:16,color:"var(--ink-30)",flexShrink:0}}>›</span>
                   </div>
                 );
               })
@@ -1523,6 +1544,7 @@ export function PublicParentView() {
         </div>
       </div>
     )}
+    {sheetNotice && <PortalSheet notice={sheetNotice} onClose={() => setSheetNotice(null)} />}
     </>
   );
 }
