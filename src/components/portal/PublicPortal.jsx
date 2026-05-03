@@ -275,6 +275,29 @@ function PortalHeatmap({ sAtt }) {
   );
 }
 
+const DAILY_QUOTES = [
+  { text: "하루라도 배우지 않으면,\n하루를 잃은 것이다.", attr: "조선 격언" },
+  { text: "소리는 마음에서 나고,\n마음은 소리로 빛난다.", attr: "작자미상" },
+  { text: "천 번을 갈아야 칼이 예리해지듯,\n천 번을 연습해야 소리가 맑아진다.", attr: "작자미상" },
+  { text: "배움에는 때가 없고,\n예술에는 끝이 없다.", attr: "작자미상" },
+  { text: "한 음 한 음이 쌓여 한 곡이 되듯,\n한 날 한 날이 쌓여 대가가 된다.", attr: "작자미상" },
+  { text: "연습은 완벽을 만들고,\n꾸준함은 거장을 만든다.", attr: "작자미상" },
+  { text: "도를 배우는 것은 나무를 심는 것과 같다.\n쉬지 않고 자라면 어느새 큰 나무가 된다.", attr: "격언" },
+  { text: "배움은 늦었다 생각할 때가\n가장 이른 때다.", attr: "격언" },
+  { text: "한 가지를 깊이 아는 사람이\n천 가지를 얕게 아는 사람보다 낫다.", attr: "한국 속담" },
+  { text: "마음이 움직여야 소리도 움직인다.", attr: "작자미상" },
+  { text: "음악은 시간 속에 새긴 시(詩)다.", attr: "작자미상" },
+  { text: "학문에는 왕도가 없으나,\n노력에는 반드시 결실이 있다.", attr: "격언" },
+  { text: "가르치는 것이 곧 배우는 것이다.", attr: "교학상장(敎學相長)" },
+  { text: "소리를 연주하기 전에\n먼저 마음을 연주하라.", attr: "작자미상" },
+  { text: "작은 물방울이 모여 큰 강이 되듯,\n작은 연습이 모여 큰 예술이 된다.", attr: "작자미상" },
+  { text: "음악은 귀로 듣고 가슴으로 느끼며\n혼으로 완성된다.", attr: "작자미상" },
+  { text: "처음 한 음이 두렵지 않을 때,\n비로소 음악이 시작된다.", attr: "작자미상" },
+  { text: "예술은 인내의 또 다른 이름이다.", attr: "작자미상" },
+  { text: "배움의 끝은 없으나,\n시작은 오늘 이 순간에 있다.", attr: "작자미상" },
+  { text: "넘어지는 것이 부끄러운 것이 아니라,\n일어나지 않는 것이 부끄러운 것이다.", attr: "격언" },
+];
+
 function PortalSheet({ notice, onClose }) {
   const [visible, setVisible] = useState(false);
   useEffect(() => {
@@ -1177,6 +1200,24 @@ export function PublicParentView() {
                 </div>
               </div>
             </div>
+
+            {/* 오늘의 한 구절 */}
+            {(() => {
+              const q = DAILY_QUOTES[Math.floor(Date.now() / 86400000) % DAILY_QUOTES.length];
+              return (
+                <div style={{marginTop:8}}>
+                  <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
+                    <div style={{width:3,height:14,background:"linear-gradient(180deg,var(--dancheong-red),var(--dancheong-yellow))",borderRadius:2,flexShrink:0}}/>
+                    <div style={{fontFamily:"'Noto Serif KR',serif",fontSize:14,fontWeight:500,color:"var(--ink)"}}>오늘의 한 구절</div>
+                  </div>
+                  <div style={{background:"var(--hanji)",borderRadius:"var(--radius-lg)",padding:"22px 20px 16px",boxShadow:"var(--shadow)",border:"1px solid var(--border)",position:"relative",overflow:"hidden"}}>
+                    <div aria-hidden="true" style={{position:"absolute",top:-8,left:10,fontFamily:"serif",fontSize:96,color:"var(--dancheong-blue)",opacity:.05,lineHeight:1,userSelect:"none",pointerEvents:"none"}}>"</div>
+                    <div style={{fontFamily:"'Noto Serif KR',serif",fontSize:15,fontWeight:500,color:"var(--ink)",lineHeight:1.9,textAlign:"center",whiteSpace:"pre-line",position:"relative"}}>{q.text}</div>
+                    <div style={{textAlign:"right",marginTop:12,paddingTop:10,borderTop:"1px solid var(--border)",fontSize:11,color:"var(--ink-30)",letterSpacing:.2}}>— {q.attr}</div>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         )}
 
