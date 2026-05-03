@@ -308,6 +308,33 @@ function PortalSheet({ notice, onClose }) {
   );
 }
 
+function PortalEmptyState({ title, sub }) {
+  return (
+    <div style={{textAlign:"center",padding:"44px 20px"}}>
+      <svg width="72" height="64" viewBox="0 0 72 64" fill="none" xmlns="http://www.w3.org/2000/svg" style={{marginBottom:14,opacity:.72}}>
+        {/* 노리개 매듭 — 두 타원이 교차하는 전통 매듭 모티프 */}
+        <ellipse cx="36" cy="30" rx="13" ry="20" stroke="var(--dancheong-blue)" strokeWidth="1.5"/>
+        <ellipse cx="36" cy="30" rx="20" ry="13" stroke="var(--dancheong-blue)" strokeWidth="1.5"/>
+        {/* 상단 끈 */}
+        <line x1="36" y1="10" x2="36" y2="3" stroke="var(--dancheong-blue)" strokeWidth="1.5" strokeLinecap="round"/>
+        {/* 하단 술 (3가닥) */}
+        <line x1="36" y1="50" x2="31" y2="61" stroke="var(--dancheong-red)" strokeWidth="1.5" strokeLinecap="round"/>
+        <line x1="36" y1="50" x2="36" y2="62" stroke="var(--dancheong-red)" strokeWidth="1.5" strokeLinecap="round"/>
+        <line x1="36" y1="50" x2="41" y2="61" stroke="var(--dancheong-red)" strokeWidth="1.5" strokeLinecap="round"/>
+        {/* 교차점 중심 */}
+        <circle cx="36" cy="30" r="3" fill="var(--dancheong-blue)" fillOpacity="0.15"/>
+        <circle cx="36" cy="30" r="1.5" fill="var(--dancheong-blue)"/>
+        {/* 타원 끝점 장식 */}
+        <circle cx="36" cy="10" r="2" fill="var(--dancheong-blue)" fillOpacity="0.45"/>
+        <circle cx="16" cy="30" r="2" fill="var(--dancheong-blue)" fillOpacity="0.45"/>
+        <circle cx="56" cy="30" r="2" fill="var(--dancheong-blue)" fillOpacity="0.45"/>
+      </svg>
+      <div style={{fontFamily:"'Noto Serif KR',serif",fontSize:14,fontWeight:600,color:"var(--ink)",marginBottom:6}}>{title}</div>
+      {sub && <div style={{fontSize:12,color:"var(--ink-30)",lineHeight:1.75}}>{sub}</div>}
+    </div>
+  );
+}
+
 function MonthlyAttendanceHeatmap({ studentId, attendance }) {
   const [isOpen, setIsOpen] = useState(false);
   const [viewDate, setViewDate] = useState(() => {
@@ -1157,7 +1184,7 @@ export function PublicParentView() {
         {tab === "notice" && (
           <div>
             <div style={{fontSize:13,fontWeight:600,color:"var(--ink)",marginBottom:10}}>공지사항</div>
-            {visibleNotices.length === 0 ? <div className="empty"><div className="empty-icon">📋</div><div className="empty-txt">등록된 공지가 없습니다.</div></div> :
+            {visibleNotices.length === 0 ? <PortalEmptyState title="등록된 공지가 없습니다" sub="새 공지사항이 등록되면 이곳에서 확인하실 수 있어요." /> :
               visibleNotices.map(n => {
                 const isUnread = !readNoticeIds.has(n.id);
                 return (
@@ -1194,7 +1221,7 @@ export function PublicParentView() {
             <div>
               <div style={{fontSize:13,fontWeight:600,color:"var(--ink)",marginBottom:10}}>월별 출석 현황</div>
               {months.length === 0 ? (
-                <div className="empty"><div className="empty-icon">📋</div><div className="empty-txt">출석 기록이 없습니다.</div></div>
+                <PortalEmptyState title="출석 기록이 없습니다" sub="레슨 출석 정보가 입력되면 이곳에서 확인하실 수 있어요." />
               ) : months.map(m => {
                 const recs = byMonth[m].slice().sort((a,b)=>a.date.localeCompare(b.date));
                 const okN = recs.filter(a=>a.status==="present"||a.status==="late").length;
@@ -1273,11 +1300,7 @@ export function PublicParentView() {
               )}
 
               {notes.length === 0 ? (
-                <div style={{background:"#fff",borderRadius:16,padding:"40px 20px",textAlign:"center",border:"1px solid #F0F0F0"}}>
-                  <div style={{fontSize:40,marginBottom:10}}>📝</div>
-                  <div style={{fontSize:14,fontWeight:600,color:"var(--ink)",marginBottom:6}}>아직 레슨노트가 없어요</div>
-                  <div style={{fontSize:12,color:"var(--ink-30)",lineHeight:1.6}}>강사님이 레슨 후 작성하시면<br/>이곳에서 확인하실 수 있어요.</div>
-                </div>
+                <PortalEmptyState title="아직 레슨노트가 없어요" sub={"강사님이 레슨 후 작성하시면\n이곳에서 확인하실 수 있어요."} />
               ) : (
                 monthKeys.map(monthKey => (
                   <div key={monthKey} style={{marginBottom:14}}>
@@ -1408,13 +1431,7 @@ export function PublicParentView() {
               </div>
 
               {myReports.length === 0 ? (
-                <div style={{background:"var(--paper)",borderRadius:"var(--radius-lg)",padding:"40px 20px",textAlign:"center",border:"1px solid var(--border)"}}>
-                  <div style={{fontSize:32,marginBottom:10,opacity:.4}}>🎵</div>
-                  <div style={{fontFamily:"'Noto Serif KR',serif",fontSize:14,color:"var(--ink-60)",lineHeight:1.75}}>
-                    아직 받으신 월간 리포트가 없습니다.<br/>
-                    <span style={{fontSize:12,color:"var(--ink-30)"}}>매월 초, 지난 달의 학습 여정을 강사님이 정성껏 정리해서 보내드릴 예정입니다.</span>
-                  </div>
-                </div>
+                <PortalEmptyState title="아직 리포트가 없습니다" sub={"매월 초, 지난 달의 학습 여정을\n강사님이 정성껏 정리해서 보내드릴 예정입니다."} />
               ) : (
                 <div style={{display:"flex",flexDirection:"column",gap:14}}>
                   {myReports.map((r, idx) => {
@@ -1466,7 +1483,7 @@ export function PublicParentView() {
         {tab === "pay" && (
           <div>
             <div style={{fontSize:13,fontWeight:600,color:"var(--ink)",marginBottom:10}}>수납 이력</div>
-            {sPay.length === 0 ? <div className="empty"><div className="empty-icon">💳</div><div className="empty-txt">수납 기록이 없습니다.</div></div> :
+            {sPay.length === 0 ? <PortalEmptyState title="수납 기록이 없습니다" sub="수납 정보가 등록되면 이곳에서 확인하실 수 있어요." /> :
               sPay.slice(0, 24).map((p, i) => {
                 const baseFee = student.monthlyFee || 0;
                 const rentalFee = student.instrumentRental ? (student.rentalFee || 0) : 0;
