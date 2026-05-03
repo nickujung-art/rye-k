@@ -1,4 +1,5 @@
 import { useState } from "react";
+import knotLineSvg from "../../assets/heritage/knot-line.svg";
 import { IC, TODAY_STR } from "../../constants.jsx";
 import { fmtDate, fmtDateTime, fmtMoney, fmtPhone, isMinor, calcAge, getBirthPassword, generateStudentCode } from "../../utils.js";
 import { Av } from "../shared/CommonUI.jsx";
@@ -23,7 +24,7 @@ export function ActivityView({ activity, onFullBackup }) {
         {sq && <button className="srch-clr" onClick={() => setSearchQuery("")}>{IC.x}</button>}
       </div>
       {filtered.length === 0 ? (
-        <div className="empty"><div className="empty-icon">◷</div><div className="empty-txt">{sq ? "검색 결과가 없습니다." : "활동 기록이 없습니다."}</div></div>
+        <div className="empty"><img src={knotLineSvg} style={{width:44,height:55,opacity:0.28,marginBottom:10}} alt="" /><div className="empty-txt">{sq ? "검색 결과가 없습니다." : "활동 기록이 없습니다."}</div></div>
       ) : (
         <div className="card" style={{padding:16}}>
           {filtered.slice(0, 100).map(a => (
@@ -90,7 +91,7 @@ export function PendingView({ pending, teachers, categories, onApprove, onReject
   if (pending.length === 0) return (
     <div>
       <div className="ph"><div><h1>등록 대기</h1><div className="ph-sub">신규 접수 0건</div></div></div>
-      <div className="empty"><div className="empty-icon">📋</div><div className="empty-txt">대기 중인 등록 신청이 없습니다.</div></div>
+      <div className="empty"><img src={knotLineSvg} style={{width:44,height:55,opacity:0.28,marginBottom:10}} alt="" /><div className="empty-txt">대기 중인 등록 신청이 없습니다.</div></div>
     </div>
   );
   return (
@@ -563,7 +564,7 @@ export function TrashView({ trash, onRestore, onPermanentDelete }) {
     <div>
       <div className="ph"><div><h1>휴지통</h1><div className="ph-sub">삭제 후 7일간 복원 가능</div></div></div>
       {trash.length === 0 ? (
-        <div className="empty"><div className="empty-icon">🗑</div><div className="empty-txt">휴지통이 비어있습니다.</div></div>
+        <div className="empty"><img src={knotLineSvg} style={{width:44,height:55,opacity:0.28,marginBottom:10}} alt="" /><div className="empty-txt">휴지통이 비어있습니다.</div></div>
       ) : trash.map((item, idx) => {
         const remaining = Math.max(0, Math.ceil((sevenDays - (now - (item.deletedAt||0))) / (24*60*60*1000)));
         const key = `${item.id}-${item.type}-${item.deletedAt}`;
