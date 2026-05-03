@@ -1059,14 +1059,14 @@ export function PublicParentView() {
             <div style={{fontFamily:"'Noto Serif KR',serif",fontSize:20,fontWeight:500,lineHeight:1,color:attRate&&attRate>=80?"var(--green)":attRate&&attRate>=60?"var(--gold-dk)":"var(--red)",fontVariantNumeric:"tabular-nums"}}>
               {attRate!==null?animatedAttRate:"—"}{attRate!==null&&<span style={{fontSize:12,marginLeft:1,color:"var(--ink-30)",fontWeight:400}}>%</span>}
             </div>
-            <div aria-hidden style={{fontSize:9,marginTop:4,height:9,visibility:"hidden"}}>—</div>
+            <div aria-hidden style={{fontSize:9,marginTop:6,minHeight:14,lineHeight:1.4,visibility:"hidden"}}>—</div>
           </div>
           <div style={{textAlign:"center",padding:"0 8px",borderLeft:"1px solid var(--border)"}}>
             <div style={{fontSize:9,letterSpacing:"0.14em",fontWeight:600,color:"var(--ink-30)",textTransform:"uppercase",marginBottom:6}}>다음 레슨</div>
             <div style={{fontFamily:"'Noto Serif KR',serif",fontSize:20,fontWeight:500,lineHeight:1,color:"var(--ink)",fontVariantNumeric:"tabular-nums"}}>
               {nextLesson ? (nextLesson.dDay === 0 ? "오늘" : `D-${nextLesson.dDay}`) : "—"}
             </div>
-            <div style={{fontSize:9,color:"var(--ink-30)",marginTop:4,height:9,letterSpacing:"0.04em",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
+            <div style={{fontSize:9,color:"var(--ink-30)",marginTop:6,minHeight:14,lineHeight:1.4,letterSpacing:"0.04em",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
               {nextLesson ? [nextLessonTeacher?.name && `${nextLessonTeacher.name} 강사`, nextLesson.time].filter(Boolean).join(" · ") || " " : " "}
             </div>
           </div>
@@ -1075,7 +1075,7 @@ export function PublicParentView() {
             <div style={{fontFamily:"'Noto Serif KR',serif",fontSize:20,fontWeight:500,lineHeight:1,color:thisMonthPay?.paid?"var(--green)":"var(--gold-dk)"}}>
               {thisMonthPay?.paid?"완납":"미납"}
             </div>
-            <div style={{fontSize:9,marginTop:4,height:9,letterSpacing:"0.04em",color:thisMonthPay?.paid?"transparent":"var(--gold-dk)"}}>
+            <div style={{fontSize:9,marginTop:6,minHeight:14,lineHeight:1.4,letterSpacing:"0.04em",color:thisMonthPay?.paid?"transparent":"var(--gold-dk)"}}>
               {thisMonthPay?.paid?" ":"탭하여 안내 →"}
             </div>
           </div>
@@ -1271,41 +1271,52 @@ export function PublicParentView() {
             late:    { bg:"var(--gold)" },
             excused: { bg:"transparent", border:"1px solid var(--blue)" },
           };
+          // 이달 데이터가 없으면 가장 최근 기록이 있는 달로 fallback
+          const displayMonth = attThisMonth.length > 0 ? THIS_MONTH : (months[0] || THIS_MONTH);
+          const isThisMonth = displayMonth === THIS_MONTH;
+          const dispRecs = byMonth[displayMonth] || [];
+          const dPresent = dispRecs.filter(a => a.status === "present").length;
+          const dAbsent  = dispRecs.filter(a => a.status === "absent").length;
+          const dLate    = dispRecs.filter(a => a.status === "late").length;
+          const dExcused = dispRecs.filter(a => a.status === "excused").length;
+          const dTotal   = dispRecs.length;
+          const dRate    = dTotal>0 ? Math.round((dPresent + dLate) / dTotal * 100) : null;
+          const dispMonthLabel = `${parseInt(displayMonth.slice(5))}월`;
           return (
             <div>
-              {/* 이달 요약 헤더 */}
-              {attThisMonth.length > 0 && (
+              {/* 요약 헤더 */}
+              {dTotal > 0 && (
                 <div style={{background:"var(--hanji)",borderRadius:"var(--radius-lg)",padding:"18px 20px",marginBottom:14,border:"1px solid var(--border)"}}>
-                  <div style={{fontSize:9,letterSpacing:"0.14em",color:"var(--gold-dk)",fontWeight:600,marginBottom:8}}>이달 출석</div>
+                  <div style={{fontSize:9,letterSpacing:"0.14em",color:"var(--gold-dk)",fontWeight:600,marginBottom:8}}>{isThisMonth?"이달 출석":`${dispMonthLabel} 출석 · 최근 기록`}</div>
                   <div style={{display:"flex",alignItems:"baseline",gap:14,flexWrap:"wrap"}}>
                     <div>
-                      <span style={{fontFamily:"'Noto Serif KR',serif",fontSize:28,fontWeight:500,color:attRate&&attRate>=80?"var(--green)":"var(--ink)",fontVariantNumeric:"tabular-nums"}}>{attRate ?? "—"}</span>
+                      <span style={{fontFamily:"'Noto Serif KR',serif",fontSize:28,fontWeight:500,color:dRate&&dRate>=80?"var(--green)":"var(--ink)",fontVariantNumeric:"tabular-nums"}}>{dRate ?? "—"}</span>
                       <span style={{fontSize:13,color:"var(--ink-30)",marginLeft:2}}>%</span>
                     </div>
                     <div style={{fontSize:11,color:"var(--ink-30)",letterSpacing:"0.04em"}}>
-                      출석 {presentCount} · 결석 {absentCount} · 지각 {lateCount}{excusedCount>0?` · 보강 ${excusedCount}`:""}
+                      출석 {dPresent} · 결석 {dAbsent} · 지각 {dLate}{dExcused>0?` · 보강 ${dExcused}`:""}
                     </div>
                   </div>
                   {/* Stacked 4-segment progress bar */}
                   <div style={{display:"flex",height:3,marginTop:12,borderRadius:1.5,overflow:"hidden",background:"var(--ink-10)"}}>
                     {(() => {
-                      const total = totalThisMonth || 1;
+                      const total = dTotal || 1;
                       const seg = (n,c,key) => n>0 ? <div key={key} style={{width:`${n/total*100}%`,height:"100%",background:c,transition:"width .6s var(--ease-out)"}}/> : null;
                       return [
-                        seg(presentCount,"var(--green)","p"),
-                        seg(lateCount,"var(--gold)","l"),
-                        seg(excusedCount,"var(--blue)","e"),
-                        seg(absentCount,"var(--red)","a"),
+                        seg(dPresent,"var(--green)","p"),
+                        seg(dLate,"var(--gold)","l"),
+                        seg(dExcused,"var(--blue)","e"),
+                        seg(dAbsent,"var(--red)","a"),
                       ];
                     })()}
                   </div>
                 </div>
               )}
-              {/* 이달 미니 캘린더 (day-of-month 그리드) */}
-              {attThisMonth.length > 0 && (() => {
+              {/* 미니 캘린더 (displayMonth 기준 day-of-month 그리드) */}
+              {dTotal > 0 && (() => {
                 const today = new Date();
-                const yyyy = parseInt(THIS_MONTH.slice(0,4));
-                const mm = parseInt(THIS_MONTH.slice(5,7));
+                const yyyy = parseInt(displayMonth.slice(0,4));
+                const mm = parseInt(displayMonth.slice(5,7));
                 const firstDay = new Date(yyyy, mm-1, 1);
                 const lastDay = new Date(yyyy, mm, 0);
                 const offset = firstDay.getDay();
@@ -1313,14 +1324,14 @@ export function PublicParentView() {
                 const todayKey = today.getFullYear()===yyyy && today.getMonth()+1===mm ? today.getDate() : -1;
                 const todayMs = new Date(today.getFullYear(),today.getMonth(),today.getDate()).getTime();
                 const statusByDay = {};
-                attThisMonth.forEach(a => { const d = parseInt(a.date.slice(8,10)); statusByDay[d] = a.status; });
+                dispRecs.forEach(a => { const d = parseInt(a.date.slice(8,10)); statusByDay[d] = a.status; });
                 const cells = [];
                 for (let i=0; i<offset; i++) cells.push(null);
                 for (let d=1; d<=daysInMonth; d++) cells.push(d);
                 while (cells.length % 7 !== 0) cells.push(null);
                 return (
                   <div style={{marginBottom:14,padding:"14px 16px",background:"var(--paper)",borderRadius:"var(--radius-lg)",border:"1px solid var(--border)"}}>
-                    <div style={{fontSize:9,letterSpacing:"0.14em",color:"var(--ink-30)",fontWeight:600,marginBottom:10,textTransform:"uppercase"}}>이달 캘린더</div>
+                    <div style={{fontSize:9,letterSpacing:"0.14em",color:"var(--ink-30)",fontWeight:600,marginBottom:10,textTransform:"uppercase"}}>{isThisMonth?"이달 캘린더":`${dispMonthLabel} 캘린더`}</div>
                     <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:5,marginBottom:6}}>
                       {["일","월","화","수","목","금","토"].map((d,i) => (
                         <div key={d} style={{fontSize:9,color:i===0?"var(--red)":i===6?"var(--blue)":"var(--ink-30)",textAlign:"center",letterSpacing:"0.04em",fontWeight:500}}>{d}</div>
@@ -1365,7 +1376,7 @@ export function PublicParentView() {
               {months.length === 0 ? (
                 <PortalEmptyState title="출석 기록이 없습니다" sub="레슨 출석 정보가 입력되면 이곳에서 확인하실 수 있어요." />
               ) : (() => {
-                const pastMonths = months.filter(m => m !== THIS_MONTH);
+                const pastMonths = months.filter(m => m !== displayMonth);
                 if (pastMonths.length === 0) return null;
                 return (<>
                   <div style={{fontSize:9,letterSpacing:"0.14em",color:"var(--ink-30)",fontWeight:600,marginBottom:6,textTransform:"uppercase",padding:"0 4px"}}>지난 달</div>
