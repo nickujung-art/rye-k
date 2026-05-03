@@ -1,4 +1,5 @@
 ﻿import { useState, useRef, useEffect } from "react";
+import knotLineSvg from "../../assets/heritage/knot-line.svg";
 import { IC } from "../../constants.jsx";
 import { uid, fmtDateTime, fmtDate, fmtDateShort, canManageAll, compressImage } from "../../utils.js";
 
@@ -119,7 +120,7 @@ export function NoticesView({ notices, currentUser, onAdd, onEdit, onDelete }) {
         {sq && <button className="srch-clr" onClick={() => setSearchQuery("")}>{IC.x}</button>}
       </div>
       {filtered.length === 0 ? (
-        <div className="empty"><div className="empty-icon">◉</div><div className="empty-txt">{sq ? "검색 결과가 없습니다." : "등록된 공지가 없습니다."}</div></div>
+        <div className="empty"><img src={knotLineSvg} style={{width:44,height:55,opacity:0.28,marginBottom:10}} alt="" /><div className="empty-txt">{sq ? "검색 결과가 없습니다." : "등록된 공지가 없습니다."}</div></div>
       ) : filtered.map(n => (
         <div key={n.id} className={`notice-card ${n.pinned ? "pinned" : ""}`} onClick={() => setExpanded(expanded === n.id ? null : n.id)}>
           <div className="notice-title">{n.pinned && <span className="pin-icon">📌</span>}{n.title}</div>

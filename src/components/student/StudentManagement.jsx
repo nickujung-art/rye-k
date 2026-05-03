@@ -1,4 +1,5 @@
 ﻿import { useState, useRef } from "react";
+import knotLineSvg from "../../assets/heritage/knot-line.svg";
 import { IC, TODAY_STR, THIS_MONTH, DAYS, ATT_STATUS } from "../../constants.jsx";
 import { uid, calcAge, isMinor, getCat, fmtDate, fmtDateShort, fmtMoney, canManageAll, monthLabel, allLessonInsts, allLessonDays, getBirthPassword, formatLessonNoteSummary, compressImage, fmtPhone } from "../../utils.js";
 import { Av, PhotoUpload, DeleteConfirmFooter } from "../shared/CommonUI.jsx";
@@ -843,7 +844,7 @@ export function StudentsView({ students, allStudents, teachers, categories, filt
       </div>
       <div className="ftabs">{cats.map(c => <button key={c} className={`ftab ${filter === c ? "active" : ""}`} onClick={() => setFilter(c)}>{c}</button>)}</div>
       {statusFiltered.length === 0 ? (
-        <div className="empty"><div className="empty-icon">♩</div><div className="empty-txt">{search ? "검색 결과가 없습니다." : "해당 상태의 회원이 없습니다."}</div></div>
+        <div className="empty"><img src={knotLineSvg} style={{width:44,height:55,opacity:0.28,marginBottom:10}} alt="" /><div className="empty-txt">{search ? "검색 결과가 없습니다." : "해당 상태의 회원이 없습니다."}</div></div>
       ) : filter === "전체" ? (
         grouped.map(({ cat, items }) => (
           <div key={cat}>

@@ -1,4 +1,5 @@
 ﻿import { useState } from "react";
+import knotLineSvg from "../../assets/heritage/knot-line.svg";
 import { PAY_METHODS, IC, TODAY_STR, THIS_MONTH } from "../../constants.jsx";
 import { canManageAll, monthLabel, fmtMoney, fmtDateShort, fmtDate, calcAge, isMinor, instTypeLabel, uid, sendAligoMessage } from "../../utils.js";
 import { Av } from "../shared/CommonUI.jsx";
@@ -285,6 +286,12 @@ export default function PaymentsView({ students, teachers, currentUser, payments
           <div className="pay-summary-card" style={{cursor:"pointer",outline:filterUnpaid?"2px solid var(--red)":""}} onClick={() => setFilterUnpaid(f=>!f)}><div className="pay-summary-num" style={{color:"var(--red)"}}>{unpaidCount}명</div><div className="pay-summary-label">미납</div></div>
         </>)}
       </div>
+      {!isTeacher && visibleStudents.length > 0 && (
+        <div className="pay-footer">
+          <span className="pay-footer-label">이달 총 납부액</span>
+          <span className="pay-footer-amount">{fmtMoney(totalPaid)}</span>
+        </div>
+      )}
       {/* 수납률 프로그레스 바 — 관리자/매니저 전용 */}
       {!isTeacher && visibleStudents.length > 0 && (
         <div style={{marginBottom:10,padding:"10px 14px",background:"#fff",borderRadius:10,border:"1px solid #F0F0F0"}}>
@@ -299,7 +306,7 @@ export default function PaymentsView({ students, teachers, currentUser, payments
         </div>
       )}
       {visibleStudents.length === 0 ? (
-        <div className="empty"><div className="empty-icon">₩</div><div className="empty-txt">{filterUnpaid ? "미납 회원이 없습니다." : searchQuery ? "검색 결과가 없습니다." : "회원이 없습니다."}</div></div>
+        <div className="empty"><img src={knotLineSvg} style={{width:44,height:55,opacity:0.28,marginBottom:10}} alt="" /><div className="empty-txt">{filterUnpaid ? "미납 회원이 없습니다." : searchQuery ? "검색 결과가 없습니다." : "회원이 없습니다."}</div></div>
       ) : visibleStudents.map(s => {
         const p = getPayment(s.id);
         const isPaid = p?.paid;

@@ -1,4 +1,5 @@
 ﻿import { useState } from "react";
+import knotLineSvg from "../../assets/heritage/knot-line.svg";
 import { TODAY_STR, THIS_MONTH, IC } from "../../constants.jsx";
 import { uid, fmtDateShort, canManageAll, monthLabel, formatLessonNoteSummary, getAudience } from "../../utils.js";
 import { aiPolishLessonNote, aiSuggestReply } from "../../aiClient.js";
@@ -476,7 +477,7 @@ function AttendanceView({ students, teachers, currentUser, attendance, onSaveAtt
         </div>
       )}
       {dayStudents.length === 0 ? (
-        <div className="empty"><div className="empty-icon">✓</div><div className="empty-txt">{dayName}요일 수업이 없습니다.</div></div>
+        <div className="empty"><img src={knotLineSvg} style={{width:44,height:55,opacity:0.28,marginBottom:10}} alt="" /><div className="empty-txt">{dayName}요일 수업이 없습니다.</div></div>
       ) : (
         lessonGroups.map(group => {
           const isCollapsed = collapsedGroups[group.key];
