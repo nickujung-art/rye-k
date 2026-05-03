@@ -753,13 +753,63 @@ export function PublicParentView() {
       <div className="portal-body" style={{padding:16,maxWidth:640,margin:"0 auto"}}>
         {/* Home Tab */}
         {tab === "home" && (
-          <div>
-            {/* Announcements preview */}
+          <div className="fade-up">
+            {/* Hero 인사 카드 */}
+            <div style={{background:"var(--hanji)",borderRadius:"var(--radius-lg)",padding:"20px 20px 18px",marginBottom:16,boxShadow:"var(--shadow-lifted)",border:"1px solid var(--border)",overflow:"hidden",position:"relative"}}>
+              <div style={{position:"absolute",top:0,left:0,right:0,height:3,background:"linear-gradient(90deg,var(--dancheong-blue),var(--dancheong-red),var(--dancheong-yellow),var(--dancheong-white),var(--dancheong-black))"}}/>
+              <div style={{fontSize:13,color:"var(--ink-60)",marginBottom:4}}>안녕하세요</div>
+              <div style={{fontFamily:"'Noto Serif KR',serif",fontSize:28,fontWeight:700,color:"var(--ink)",lineHeight:1.2,marginBottom:10}}>{student.name}님</div>
+              <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
+                {teacher && <span style={{fontSize:12,color:"var(--ink-60)"}}>담당 {teacher.name} 강사</span>}
+                {teacher && <span style={{width:3,height:3,borderRadius:"50%",background:"var(--ink-30)",display:"inline-block",flexShrink:0}}/>}
+                <span style={{fontSize:12,fontWeight:500,color:(student.status||"active")==="active"?"var(--green)":"var(--ink-30)"}}>
+                  {(student.status||"active")==="active"?"재원중":student.status==="paused"?"휴원":"퇴원"}
+                </span>
+              </div>
+            </div>
+
+            {/* Quick Stats: 출석률 · D-day · 수납 */}
+            <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginBottom:16}}>
+              <div style={{background:"var(--paper)",border:"1px solid var(--border)",borderRadius:"var(--radius)",padding:"12px",textAlign:"center",boxShadow:"var(--shadow)"}}>
+                <div style={{fontFamily:"'Noto Serif KR',serif",fontSize:22,fontWeight:700,color:"var(--green)",fontVariantNumeric:"tabular-nums",lineHeight:1}}>{attRate !== null ? `${attRate}%` : "—"}</div>
+                <div style={{fontSize:10,color:"var(--ink-30)",marginTop:4}}>이달 출석률</div>
+              </div>
+              <div style={{background:"var(--paper)",border:"1px solid var(--border)",borderRadius:"var(--radius)",padding:"12px",textAlign:"center",boxShadow:"var(--shadow)"}}>
+                <div style={{fontFamily:"'Noto Serif KR',serif",fontSize:22,fontWeight:700,color:"var(--blue)",fontVariantNumeric:"tabular-nums",lineHeight:1}}>{nextLesson ? (nextLesson.dDay === 0 ? "오늘" : `D-${nextLesson.dDay}`) : "—"}</div>
+                <div style={{fontSize:10,color:"var(--ink-30)",marginTop:4}}>다음 레슨</div>
+              </div>
+              <div style={{background:"var(--paper)",border:"1px solid var(--border)",borderRadius:"var(--radius)",padding:"12px",textAlign:"center",boxShadow:"var(--shadow)",cursor:"pointer"}} onClick={()=>setTab("pay")}>
+                <div style={{fontFamily:"'Noto Serif KR',serif",fontSize:22,fontWeight:700,color:thisMonthPay?.paid?"var(--green)":"var(--gold-dk)",lineHeight:1}}>{thisMonthPay?.paid?"완납":"미납"}</div>
+                <div style={{fontSize:10,color:"var(--ink-30)",marginTop:4}}>이달 수납</div>
+              </div>
+            </div>
+
+            {/* 다음 레슨 카드 */}
+            {nextLesson && (
+              <div style={{background:"var(--paper)",borderRadius:"var(--radius-lg)",boxShadow:"var(--shadow-lifted)",border:"1px solid var(--border)",overflow:"hidden",marginBottom:16,display:"flex"}}>
+                <div style={{width:4,background:"linear-gradient(180deg,var(--dancheong-blue),var(--dancheong-red),var(--dancheong-yellow))",flexShrink:0}}/>
+                <div style={{flex:1,padding:"16px"}}>
+                  <div style={{fontSize:10,color:"var(--ink-30)",letterSpacing:".6px",textTransform:"uppercase",marginBottom:6}}>다음 레슨</div>
+                  <div style={{fontFamily:"'Noto Serif KR',serif",fontSize:18,fontWeight:600,color:"var(--ink)",marginBottom:6}}>
+                    {nextLesson.dDay === 0 ? "오늘" : `${nextLesson.dDay}일 후`} · {nextLesson.dayName}요일
+                    {nextLesson.time && <span style={{fontSize:14,color:"var(--ink-60)",fontFamily:"inherit"}}> {nextLesson.time}</span>}
+                  </div>
+                  <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                    {nextLesson.lessons.map(l => <span key={l.instrument} style={{background:"var(--blue-lt)",color:"var(--blue)",fontSize:11,padding:"2px 8px",borderRadius:6,fontWeight:500}}>{l.instrument}</span>)}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* 공지사항 */}
             {visibleNotices.length > 0 && (
               <div style={{marginBottom:16}}>
-                <div style={{fontSize:13,fontWeight:600,color:"var(--ink)",marginBottom:8}}>공지사항</div>
+                <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
+                  <div style={{width:3,height:14,background:"linear-gradient(180deg,var(--dancheong-blue),var(--dancheong-red))",borderRadius:2,flexShrink:0}}/>
+                  <div style={{fontFamily:"'Noto Serif KR',serif",fontSize:14,fontWeight:500,color:"var(--ink)"}}>공지사항</div>
+                </div>
                 {visibleNotices.slice(0,2).map(n => (
-                  <div key={n.id} style={{background:"#fff",borderRadius:12,padding:"14px 16px",marginBottom:6,boxShadow:"0 1px 4px rgba(0,0,0,.03)",border:"1px solid #F0F0F0",cursor:"pointer"}} onClick={()=>setTab("notice")}>
+                  <div key={n.id} style={{background:"var(--paper)",borderRadius:"var(--radius)",padding:"14px 16px",marginBottom:6,boxShadow:"var(--shadow)",border:"1px solid var(--border)",cursor:"pointer"}} onClick={()=>setTab("notice")}>
                     <div style={{display:"flex",alignItems:"center",gap:6}}>
                       {n.pinned && <span style={{fontSize:11}}>📌</span>}
                       <span style={{fontSize:13,fontWeight:600,color:"var(--ink)",flex:1}}>{n.title}</span>
@@ -770,37 +820,46 @@ export function PublicParentView() {
                 {visibleNotices.length > 2 && <button style={{background:"none",border:"none",color:"var(--blue)",fontSize:12,cursor:"pointer",fontFamily:"inherit",padding:0}} onClick={()=>handleTabChange("notice")}>전체 보기 →</button>}
               </div>
             )}
-            {/* Practice Guide */}
+
+            {/* 이번 주 과제 · 연습 */}
             {student.practiceGuide?.body && (
               <div style={{marginBottom:16}}>
-                <div style={{fontSize:13,fontWeight:600,color:"var(--ink)",marginBottom:8}}>🎯 이번 주 과제 · 연습</div>
-                <div style={{background:"linear-gradient(135deg,#F0F9FF,#E0F2FE)",borderRadius:12,padding:"16px",boxShadow:"0 1px 4px rgba(0,0,0,.03)",border:"1px solid rgba(43,58,159,.12)"}}>
-                  <div style={{fontSize:13,color:"var(--ink)",lineHeight:1.7,whiteSpace:"pre-wrap"}}>{student.practiceGuide.body}</div>
+                <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
+                  <div style={{width:3,height:14,background:"linear-gradient(180deg,var(--dancheong-yellow),var(--gold))",borderRadius:2,flexShrink:0}}/>
+                  <div style={{fontFamily:"'Noto Serif KR',serif",fontSize:14,fontWeight:500,color:"var(--ink)"}}>이번 주 과제 · 연습</div>
+                </div>
+                <div style={{background:"var(--hanji)",borderRadius:"var(--radius-lg)",padding:16,boxShadow:"var(--shadow)",border:"1px solid var(--border)"}}>
+                  <div style={{fontSize:13,color:"var(--ink)",lineHeight:1.75,whiteSpace:"pre-wrap"}}>{student.practiceGuide.body}</div>
                   <div style={{display:"flex",alignItems:"center",gap:8,marginTop:10}}>
-                    {student.practiceGuide.instrument && <span style={{background:"var(--blue-lt)",color:"var(--blue)",fontSize:10,padding:"2px 8px",borderRadius:8,fontWeight:500}}>{student.practiceGuide.instrument}</span>}
+                    {student.practiceGuide.instrument && <span style={{background:"var(--blue-lt)",color:"var(--blue)",fontSize:10,padding:"2px 8px",borderRadius:6,fontWeight:500}}>{student.practiceGuide.instrument}</span>}
                     <span style={{fontSize:10,color:"var(--ink-30)"}}>{fmtDateShort(student.practiceGuide.createdAt)} 작성</span>
                   </div>
                 </div>
               </div>
             )}
-            {/* Monthly Reports */}
+
+            {/* 월간 리포트 */}
             {aiReports.filter(r => r.studentId === student.id && r.status === "published").sort((a,b)=>b.publishedAt-a.publishedAt).slice(0,3).map(rep => (
               <div key={rep.id} style={{marginBottom:12}}>
-                <details style={{background:"linear-gradient(135deg,#F0FDF4,#DCFCE7)",borderRadius:12,border:"1px solid rgba(22,163,74,.15)",overflow:"hidden"}}>
+                <details style={{background:"var(--green-lt)",borderRadius:"var(--radius-lg)",border:"1px solid rgba(26,122,64,.15)",overflow:"hidden"}}>
                   <summary style={{padding:"14px 16px",cursor:"pointer",fontSize:13,fontWeight:600,color:"var(--green)",display:"flex",justifyContent:"space-between",alignItems:"center",listStyle:"none",gap:8}}>
                     <span>📋 월간 리포트 {rep.month?.slice(0,7).replace("-","년 ")}월</span>
                     <span style={{fontSize:11,color:"var(--ink-30)",fontWeight:400}}>{fmtDateShort(rep.publishedAt)} 등록</span>
                   </summary>
-                  <div style={{padding:"0 16px 14px",fontSize:13,color:"var(--ink)",lineHeight:1.8,whiteSpace:"pre-wrap",borderTop:"1px solid rgba(22,163,74,.1)"}}>{rep.body}</div>
+                  <div style={{padding:"0 16px 14px",fontSize:13,color:"var(--ink)",lineHeight:1.8,whiteSpace:"pre-wrap",borderTop:"1px solid rgba(26,122,64,.1)"}}>{rep.body}</div>
                 </details>
               </div>
             ))}
-            {/* Lesson Schedule */}
+
+            {/* 레슨 일정 */}
             <div style={{marginBottom:16}}>
-              <div style={{fontSize:13,fontWeight:600,color:"var(--ink)",marginBottom:8}}>레슨 일정</div>
+              <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
+                <div style={{width:3,height:14,background:"linear-gradient(180deg,var(--blue),var(--dancheong-blue))",borderRadius:2,flexShrink:0}}/>
+                <div style={{fontFamily:"'Noto Serif KR',serif",fontSize:14,fontWeight:500,color:"var(--ink)"}}>레슨 일정</div>
+              </div>
               {(student.lessons||[]).map(l => (
-                <div key={l.instrument} style={{background:"#fff",borderRadius:12,padding:"14px 16px",marginBottom:6,boxShadow:"0 1px 4px rgba(0,0,0,.03)",border:"1px solid #F0F0F0"}}>
-                  <div style={{fontSize:14,fontWeight:600,color:"var(--blue)",marginBottom:6}}>{l.instrument}</div>
+                <div key={l.instrument} style={{background:"var(--paper)",borderRadius:"var(--radius)",padding:"14px 16px",marginBottom:6,boxShadow:"var(--shadow)",border:"1px solid var(--border)"}}>
+                  <div style={{fontSize:14,fontWeight:600,color:"var(--blue)",marginBottom:6,fontFamily:"'Noto Serif KR',serif"}}>{l.instrument}</div>
                   <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
                     {(l.schedule||[]).filter(sc=>sc.day).map((sc,i) => (
                       <span key={i} style={{background:"var(--blue-lt)",color:"var(--blue)",padding:"4px 12px",fontSize:12,fontWeight:500,borderRadius:8}}>{sc.day}요일{sc.time && ` ${sc.time}`}</span>
@@ -809,15 +868,19 @@ export function PublicParentView() {
                 </div>
               ))}
             </div>
-            {/* Recent Notes */}
+
+            {/* 최근 레슨 노트 */}
             {notes.length > 0 && (
               <div style={{marginBottom:16}}>
-                <div style={{fontSize:13,fontWeight:600,color:"var(--ink)",marginBottom:8}}>최근 레슨 노트</div>
+                <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
+                  <div style={{width:3,height:14,background:"linear-gradient(180deg,var(--ink-60),var(--ink-30))",borderRadius:2,flexShrink:0}}/>
+                  <div style={{fontFamily:"'Noto Serif KR',serif",fontSize:14,fontWeight:500,color:"var(--ink)"}}>최근 레슨 노트</div>
+                </div>
                 {notes.slice(0,2).map((a,i) => {
                   const st = attStatusStyle[a.status]||{color:"var(--ink-30)",bg:"var(--ink-10)",icon:"·",text:""};
                   const ln = a.lessonNote;
                   return (
-                    <div key={i} style={{background:"#fff",borderRadius:12,padding:"14px 16px",marginBottom:6,boxShadow:"0 1px 4px rgba(0,0,0,.03)",border:"1px solid #F0F0F0"}}>
+                    <div key={i} style={{background:"var(--paper)",borderRadius:"var(--radius)",padding:"14px 16px",marginBottom:6,boxShadow:"var(--shadow)",border:"1px solid var(--border)"}}>
                       <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
                         <span style={{fontSize:12,color:"var(--ink-30)"}}>{fmtDate(a.date)}</span>
                         <span style={{background:st.bg,color:st.color,fontSize:10,fontWeight:600,padding:"2px 8px",borderRadius:6}}>{st.icon} {st.text}</span>
@@ -837,7 +900,8 @@ export function PublicParentView() {
                 {notes.length > 2 && <button style={{background:"none",border:"none",color:"var(--blue)",fontSize:12,cursor:"pointer",fontFamily:"inherit",padding:0}} onClick={()=>setTab("notes")}>전체 레슨노트 보기 →</button>}
               </div>
             )}
-            {/* 이번 달 수납 상태 */}
+
+            {/* 이번 달 수납 */}
             {(() => {
               const autoAmt = (student.monthlyFee || 0) + (student.instrumentRental ? (student.rentalFee || 0) : 0);
               const tp = sPay.find(p => p.month === THIS_MONTH);
@@ -845,22 +909,29 @@ export function PublicParentView() {
               const amt = tp?.amount || autoAmt;
               return (
                 <div style={{marginBottom:16}}>
-                  <div style={{fontSize:13,fontWeight:600,color:"var(--ink)",marginBottom:8}}>이번 달 수납</div>
-                  <div onClick={()=>setTab("pay")} style={{cursor:"pointer",background:isPaid?"var(--green-lt)":"var(--gold-lt)",border:`1px solid ${isPaid?"var(--green-lt)":"rgba(245,158,11,.25)"}`,borderRadius:12,padding:"14px 16px",display:"flex",alignItems:"center",justifyContent:"space-between",transition:"opacity .12s"}} onMouseEnter={e=>e.currentTarget.style.opacity=".85"} onMouseLeave={e=>e.currentTarget.style.opacity="1"}>
+                  <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
+                    <div style={{width:3,height:14,background:`linear-gradient(180deg,${isPaid?"var(--green)":"var(--gold)"},${isPaid?"var(--green)":"var(--gold-dk)"})`,borderRadius:2,flexShrink:0}}/>
+                    <div style={{fontFamily:"'Noto Serif KR',serif",fontSize:14,fontWeight:500,color:"var(--ink)"}}>이번 달 수납</div>
+                  </div>
+                  <div onClick={()=>setTab("pay")} style={{cursor:"pointer",background:isPaid?"var(--green-lt)":"var(--gold-lt)",border:`1px solid ${isPaid?"rgba(26,122,64,.2)":"rgba(245,168,0,.25)"}`,borderRadius:"var(--radius-lg)",padding:"16px",display:"flex",alignItems:"center",justifyContent:"space-between",boxShadow:"var(--shadow-lifted)",transition:"opacity .12s"}} onMouseEnter={e=>e.currentTarget.style.opacity=".85"} onMouseLeave={e=>e.currentTarget.style.opacity="1"}>
                     <div>
-                      <div style={{fontSize:14,fontWeight:600,color:isPaid?"var(--green)":"var(--gold-dk)"}}>{isPaid ? "✓ 납부 완료" : `수납 안내 · ${fmtMoney(amt)}`}</div>
+                      <div style={{fontFamily:"'Noto Serif KR',serif",fontSize:17,fontWeight:700,color:isPaid?"var(--green)":"var(--gold-dk)"}}>{isPaid ? "✓ 납부 완료" : `수납 안내 · ${fmtMoney(amt)}`}</div>
                       {tp?.paidDate && <div style={{fontSize:11,color:"var(--ink-30)",marginTop:2}}>{fmtDate(tp.paidDate)} 납부</div>}
                       {!tp && <div style={{fontSize:11,color:"var(--ink-30)",marginTop:2}}>수납 내역 없음</div>}
                     </div>
-                    <span style={{fontSize:18}}>{isPaid ? "✅" : "💛"}</span>
+                    <span style={{fontSize:22}}>{isPaid ? "✅" : "💛"}</span>
                   </div>
                 </div>
               );
             })()}
-            {/* Basic Info */}
+
+            {/* 기본 정보 */}
             <div>
-              <div style={{fontSize:13,fontWeight:600,color:"var(--ink)",marginBottom:8}}>기본 정보</div>
-              <div style={{background:"#fff",borderRadius:12,overflow:"hidden",boxShadow:"0 1px 4px rgba(0,0,0,.03)",border:"1px solid #F0F0F0"}}>
+              <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
+                <div style={{width:3,height:14,background:"linear-gradient(180deg,var(--ink-30),var(--border))",borderRadius:2,flexShrink:0}}/>
+                <div style={{fontFamily:"'Noto Serif KR',serif",fontSize:14,fontWeight:500,color:"var(--ink)"}}>기본 정보</div>
+              </div>
+              <div style={{background:"var(--paper)",borderRadius:"var(--radius-lg)",overflow:"hidden",boxShadow:"var(--shadow)",border:"1px solid var(--border)"}}>
                 <div className="info-grid">
                   <div className="ii"><div className="ii-label">담당 강사</div><div className="ii-val">{teacher?teacher.name:"미배정"}</div></div>
                   <div className="ii"><div className="ii-label">수강 시작일</div><div className="ii-val">{fmtDate(student.startDate)}</div></div>
