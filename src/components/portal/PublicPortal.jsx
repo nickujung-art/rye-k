@@ -1323,15 +1323,22 @@ export function PublicParentView() {
                 const daysInMonth = lastDay.getDate();
                 const todayKey = today.getFullYear()===yyyy && today.getMonth()+1===mm ? today.getDate() : -1;
                 const todayMs = new Date(today.getFullYear(),today.getMonth(),today.getDate()).getTime();
+                const STATUS_RANK = { absent: 4, late: 3, excused: 2, present: 1 };
                 const statusByDay = {};
-                dispRecs.forEach(a => { const d = parseInt(a.date.slice(8,10)); statusByDay[d] = a.status; });
+                dispRecs.forEach(a => {
+                  const d = parseInt(a.date.slice(8,10));
+                  const cur = statusByDay[d];
+                  if (!cur || (STATUS_RANK[a.status] || 0) > (STATUS_RANK[cur] || 0)) {
+                    statusByDay[d] = a.status;
+                  }
+                });
                 const cells = [];
                 for (let i=0; i<offset; i++) cells.push(null);
                 for (let d=1; d<=daysInMonth; d++) cells.push(d);
                 while (cells.length % 7 !== 0) cells.push(null);
                 return (
                   <div style={{marginBottom:14,padding:"14px 16px",background:"var(--paper)",borderRadius:"var(--radius-lg)",border:"1px solid var(--border)"}}>
-                    <div style={{fontSize:9,letterSpacing:"0.14em",color:"var(--ink-30)",fontWeight:600,marginBottom:10,textTransform:"uppercase"}}>{isThisMonth?"이달 캘린더":`${dispMonthLabel} 캘린더`}</div>
+                    <div style={{fontSize:9,letterSpacing:"0.14em",color:"var(--ink-30)",fontWeight:600,marginBottom:10,textTransform:"uppercase"}}>{isThisMonth?"이달 캘린더":`${dispMonthLabel} 캘린더 · 최근 기록`}</div>
                     <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:5,marginBottom:6}}>
                       {["일","월","화","수","목","금","토"].map((d,i) => (
                         <div key={d} style={{fontSize:9,color:i===0?"var(--red)":i===6?"var(--blue)":"var(--ink-30)",textAlign:"center",letterSpacing:"0.04em",fontWeight:500}}>{d}</div>
@@ -1351,7 +1358,8 @@ export function PublicParentView() {
                             aspectRatio:"1",
                             borderRadius:4,
                             background: filled ? cfg.bg : "transparent",
-                            border: status==="excused" ? "1px solid var(--blue)" : isToday ? "1px solid var(--ink)" : "1px solid var(--border)",
+                            border: status==="excused" ? "1px solid var(--blue)" : "1px solid var(--border)",
+                            boxShadow: isToday ? "inset 0 0 0 1px var(--ink)" : "none",
                             opacity: future ? 0.35 : 1,
                             display:"flex",alignItems:"center",justifyContent:"center",
                             fontSize:10,fontWeight:isToday?700:400,
