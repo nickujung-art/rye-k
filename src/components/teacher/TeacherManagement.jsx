@@ -1,4 +1,5 @@
 ﻿import { useState, useRef } from "react";
+import knotLineSvg from "../../assets/heritage/knot-line.svg";
 import { IC, TODAY_STR, THIS_MONTH } from "../../constants.jsx";
 import { compressImage, fmtPhone, getPhoneInitialPassword, canManageAll, fmtDate, allLessonInsts } from "../../utils.js";
 import { Av, PhotoUpload, RoleBadge, DeleteConfirmFooter } from "../shared/CommonUI.jsx";
@@ -169,7 +170,7 @@ export function TeachersView({ teachers, students, onAdd, onSelect, attendance =
       <div className="ph"><div><h1>강사 · 매니저</h1><div className="ph-sub">전체 {teachers.length}명</div></div></div>
       <div className="srch-wrap"><span className="srch-icon">{IC.search}</span><input className="srch-inp" placeholder="이름, 전공 검색" value={search} onChange={e => setSearch(e.target.value)} /></div>
       {filtered.length === 0 ? (
-        <div className="empty"><div className="empty-icon">◈</div><div className="empty-txt">등록된 강사가 없습니다.</div></div>
+        <div className="empty"><img src={knotLineSvg} style={{width:44,height:55,opacity:0.28,marginBottom:10}} alt="" /><div className="empty-txt">등록된 강사가 없습니다.</div></div>
       ) : (
         <div className="s-grid">
           {filtered.map(t => {

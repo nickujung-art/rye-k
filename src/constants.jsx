@@ -648,7 +648,7 @@ input[type="date"]::-webkit-date-and-time-value{text-align:left}
 .settlement-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:600;overflow-y:auto;padding:20px;display:flex;align-items:flex-start;justify-content:center}
 .settlement-doc{background:#fff;width:100%;max-width:800px;border-radius:12px;overflow:hidden;margin:auto}
 .settlement-controls{display:flex;justify-content:space-between;align-items:center;padding:12px 20px;background:var(--paper);border-bottom:1px solid var(--border);gap:8px;flex-wrap:wrap}
-.settlement-paper{padding:32px 38px;font-size:13px;line-height:1.6;color:#1a1a1a}
+.settlement-paper{padding:32px 38px;font-size:13px;line-height:1.6;color:#1a1a1a;background:var(--hanji)}
 .settlement-table{width:100%;border-collapse:collapse;margin-top:4px;font-size:12px}
 .settlement-table th{background:#f4f4f4;padding:8px 10px;text-align:left;font-size:11px;font-weight:600;color:#444;border:1px solid #ddd}
 .settlement-table td{padding:9px 10px;border:1px solid #eee;vertical-align:middle}
