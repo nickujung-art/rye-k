@@ -68,8 +68,8 @@ input,select,textarea,button{font-family:inherit}
 
 /* ── Login ─────────────────────────────────────────────── */
 .login-bg{min-height:100vh;min-height:100dvh;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:20px}
-.login-card{background:var(--paper);width:100%;max-width:380px;padding:36px 28px;border-radius:var(--radius-lg);box-shadow:var(--shadow-md);position:relative;overflow:hidden}
-.login-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--blue),var(--red),var(--gold))}
+.login-card{background:var(--hanji);width:100%;max-width:380px;padding:36px 28px;border-radius:var(--radius-lg);box-shadow:var(--shadow-lifted);position:relative;overflow:hidden}
+.login-card::before{content:'';position:absolute;top:0;left:0;right:0;height:4px;background:linear-gradient(90deg,var(--dancheong-blue),var(--dancheong-red),var(--dancheong-yellow),var(--dancheong-white),var(--dancheong-black))}
 .login-logo{display:flex;align-items:center;gap:12px;margin-bottom:24px}
 .login-logo-text .brand{font-family:'Noto Serif KR',serif;font-size:17px;font-weight:700;color:var(--blue)}
 .login-logo-text .sub{font-size:9px;color:var(--ink-30);letter-spacing:2px;text-transform:uppercase;margin-top:2px}

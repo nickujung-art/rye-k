@@ -96,7 +96,8 @@ export function PublicRegisterForm() {
     <><style>{CSS}</style><style>{SILVER_CSS}</style>
     <div style={{minHeight:"100vh",background:"var(--bg)",padding:"20px 16px"}}>
       <div style={{maxWidth:480,margin:"0 auto"}} className="silver-form">
-        <div style={{textAlign:"center",marginBottom:24}}>
+        <div style={{textAlign:"center",marginBottom:24,background:"var(--hanji)",borderRadius:"var(--radius-lg)",padding:"28px 20px",position:"relative",overflow:"hidden"}}>
+          <div style={{position:"absolute",top:0,left:0,right:0,height:4,background:"linear-gradient(90deg,var(--dancheong-blue),var(--dancheong-red),var(--dancheong-yellow),var(--dancheong-white),var(--dancheong-black))"}} />
           <Logo size={52} />
           <div style={{fontFamily:"'Noto Serif KR',serif",fontSize:20,fontWeight:700,color:"var(--blue)",marginTop:10}}>RYE-K K-Culture Center</div>
           <div style={{fontSize:14,color:"var(--ink-30)",letterSpacing:1.5,marginTop:4}}>수강 등록 신청서</div>
