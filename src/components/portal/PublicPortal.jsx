@@ -644,7 +644,57 @@ export function PublicParentView() {
     if (btn) setIndicator({ left: btn.offsetLeft, width: btn.offsetWidth });
   }, [tab]);
 
-  if (loading) return <><style>{CSS}</style><div className="loading-screen"><div className="loading-logo"><Logo size={56} /></div><div className="loading-text">RYE-K</div></div></>;
+  if (loading) return (
+    <><style>{CSS}</style>
+    <div style={{minHeight:"100vh",minHeight:"100dvh",background:"var(--bg)",display:"flex",flexDirection:"column"}}>
+      {/* 헤더 스켈레톤 */}
+      <div style={{height:52,background:"var(--paper)",borderBottom:"1px solid var(--border)",display:"flex",alignItems:"center",padding:"0 16px",gap:10,flexShrink:0}}>
+        <div className="skel" style={{width:28,height:28,borderRadius:8}}/>
+        <div className="skel" style={{width:72,height:14}}/>
+      </div>
+      <div style={{padding:16,maxWidth:640,margin:"0 auto",width:"100%",boxSizing:"border-box"}}>
+        {/* Hero 카드 스켈레톤 */}
+        <div style={{background:"var(--paper)",borderRadius:"var(--radius-lg)",padding:20,marginBottom:10,border:"1px solid var(--border)",overflow:"hidden",position:"relative"}}>
+          <div className="skel" style={{position:"absolute",top:0,left:0,right:0,height:3,borderRadius:0}}/>
+          <div style={{display:"flex",gap:14,alignItems:"center"}}>
+            <div className="skel" style={{width:52,height:52,borderRadius:12,flexShrink:0}}/>
+            <div style={{flex:1}}>
+              <div className="skel" style={{width:"55%",height:20,marginBottom:10}}/>
+              <div style={{display:"flex",gap:6}}>
+                <div className="skel" style={{width:58,height:20,borderRadius:12}}/>
+                <div className="skel" style={{width:46,height:20,borderRadius:12}}/>
+              </div>
+            </div>
+          </div>
+        </div>
+        {/* Quick Stats 스켈레톤 */}
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:10}}>
+          {[0,1,2].map(i => (
+            <div key={i} style={{background:"var(--paper)",borderRadius:"var(--radius)",padding:"13px 10px",border:"1px solid var(--border)",textAlign:"center"}}>
+              <div className="skel" style={{width:"65%",height:22,margin:"0 auto 7px"}}/>
+              <div className="skel" style={{width:"50%",height:10,margin:"0 auto"}}/>
+            </div>
+          ))}
+        </div>
+        {/* 탭 바 스켈레톤 */}
+        <div style={{display:"flex",padding:"14px 0 0",marginBottom:16,gap:0}}>
+          {[28,28,28,52,44,28].map((w,i) => (
+            <div key={i} style={{flex:1,display:"flex",justifyContent:"center",alignItems:"center",paddingBottom:12}}>
+              <div className="skel" style={{width:w,height:11,borderRadius:4}}/>
+            </div>
+          ))}
+        </div>
+        {/* 콘텐츠 스켈레톤 */}
+        <div style={{background:"var(--paper)",borderRadius:"var(--radius-lg)",padding:16,border:"1px solid var(--border)"}}>
+          <div className="skel" style={{width:"38%",height:14,marginBottom:14}}/>
+          <div className="skel" style={{width:"100%",height:11,marginBottom:8}}/>
+          <div className="skel" style={{width:"92%",height:11,marginBottom:8}}/>
+          <div className="skel" style={{width:"68%",height:11}}/>
+        </div>
+      </div>
+    </div>
+    </>
+  );
 
   // ── 로그인 화면 (2단계) ───────────────────────────────────────────────────────
   if (!loggedIn) {

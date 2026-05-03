@@ -565,8 +565,10 @@ input[type="date"]::-webkit-date-and-time-value{text-align:left}
 .tab-bar-btn{position:relative;transition:color var(--dur-fast) var(--ease-out),transform var(--dur-fast) var(--ease-out);border-bottom:2px solid transparent !important}
 .tab-bar-btn:active{transform:scale(.97)}
 .tab-indicator{position:absolute;bottom:0;left:0;height:2px;background:var(--blue);border-radius:2px 2px 0 0;pointer-events:none;will-change:transform,width;transition:transform 320ms var(--ease-out),width 320ms var(--ease-out)}
+@keyframes shimmer{0%{background-position:-800px 0}100%{background-position:800px 0}}
+.skel{background:linear-gradient(90deg,var(--border) 25%,var(--ink-10) 50%,var(--border) 75%);background-size:800px 100%;animation:shimmer 1.4s infinite linear;border-radius:6px}
 @media(prefers-reduced-motion:reduce){
-  .hero-card,.hero-stripe,.hero-name,.p-stat,.fade-up,.scale-in{animation:none !important}
+  .hero-card,.hero-stripe,.hero-name,.p-stat,.fade-up,.scale-in,.skel{animation:none !important}
   .p-stat{transform:none !important}
   .tab-indicator{transition:none !important}}
 
