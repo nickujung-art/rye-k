@@ -910,12 +910,12 @@ export function PublicParentView() {
         <div style={{padding:"12px 20px",paddingTop:"calc(12px + env(safe-area-inset-top,0px))"}}>
           <div style={{display:"flex",alignItems:"center",gap:10,maxWidth:640,margin:"0 auto"}}>
             <Logo size={28} />
-            <div style={{flex:1,position:"relative",height:22,overflow:"hidden"}}>
-              <div style={{position:"absolute",top:0,left:0,right:0,opacity:scrolled?0:1,transform:scrolled?"translateY(-5px)":"translateY(0)",transition:"opacity 220ms var(--ease-out),transform 220ms var(--ease-out)",pointerEvents:scrolled?"none":"auto"}}>
+            <div style={{flex:1,position:"relative",height:28,overflow:"hidden"}}>
+              <div style={{position:"absolute",top:0,left:0,right:0,height:"100%",display:"flex",alignItems:"center",opacity:scrolled?0:1,transform:scrolled?"translateY(-5px)":"translateY(0)",transition:"opacity 220ms var(--ease-out),transform 220ms var(--ease-out)",pointerEvents:scrolled?"none":"auto"}}>
                 <div style={{fontFamily:"'Noto Serif KR',serif",fontSize:15,fontWeight:700,color:"var(--blue)"}}>My RYE-K</div>
               </div>
-              <div style={{position:"absolute",top:0,left:0,right:0,display:"flex",alignItems:"center",gap:8,opacity:scrolled?1:0,transform:scrolled?"translateY(0)":"translateY(5px)",transition:"opacity 220ms var(--ease-out),transform 220ms var(--ease-out)",pointerEvents:scrolled?"auto":"none"}}>
-                <Av photo={student.photo} name={student.name} />
+              <div style={{position:"absolute",top:0,left:0,right:0,height:"100%",display:"flex",alignItems:"center",gap:8,opacity:scrolled?1:0,transform:scrolled?"translateY(0)":"translateY(5px)",transition:"opacity 220ms var(--ease-out),transform 220ms var(--ease-out)",pointerEvents:scrolled?"auto":"none"}}>
+                <Av photo={student.photo} name={student.name} size="av-xs" />
                 <div style={{fontFamily:"'Noto Serif KR',serif",fontSize:14,fontWeight:700,color:"var(--ink)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{student.name}</div>
               </div>
             </div>

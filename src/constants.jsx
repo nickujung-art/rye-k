@@ -151,6 +151,7 @@ body:has(.mb) .bnav{display:none!important}
 .av img{width:100%;height:100%;object-fit:cover}
 .av-lg{width:64px;height:64px;font-size:22px}
 .av-sm{width:34px;height:34px;font-size:12px}
+.av-xs{width:24px;height:24px;font-size:9px;border-width:1.5px}
 
 /* ── Day chips ─────────────────────────────────────────── */
 .day-row{display:flex;gap:4px;flex-wrap:wrap}
