@@ -311,9 +311,10 @@ input[type="date"]::-webkit-date-and-time-value{text-align:left}
 .spinner-sm{display:inline-block;width:12px;height:12px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite;margin-right:6px;vertical-align:middle}
 
 /* ── Attendance ─────────────────────────────────────────── */
-.att-row{display:flex;align-items:center;gap:10px;padding:12px 14px;background:var(--paper);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:8px}
+.att-row{display:flex;align-items:center;gap:10px;padding:12px 14px;background:var(--paper);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:8px;transition:transform var(--dur-base) var(--ease-out),box-shadow var(--dur-base) var(--ease-out)}
+.att-row:hover{transform:translateY(-1px);box-shadow:var(--shadow-lifted)}
 .att-btns{display:flex;gap:4px;margin-left:auto;flex-shrink:0}
-.att-btn{min-width:44px;height:42px;border-radius:8px;border:1.5px solid var(--border);background:var(--paper);cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;transition:all .12s;color:var(--ink-30);gap:1px;padding:2px 6px}
+.att-btn{min-width:44px;height:42px;border-radius:8px;border:1.5px solid var(--border);background:var(--paper);cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;transition:all var(--dur-fast);color:var(--ink-30);gap:1px;padding:2px 6px}
 .att-btn .att-icon{font-size:15px;line-height:1}
 .att-btn .att-label{font-size:9px;font-weight:500;letter-spacing:-.3px}
 .att-btn:active{transform:scale(.92)}
@@ -325,16 +326,21 @@ input[type="date"]::-webkit-date-and-time-value{text-align:left}
 .att-stat{padding:6px 12px;border-radius:8px;font-size:12px;font-weight:600;display:flex;align-items:center;gap:4px}
 
 /* ── Payments ──────────────────────────────────────────── */
-.pay-row{display:flex;align-items:center;gap:10px;padding:12px 14px;background:var(--paper);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:8px;cursor:pointer;transition:background .1s}
+.pay-row{display:flex;align-items:center;gap:10px;padding:12px 14px;background:var(--paper);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:8px;cursor:pointer;transition:background var(--dur-fast),transform var(--dur-base) var(--ease-out),box-shadow var(--dur-base) var(--ease-out)}
+.pay-row:hover{transform:translateY(-1px);box-shadow:var(--shadow-lifted)}
 .pay-row:active{background:var(--ink-10)}
-.pay-amount{font-family:'Noto Serif KR',serif;font-size:14px;font-weight:600;color:var(--ink);margin-left:auto;text-align:right;flex-shrink:0}
+.pay-amount{font-family:'Noto Serif KR',serif;font-size:15px;font-weight:700;color:var(--ink);margin-left:auto;text-align:right;flex-shrink:0;font-variant-numeric:tabular-nums}
 .pay-status{font-size:11px;margin-top:1px}
 .pay-status.paid{color:var(--green)}
 .pay-status.unpaid{color:var(--red)}
 .pay-summary-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px}
-.pay-summary-card{background:var(--paper);border:1px solid var(--border);border-radius:var(--radius);padding:12px;text-align:center}
-.pay-summary-num{font-family:'Noto Serif KR',serif;font-size:18px;font-weight:700;line-height:1.2}
+.pay-summary-card{background:var(--paper);border:1px solid var(--border);border-radius:var(--radius);padding:12px;text-align:center;transition:transform var(--dur-base) var(--ease-out),box-shadow var(--dur-base) var(--ease-out)}
+.pay-summary-card:hover{transform:translateY(-1px);box-shadow:var(--shadow-lifted)}
+.pay-summary-num{font-family:'Noto Serif KR',serif;font-size:20px;font-weight:700;line-height:1.2;font-variant-numeric:tabular-nums}
 .pay-summary-label{font-size:10px;color:var(--ink-30);margin-top:2px}
+.pay-footer{background:var(--hanji);border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px 16px;margin-top:8px;display:flex;justify-content:space-between;align-items:center}
+.pay-footer-label{font-size:12px;color:var(--ink-60)}
+.pay-footer-amount{font-family:'Noto Serif KR',serif;font-size:20px;font-weight:700;color:var(--ink);font-variant-numeric:tabular-nums}
 
 /* ── Activity log ──────────────────────────────────────── */
 .log-item{display:flex;gap:10px;padding:10px 0;border-bottom:1px solid var(--ink-10);align-items:flex-start}
