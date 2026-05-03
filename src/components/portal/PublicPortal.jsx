@@ -572,6 +572,13 @@ export function PublicParentView() {
     }
   }, [students]);
 
+  const [scrolled, setScrolled] = useState(false);
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 160);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
   // ── 로그인 최종 처리 (상태 체크 포함) ───────────────────────────────────────
   const doLogin = (found, errSetter = setLoginErr) => {
     const status = found.status || "active";
@@ -898,22 +905,41 @@ export function PublicParentView() {
     <div className={textLarge ? "text-large" : ""} style={{minHeight:"100vh",minHeight:"100dvh",background:"var(--bg)"}}>
       {/* Clean white header */}
       <UpdatePopup user={{ role: "member", id: student.id }} />
-      <div style={{background:"#fff",padding:"14px 20px",paddingTop:"calc(14px + env(safe-area-inset-top,0px))",borderBottom:"1px solid #F0F0F0"}}>
-        <div style={{display:"flex",alignItems:"center",gap:10,maxWidth:640,margin:"0 auto"}}>
-          <Logo size={28} />
-          <div style={{flex:1}}>
-            <div style={{fontFamily:"'Noto Serif KR',serif",fontSize:15,fontWeight:700,color:"var(--blue)"}}>My RYE-K</div>
+      {/* ── Sticky Nav: Header + Tab Bar ── */}
+      <div style={{position:"sticky",top:0,zIndex:200,background:"rgba(255,255,255,.95)",backdropFilter:"blur(10px)",WebkitBackdropFilter:"blur(10px)",boxShadow:scrolled?"0 1px 10px rgba(0,0,0,.08)":"none",transition:"box-shadow 250ms var(--ease-out)"}}>
+        <div style={{padding:"12px 20px",paddingTop:"calc(12px + env(safe-area-inset-top,0px))"}}>
+          <div style={{display:"flex",alignItems:"center",gap:10,maxWidth:640,margin:"0 auto"}}>
+            <Logo size={28} />
+            <div style={{flex:1,position:"relative",height:22,overflow:"hidden"}}>
+              <div style={{position:"absolute",top:0,left:0,right:0,opacity:scrolled?0:1,transform:scrolled?"translateY(-5px)":"translateY(0)",transition:"opacity 220ms var(--ease-out),transform 220ms var(--ease-out)",pointerEvents:scrolled?"none":"auto"}}>
+                <div style={{fontFamily:"'Noto Serif KR',serif",fontSize:15,fontWeight:700,color:"var(--blue)"}}>My RYE-K</div>
+              </div>
+              <div style={{position:"absolute",top:0,left:0,right:0,display:"flex",alignItems:"center",gap:8,opacity:scrolled?1:0,transform:scrolled?"translateY(0)":"translateY(5px)",transition:"opacity 220ms var(--ease-out),transform 220ms var(--ease-out)",pointerEvents:scrolled?"auto":"none"}}>
+                <Av photo={student.photo} name={student.name} />
+                <div style={{fontFamily:"'Noto Serif KR',serif",fontSize:14,fontWeight:700,color:"var(--ink)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{student.name}</div>
+              </div>
+            </div>
+            <div style={{display:"flex",gap:6,alignItems:"center"}}>
+              {siblings.length > 0 && (
+                <button onClick={()=>{setShowSiblingModal(true);setSwitchErr("");}}
+                  style={{background:"var(--blue-lt)",border:"1px solid rgba(43,58,159,.15)",color:"var(--blue)",fontSize:11,padding:"6px 12px",borderRadius:8,cursor:"pointer",fontFamily:"inherit",fontWeight:600,display:"flex",alignItems:"center",gap:4}}>
+                  자녀 변경 🔄
+                </button>
+              )}
+              <button onClick={() => { const v = !textLarge; setTextLarge(v); localStorage.setItem("rye-text-large", v ? "1" : "0"); }} style={{background:textLarge?"var(--blue-lt)":"var(--ink-10)",border:textLarge?"1px solid rgba(43,58,159,.2)":"none",color:textLarge?"var(--blue)":"var(--ink-30)",fontSize:11,padding:"6px 10px",borderRadius:8,cursor:"pointer",fontFamily:"inherit",fontWeight:700,transition:"all .15s"}}>Aa</button>
+              <button onClick={()=>{setLoggedIn(false);setStudent(null);setLoginCode("");setLoginPw("");setLoginStep("id");setPendingStudent(null);setTab("home");try{localStorage.removeItem("ryekPortal");}catch{}}} style={{background:"var(--ink-10)",border:"none",color:"var(--ink-30)",fontSize:11,padding:"6px 14px",borderRadius:8,cursor:"pointer",fontFamily:"inherit"}}>로그아웃</button>
+            </div>
           </div>
-          <div style={{display:"flex",gap:6,alignItems:"center"}}>
-            {siblings.length > 0 && (
-              <button onClick={()=>{setShowSiblingModal(true);setSwitchErr("");}}
-                style={{background:"var(--blue-lt)",border:"1px solid rgba(43,58,159,.15)",color:"var(--blue)",fontSize:11,padding:"6px 12px",borderRadius:8,cursor:"pointer",fontFamily:"inherit",fontWeight:600,display:"flex",alignItems:"center",gap:4}}>
-                자녀 변경 🔄
-              </button>
-            )}
-            <button onClick={() => { const v = !textLarge; setTextLarge(v); localStorage.setItem("rye-text-large", v ? "1" : "0"); }} style={{background:textLarge?"var(--blue-lt)":"var(--ink-10)",border:textLarge?"1px solid rgba(43,58,159,.2)":"none",color:textLarge?"var(--blue)":"var(--ink-30)",fontSize:11,padding:"6px 10px",borderRadius:8,cursor:"pointer",fontFamily:"inherit",fontWeight:700,transition:"all .15s"}}>Aa</button>
-            <button onClick={()=>{setLoggedIn(false);setStudent(null);setLoginCode("");setLoginPw("");setLoginStep("id");setPendingStudent(null);setTab("home");try{localStorage.removeItem("ryekPortal");}catch{}}} style={{background:"var(--ink-10)",border:"none",color:"var(--ink-30)",fontSize:11,padding:"6px 14px",borderRadius:8,cursor:"pointer",fontFamily:"inherit"}}>로그아웃</button>
-          </div>
+        </div>
+        <div ref={tabBarRef} className="tab-bar" style={{display:"flex",gap:0,padding:"0 16px",maxWidth:640,margin:"0 auto",borderTop:"1px solid var(--border)"}}>
+          {[{id:"home",label:"홈"},{id:"notice",label:"공지"},{id:"att",label:"출석"},{id:"notes",label:"레슨노트"},{id:"report",label:"리포트"},{id:"pay",label:"수납"}].map(t=>(
+            <button key={t.id} ref={el=>{if(el)tabBtnRefs.current[t.id]=el;}} onClick={()=>handleTabChange(t.id)} className="tab-bar-btn" style={{flex:1,padding:"10px 0",fontSize:12.5,fontWeight:tab===t.id?600:400,color:tab===t.id?"var(--blue)":"var(--ink-30)",background:"transparent",border:"none",cursor:"pointer",fontFamily:"inherit"}}>
+              {t.label}
+              {t.id==="notice" && unreadNoticeCount > 0 && <span style={{position:"absolute",top:6,right:"50%",transform:"translateX(calc(50% + 14px))",background:"var(--red)",color:"#fff",fontSize:9,fontWeight:700,padding:"1px 5px",borderRadius:8,lineHeight:1.4}}>{unreadNoticeCount}</span>}
+              {t.id==="notes" && unreadCommentCount > 0 && <span style={{position:"absolute",top:6,right:"50%",transform:"translateX(calc(50% + 20px))",background:"var(--blue)",color:"#fff",fontSize:9,fontWeight:700,padding:"1px 5px",borderRadius:8,lineHeight:1.4}}>{unreadCommentCount}</span>}
+            </button>
+          ))}
+          <div className="tab-indicator" style={{transform:`translateX(${indicator.left}px)`,width:indicator.width}}/>
         </div>
       </div>
 
@@ -960,18 +986,6 @@ export function PublicParentView() {
           <div style={{fontFamily:"'Noto Serif KR',serif",fontSize:22,fontWeight:700,color:thisMonthPay?.paid?"var(--green)":"var(--gold-dk)",lineHeight:1}}>{thisMonthPay?.paid?"완납":"미납"}</div>
           <div style={{fontSize:10,color:"var(--ink-30)",marginTop:4}}>이달 수납</div>
         </div>
-      </div>
-
-      {/* Tabs */}
-      <div ref={tabBarRef} className="tab-bar" style={{display:"flex",gap:0,padding:"14px 16px 0",maxWidth:640,margin:"0 auto"}}>
-        {[{id:"home",label:"홈"},{id:"notice",label:"공지"},{id:"att",label:"출석"},{id:"notes",label:"레슨노트"},{id:"report",label:"리포트"},{id:"pay",label:"수납"}].map(t=>(
-          <button key={t.id} ref={el=>{if(el)tabBtnRefs.current[t.id]=el;}} onClick={()=>handleTabChange(t.id)} className="tab-bar-btn" style={{flex:1,padding:"10px 0",fontSize:12.5,fontWeight:tab===t.id?600:400,color:tab===t.id?"var(--blue)":"var(--ink-30)",background:"transparent",border:"none",cursor:"pointer",fontFamily:"inherit"}}>
-            {t.label}
-            {t.id==="notice" && unreadNoticeCount > 0 && <span style={{position:"absolute",top:6,right:"50%",transform:"translateX(calc(50% + 14px))",background:"var(--red)",color:"#fff",fontSize:9,fontWeight:700,padding:"1px 5px",borderRadius:8,lineHeight:1.4}}>{unreadNoticeCount}</span>}
-            {t.id==="notes" && unreadCommentCount > 0 && <span style={{position:"absolute",top:6,right:"50%",transform:"translateX(calc(50% + 20px))",background:"var(--blue)",color:"#fff",fontSize:9,fontWeight:700,padding:"1px 5px",borderRadius:8,lineHeight:1.4}}>{unreadCommentCount}</span>}
-          </button>
-        ))}
-        <div className="tab-indicator" style={{transform:`translateX(${indicator.left}px)`,width:indicator.width}}/>
       </div>
 
       <div className="portal-body" style={{padding:16,maxWidth:640,margin:"0 auto"}}>
