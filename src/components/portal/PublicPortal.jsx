@@ -1563,18 +1563,39 @@ export function PublicParentView() {
                       {/* ⛔ p.note는 관리자 전용 비고 — 절대 렌더링 금지 */}
                     </div>
 
+                    {/* 계좌 안내 박스 (수강료 확정 + 미납 상태에서만) */}
+                    {!isPaid && (p.amount||0) > 0 && (
+                      <div style={{margin:"0 18px 14px",padding:"12px 14px",background:"var(--hanji)",border:"1px dashed var(--border)",borderRadius:"var(--radius-sm)"}}>
+                        <div style={{fontSize:10,color:"var(--ink-soft)",marginBottom:4,letterSpacing:"0.05em"}}>입금 계좌</div>
+                        <div style={{fontFamily:"'Noto Serif KR',serif",fontSize:14,fontWeight:500,color:"var(--ink)"}}>카카오뱅크 3333-34-5220544</div>
+                        <div style={{fontSize:11,color:"var(--ink-soft)",marginTop:2}}>예금주: 예케이케이컬처센터</div>
+                      </div>
+                    )}
+
                     {/* 납부 상태 푸터 */}
-                    <div style={{padding:"10px 18px 14px",borderTop:"1px solid var(--border)",background:isPaid?"var(--green-lt)":"var(--gold-lt)",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                      <div style={{fontSize:11,color:isPaid?"var(--green)":"var(--gold-dk)"}}>
-                        <div style={{fontWeight:700,fontSize:12}}>{isPaid?"납부 완료":"수납 안내 중"}</div>
-                        {isPaid && p.paidDate && <div style={{marginTop:2,opacity:.75}}>{fmtDate(p.paidDate)}{p.method?` · ${METHOD[p.method]||p.method}`:""}</div>}
-                        {!isPaid && <div style={{marginTop:2,opacity:.75}}>센터로 문의해 주세요</div>}
-                      </div>
-                      {/* 원형 도장 */}
-                      <div style={{width:50,height:50,borderRadius:"50%",border:`2px solid ${isPaid?"var(--green)":"var(--gold-dk)"}`,display:"flex",alignItems:"center",justifyContent:"center",transform:"rotate(-14deg)",flexShrink:0,opacity:.85}}>
-                        <div style={{fontFamily:"'Noto Serif KR',serif",fontSize:isPaid?12:10,fontWeight:700,color:isPaid?"var(--green)":"var(--gold-dk)",textAlign:"center",lineHeight:1.25}}>{isPaid?"완납":"수납\n안내"}</div>
-                      </div>
-                    </div>
+                    {(()=>{
+                      const isConfirmed = (p.amount||0) > 0;
+                      const footerBg = isPaid ? "var(--green-lt)" : isConfirmed ? "rgba(210,50,50,.06)" : "var(--gold-lt)";
+                      const stampColor = isPaid ? "var(--green)" : isConfirmed ? "var(--dancheong-red)" : "var(--gold-dk)";
+                      const stampLabel = isPaid ? "완납" : isConfirmed ? "입금\n요청" : "수납\n안내";
+                      const stampSize = isPaid ? 12 : 10;
+                      return (
+                        <div style={{padding:"10px 18px 14px",borderTop:"1px solid var(--border)",background:footerBg,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                          <div style={{fontSize:11,color:stampColor}}>
+                            <div style={{fontWeight:700,fontSize:12}}>
+                              {isPaid ? "납부 완료" : isConfirmed ? "수강료 확정" : "수납 안내 중"}
+                            </div>
+                            {isPaid && p.paidDate && <div style={{marginTop:2,opacity:.75}}>{fmtDate(p.paidDate)}{p.method?` · ${METHOD[p.method]||p.method}`:""}</div>}
+                            {!isPaid && isConfirmed && <div style={{marginTop:2,opacity:.75}}>아래 계좌로 입금 부탁드립니다</div>}
+                            {!isPaid && !isConfirmed && <div style={{marginTop:2,opacity:.75}}>센터로 문의해 주세요</div>}
+                          </div>
+                          {/* 원형 도장 */}
+                          <div style={{width:50,height:50,borderRadius:"50%",border:`2px solid ${stampColor}`,display:"flex",alignItems:"center",justifyContent:"center",transform:"rotate(-14deg)",flexShrink:0,opacity:.85}}>
+                            <div style={{fontFamily:"'Noto Serif KR',serif",fontSize:stampSize,fontWeight:700,color:stampColor,textAlign:"center",lineHeight:1.25,whiteSpace:"pre"}}>{stampLabel}</div>
+                          </div>
+                        </div>
+                      );
+                    })()}
                   </div>
                 );
               })
