@@ -31,9 +31,11 @@
   - 이유: 라이브 서버 = 실제 운영 환경. Nick이 로컬 테스트로 충분히 검증한 뒤에만 라이브 반영하길 원함.
   - 코드 수정 → `npm run build` 통과 → **여기서 멈추고 보고**. `git commit`까지는 OK, `git push`는 명시 요청 대기.
   - "수정 후 빌드 통과했습니다. 푸시할까요?" 형태로 확인 요청.
-- **시스템 소식(System News) / 업데이트 팝업 글 변경은 반드시 Nick 컨펌 후 푸시.**
+- **시스템 소식(System News) / 업데이트 팝업 글 변경은 반드시 Nick 명시 컨펌 후 파일 반영 + 커밋.**
   - 대상 파일: `src/constants/releases.js` (RELEASES, LATEST_RELEASE, CURRENT_VERSION), `src/components/updates/UpdatePopup.jsx`, `src/components/updates/SystemNewsView.jsx`
-  - 자동으로 릴리즈 노트를 작성·추가하지 말고, 작성안을 채팅에 먼저 보여주고 Nick의 컨펌을 받은 뒤에만 파일에 반영 + 푸시.
+  - 작성안을 채팅에 먼저 보여주고, Nick이 **"확인했어", "이대로 써줘", "OK"** 같이 릴리즈 노트를 명시적으로 승인한 경우에만 파일에 반영 + 커밋.
+  - **"다음 단계 진행해줘", "계속해줘", "다음 진행해줘"는 릴리즈 노트 컨펌으로 인정하지 않는다.** 이 경우 releases.js 반영을 건너뛰고 다른 작업을 먼저 처리하거나 재확인 요청.
+  - 이유: 로컬 `npm run dev` 실행만으로도 팝업이 뜨므로, 파일 반영 = 팝업 노출과 동일. Nick의 명시 승인 전 커밋 자체가 문제.
   - 이유: 사용자에게 보이는 공지 문구는 Nick의 톤·표현으로 통제되어야 함.
 
 ### 일반 규칙
