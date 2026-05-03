@@ -150,7 +150,7 @@ export default function AnalyticsView({ students, teachers, attendance, payments
         <div className="dash-card-title">알게 된 경로 분석</div>
         {referralSorted.length > 0 ? (
           <BarChart data={referralSorted} max={referralTotal} colorFn={i=>refColors[i%refColors.length]} />
-        ) : <div style={{fontSize:12,color:"var(--ink-30)"}}>등록 데이터가 없습니다.</div>}
+        ) : <div style={{fontSize:12,color:"var(--ink-30)",fontFamily:"'Noto Serif KR',serif",padding:"12px 0"}}>등록 데이터가 없습니다.</div>}
       </div>
 
       {/* Purpose */}
@@ -165,7 +165,7 @@ export default function AnalyticsView({ students, teachers, attendance, payments
               </div>
             ))}
           </div>
-        ) : <div style={{fontSize:12,color:"var(--ink-30)"}}>데이터 없음</div>}
+        ) : <div style={{fontSize:12,color:"var(--ink-30)",fontFamily:"'Noto Serif KR',serif",padding:"12px 0"}}>데이터 없음</div>}
       </div>
 
       {/* Age Distribution */}
@@ -183,7 +183,7 @@ export default function AnalyticsView({ students, teachers, attendance, payments
         <div className="dash-card-title">과목별 수강 현황 (재원생)</div>
         {instSorted.length > 0 ? (
           <BarChart data={instSorted} max={Math.max(...instSorted.map(([,c])=>c),1)} />
-        ) : <div style={{fontSize:12,color:"var(--ink-30)"}}>데이터 없음</div>}
+        ) : <div style={{fontSize:12,color:"var(--ink-30)",fontFamily:"'Noto Serif KR',serif",padding:"12px 0"}}>데이터 없음</div>}
       </div>
 
       {/* Teacher Workload */}
@@ -266,18 +266,18 @@ export default function AnalyticsView({ students, teachers, attendance, payments
       <div className="dash-card">
         <div className="dash-card-title">{monthLabel(selectedMonth)} 현황 요약</div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8}}>
-          <div style={{textAlign:"center",padding:10,background:"var(--bg)",borderRadius:8}}>
-            <div style={{fontSize:22,fontWeight:700,color:mRate>=80?"var(--green)":"var(--red)",fontFamily:"'Noto Serif KR',serif"}}>{mRate}%</div>
+          <div style={{textAlign:"center",padding:10,background:"var(--hanji)",borderRadius:"var(--radius-sm)",border:"1px solid var(--border)"}}>
+            <div style={{fontSize:22,fontWeight:700,color:mRate>=80?"var(--green)":"var(--red)",fontFamily:"'Noto Serif KR',serif",fontVariantNumeric:"tabular-nums"}}>{mRate}%</div>
             <div style={{fontSize:10,color:"var(--ink-30)"}}>출석률</div>
             <div style={{fontSize:10,color:"var(--ink-30)",marginTop:2}}>출석{mPresent} 결석{mAbsent} 지각{mLate}</div>
           </div>
-          <div style={{textAlign:"center",padding:10,background:"var(--bg)",borderRadius:8}}>
-            <div style={{fontSize:22,fontWeight:700,color:"var(--green)",fontFamily:"'Noto Serif KR',serif"}}>{paidCount}</div>
+          <div style={{textAlign:"center",padding:10,background:"var(--hanji)",borderRadius:"var(--radius-sm)",border:"1px solid var(--border)"}}>
+            <div style={{fontSize:22,fontWeight:700,color:"var(--green)",fontFamily:"'Noto Serif KR',serif",fontVariantNumeric:"tabular-nums"}}>{paidCount}</div>
             <div style={{fontSize:10,color:"var(--ink-30)"}}>수납 완료</div>
             {unpaidCount > 0 && <div style={{fontSize:10,color:"var(--red)",marginTop:2}}>미납 {unpaidCount}명</div>}
           </div>
-          <div style={{textAlign:"center",padding:10,background:"var(--bg)",borderRadius:8}}>
-            <div style={{fontSize:16,fontWeight:700,color:"var(--ink)",fontFamily:"'Noto Serif KR',serif"}}>{fmtMoney(totalRevenue)}</div>
+          <div style={{textAlign:"center",padding:10,background:"var(--hanji)",borderRadius:"var(--radius-sm)",border:"1px solid var(--border)"}}>
+            <div style={{fontSize:16,fontWeight:700,color:"var(--ink)",fontFamily:"'Noto Serif KR',serif",fontVariantNumeric:"tabular-nums"}}>{fmtMoney(totalRevenue)}</div>
             <div style={{fontSize:10,color:"var(--ink-30)"}}>해당 월 매출</div>
           </div>
         </div>
