@@ -158,8 +158,9 @@ body:has(.mb) .bnav{display:none!important}
 
 /* ── Stats ─────────────────────────────────────────────── */
 .stat-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:20px}
-.stat-card{background:var(--paper);padding:16px;border:1px solid var(--border);border-radius:var(--radius)}
-.stat-num{font-family:'Noto Serif KR',serif;font-size:30px;font-weight:700;color:var(--blue);line-height:1;margin-bottom:2px;font-variant-numeric:tabular-nums}
+.stat-card{background:var(--paper);padding:16px;border:1px solid var(--border);border-radius:var(--radius);transition:transform var(--dur-base) var(--ease-out),box-shadow var(--dur-base) var(--ease-out)}
+.stat-card:hover{transform:translateY(-2px);box-shadow:var(--shadow-lifted)}
+.stat-num{font-family:'Noto Serif KR',serif;font-size:36px;font-weight:700;color:var(--blue);line-height:1;margin-bottom:2px;font-variant-numeric:tabular-nums}
 .stat-label{font-size:11px;color:var(--ink-30)}
 .stat-sub{font-size:10px;color:var(--red);margin-top:3px;font-weight:500}
 
@@ -266,9 +267,10 @@ textarea.inp{resize:vertical;min-height:80px;line-height:1.6}
 
 /* ── Dashboard ─────────────────────────────────────────── */
 .dash-section{margin-bottom:20px}
-.dash-card{background:var(--paper);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:12px}
-.dash-card-title{font-family:'Noto Serif KR',serif;font-size:14px;font-weight:500;color:var(--ink);display:flex;align-items:center;gap:8px;margin-bottom:12px}
-.dash-card-title::before{content:'';width:3px;height:14px;background:linear-gradient(180deg,var(--blue),var(--gold));display:block;flex-shrink:0;border-radius:2px}
+.dash-card{background:var(--paper);border:1px solid var(--border);border-radius:var(--radius);padding:18px;margin-bottom:12px;transition:transform var(--dur-base) var(--ease-out),box-shadow var(--dur-base) var(--ease-out)}
+.dash-card:hover{transform:translateY(-1px);box-shadow:var(--shadow-lifted)}
+.dash-card-title{font-family:'Noto Serif KR',serif;font-size:14px;font-weight:500;color:var(--ink);display:flex;align-items:center;gap:8px;margin-bottom:14px}
+.dash-card-title::before{content:'';width:4px;height:16px;background:linear-gradient(180deg,var(--dancheong-blue),var(--dancheong-red));display:block;flex-shrink:0;border-radius:2px}
 
 /* ── Notices ───────────────────────────────────────────── */
 .notice-card{border:1px solid var(--border);padding:14px 16px;margin-bottom:8px;background:var(--paper);cursor:pointer;transition:all .12s;border-radius:var(--radius)}
@@ -281,8 +283,9 @@ textarea.inp{resize:vertical;min-height:80px;line-height:1.6}
 
 /* ── Empty state ───────────────────────────────────────── */
 .empty{text-align:center;padding:48px 20px;color:var(--ink-30)}
-.empty-icon{font-size:36px;margin-bottom:10px;opacity:.3}
-.empty-txt{font-size:13px}
+.empty-icon{font-size:36px;margin-bottom:10px;opacity:.28}
+.empty-txt{font-size:13px;font-family:'Noto Serif KR',serif;color:var(--ink-60)}
+.empty-sub{font-size:11px;color:var(--ink-30);margin-top:4px;font-family:'Noto Sans KR',sans-serif}
 
 /* ── Toast ─────────────────────────────────────────────── */
 .toast{position:fixed;top:calc(var(--topbar-h) + 8px);left:50%;transform:translateX(-50%);background:var(--blue-dk);color:#fff;padding:10px 20px;font-size:13px;z-index:9999;animation:toastIn .25s ease;border-radius:var(--radius-sm);box-shadow:var(--shadow-md);white-space:nowrap;max-width:90vw}
