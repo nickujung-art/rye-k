@@ -275,29 +275,6 @@ function PortalHeatmap({ sAtt }) {
   );
 }
 
-const DAILY_QUOTES = [
-  { text: "하루라도 배우지 않으면,\n하루를 잃은 것이다.", attr: "조선 격언" },
-  { text: "소리는 마음에서 나고,\n마음은 소리로 빛난다.", attr: "작자미상" },
-  { text: "천 번을 갈아야 칼이 예리해지듯,\n천 번을 연습해야 소리가 맑아진다.", attr: "작자미상" },
-  { text: "배움에는 때가 없고,\n예술에는 끝이 없다.", attr: "작자미상" },
-  { text: "한 음 한 음이 쌓여 한 곡이 되듯,\n한 날 한 날이 쌓여 대가가 된다.", attr: "작자미상" },
-  { text: "연습은 완벽을 만들고,\n꾸준함은 거장을 만든다.", attr: "작자미상" },
-  { text: "도를 배우는 것은 나무를 심는 것과 같다.\n쉬지 않고 자라면 어느새 큰 나무가 된다.", attr: "격언" },
-  { text: "배움은 늦었다 생각할 때가\n가장 이른 때다.", attr: "격언" },
-  { text: "한 가지를 깊이 아는 사람이\n천 가지를 얕게 아는 사람보다 낫다.", attr: "한국 속담" },
-  { text: "마음이 움직여야 소리도 움직인다.", attr: "작자미상" },
-  { text: "음악은 시간 속에 새긴 시(詩)다.", attr: "작자미상" },
-  { text: "학문에는 왕도가 없으나,\n노력에는 반드시 결실이 있다.", attr: "격언" },
-  { text: "가르치는 것이 곧 배우는 것이다.", attr: "교학상장(敎學相長)" },
-  { text: "소리를 연주하기 전에\n먼저 마음을 연주하라.", attr: "작자미상" },
-  { text: "작은 물방울이 모여 큰 강이 되듯,\n작은 연습이 모여 큰 예술이 된다.", attr: "작자미상" },
-  { text: "음악은 귀로 듣고 가슴으로 느끼며\n혼으로 완성된다.", attr: "작자미상" },
-  { text: "처음 한 음이 두렵지 않을 때,\n비로소 음악이 시작된다.", attr: "작자미상" },
-  { text: "예술은 인내의 또 다른 이름이다.", attr: "작자미상" },
-  { text: "배움의 끝은 없으나,\n시작은 오늘 이 순간에 있다.", attr: "작자미상" },
-  { text: "넘어지는 것이 부끄러운 것이 아니라,\n일어나지 않는 것이 부끄러운 것이다.", attr: "격언" },
-];
-
 function PortalSheet({ notice, onClose }) {
   const [visible, setVisible] = useState(false);
   useEffect(() => {
@@ -1201,23 +1178,6 @@ export function PublicParentView() {
               </div>
             </div>
 
-            {/* 오늘의 한 구절 */}
-            {(() => {
-              const q = DAILY_QUOTES[Math.floor(Date.now() / 86400000) % DAILY_QUOTES.length];
-              return (
-                <div style={{marginTop:8}}>
-                  <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
-                    <div style={{width:3,height:14,background:"linear-gradient(180deg,var(--dancheong-red),var(--dancheong-yellow))",borderRadius:2,flexShrink:0}}/>
-                    <div style={{fontFamily:"'Noto Serif KR',serif",fontSize:14,fontWeight:500,color:"var(--ink)"}}>오늘의 한 구절</div>
-                  </div>
-                  <div style={{background:"var(--hanji)",borderRadius:"var(--radius-lg)",padding:"22px 20px 16px",boxShadow:"var(--shadow)",border:"1px solid var(--border)",position:"relative",overflow:"hidden"}}>
-                    <div aria-hidden="true" style={{position:"absolute",top:-8,left:10,fontFamily:"serif",fontSize:96,color:"var(--dancheong-blue)",opacity:.05,lineHeight:1,userSelect:"none",pointerEvents:"none"}}>"</div>
-                    <div style={{fontFamily:"'Noto Serif KR',serif",fontSize:15,fontWeight:500,color:"var(--ink)",lineHeight:1.9,textAlign:"center",whiteSpace:"pre-line",position:"relative"}}>{q.text}</div>
-                    <div style={{textAlign:"right",marginTop:12,paddingTop:10,borderTop:"1px solid var(--border)",fontSize:11,color:"var(--ink-30)",letterSpacing:.2}}>— {q.attr}</div>
-                  </div>
-                </div>
-              );
-            })()}
           </div>
         )}
 
@@ -1533,53 +1493,87 @@ export function PublicParentView() {
                 const autoTotal = baseFee + rentalFee + extraChargesSum;
                 const total = p.amount || autoTotal;
                 const adjustment = total - autoTotal;
-                const methodLabel = { transfer: "계좌이체", cash: "현금", card: "카드" };
+                const METHOD = { transfer: "계좌이체", cash: "현금", card: "카드" };
                 const isPaid = !!p.paid;
+                const instruments = (student.lessons||[]).map(l=>l.instrument).filter(Boolean).join(" · ");
                 return (
-                  <div key={i} style={{background:"#fff",borderRadius:14,marginBottom:10,overflow:"hidden",boxShadow:"0 2px 8px rgba(0,0,0,.04)",border:`1px solid ${isPaid?"var(--green-lt)":"var(--gold-lt)"}`}}>
-                    {/* 명세서 헤더 */}
-                    <div style={{padding:"12px 16px",background:isPaid?"var(--green-lt)":"var(--gold-lt)",borderBottom:"1px solid #F0F0F0",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                  <div key={i} style={{background:"var(--paper)",borderRadius:"var(--radius-lg)",marginBottom:14,overflow:"hidden",boxShadow:"var(--shadow-lifted)",border:"1px solid var(--border)"}}>
+                    {/* 단청 상단 stripe */}
+                    <div style={{height:3,background:"linear-gradient(90deg,var(--dancheong-blue),var(--dancheong-red),var(--dancheong-yellow))"}}/>
+
+                    {/* 레터헤드 */}
+                    <div style={{padding:"14px 18px 12px",borderBottom:"1px solid var(--border)",display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
                       <div>
-                        <div style={{fontSize:13,fontWeight:700,color:"var(--ink)",fontFamily:"'Noto Serif KR',serif"}}>{monthLabel(p.month)} 수강료 명세서</div>
-                        {p.paidDate && <div style={{fontSize:10,color:"var(--ink-30)",marginTop:2}}>납부일: {fmtDate(p.paidDate)}{p.method ? ` · ${methodLabel[p.method] || p.method}` : ""}</div>}
+                        <div style={{fontSize:9,color:"var(--ink-30)",letterSpacing:1.2,textTransform:"uppercase",marginBottom:4}}>RYE-K K-Culture Center</div>
+                        <div style={{fontFamily:"'Noto Serif KR',serif",fontSize:16,fontWeight:700,color:"var(--ink)",letterSpacing:-.3}}>수강료 납부 명세서</div>
+                        <div style={{fontSize:12,color:"var(--ink-60)",marginTop:3}}>{monthLabel(p.month)} 청구</div>
                       </div>
-                      <div style={{fontSize:13,fontWeight:700,color:isPaid?"var(--green)":"var(--gold-dk)",background:isPaid?"var(--green-lt)":"var(--gold-lt)",padding:"4px 12px",borderRadius:20}}>
-                        {isPaid ? "✓ 완료" : "수납 안내"}
+                      <div style={{textAlign:"right",flexShrink:0}}>
+                        <div style={{fontSize:8,color:"var(--ink-30)",letterSpacing:.8}}>NO.</div>
+                        <div style={{fontFamily:"monospace",fontSize:11,color:"var(--ink-60)",letterSpacing:1.5}}>{(p.month||"").replace("-","")}</div>
                       </div>
                     </div>
-                    {/* 명세 항목 */}
-                    <div style={{padding:"12px 16px"}}>
-                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"5px 0",fontSize:13,color:"var(--ink)"}}>
+
+                    {/* 수납자 정보 */}
+                    <div style={{padding:"9px 18px",background:"var(--bg)",borderBottom:"1px solid var(--border)",display:"flex",gap:24,flexWrap:"wrap"}}>
+                      <div>
+                        <div style={{fontSize:8,color:"var(--ink-30)",letterSpacing:.8,marginBottom:2}}>수 강 생</div>
+                        <div style={{fontSize:13,fontWeight:600,color:"var(--ink)"}}>{student.name}</div>
+                      </div>
+                      {instruments && (
+                        <div>
+                          <div style={{fontSize:8,color:"var(--ink-30)",letterSpacing:.8,marginBottom:2}}>과 목</div>
+                          <div style={{fontSize:13,fontWeight:500,color:"var(--blue)"}}>{instruments}</div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* 항목 명세 */}
+                    <div style={{padding:"12px 18px 14px"}}>
+                      <div style={{display:"flex",justifyContent:"space-between",padding:"6px 0",fontSize:13,color:"var(--ink-60)",borderBottom:"1px dashed var(--border)"}}>
                         <span>기본 수강료</span>
-                        <span style={{fontFamily:"'Noto Serif KR',serif",fontWeight:500}}>{fmtMoney(baseFee)}</span>
+                        <span style={{fontVariantNumeric:"tabular-nums",fontWeight:500,color:"var(--ink)"}}>{fmtMoney(baseFee)}</span>
                       </div>
                       {rentalFee > 0 && (
-                        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"5px 0",fontSize:13,color:"var(--ink)"}}>
-                          <span style={{display:"flex",alignItems:"center",gap:4}}>악기 대여료 <span style={{fontSize:10,color:"var(--ink-30)",background:"var(--ink-10)",padding:"1px 6px",borderRadius:4,maxWidth:100,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",display:"inline-block"}}>{rentalLabel}</span></span>
-                          <span style={{fontFamily:"'Noto Serif KR',serif",fontWeight:500}}>{fmtMoney(rentalFee)}</span>
+                        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"6px 0",fontSize:13,color:"var(--ink-60)",borderBottom:"1px dashed var(--border)"}}>
+                          <span style={{display:"flex",alignItems:"center",gap:4}}>악기 대여료<span style={{fontSize:10,color:"var(--ink-30)",background:"var(--ink-10)",padding:"1px 6px",borderRadius:4}}>{rentalLabel}</span></span>
+                          <span style={{fontVariantNumeric:"tabular-nums",fontWeight:500,color:"var(--ink)"}}>{fmtMoney(rentalFee)}</span>
                         </div>
                       )}
                       {(p.extraCharges||[]).map((ec, ei) => (
-                        <div key={ei} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"5px 0",fontSize:13,color:"var(--ink)"}}>
-                          <span style={{display:"flex",alignItems:"center",gap:4,minWidth:0}}>
-                            <span style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:120}}>{ec.title}</span>
+                        <div key={ei} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"6px 0",fontSize:13,color:"var(--ink-60)",borderBottom:"1px dashed var(--border)"}}>
+                          <span style={{display:"flex",alignItems:"center",gap:4}}>
+                            <span style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:130}}>{ec.title}</span>
                             <span style={{fontSize:10,color:"var(--ink-30)",background:"var(--ink-10)",padding:"1px 6px",borderRadius:4,flexShrink:0}}>추가</span>
                           </span>
-                          <span style={{fontFamily:"'Noto Serif KR',serif",fontWeight:500}}>{fmtMoney(ec.amount||0)}</span>
+                          <span style={{fontVariantNumeric:"tabular-nums",fontWeight:500,color:"var(--ink)"}}>{fmtMoney(ec.amount||0)}</span>
                         </div>
                       ))}
                       {adjustment !== 0 && (
-                        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"5px 0",fontSize:12,color:adjustment > 0 ? "#7C3AED" : "var(--red)"}}>
+                        <div style={{display:"flex",justifyContent:"space-between",padding:"6px 0",fontSize:12,color:adjustment>0?"#7C3AED":"var(--red)",borderBottom:"1px dashed var(--border)"}}>
                           <span>{adjustment > 0 ? "추가 조정" : "차감 조정"}</span>
-                          <span style={{fontFamily:"'Noto Serif KR',serif"}}>{adjustment > 0 ? "+" : ""}{fmtMoney(adjustment)}</span>
+                          <span style={{fontVariantNumeric:"tabular-nums"}}>{adjustment>0?"+":""}{fmtMoney(adjustment)}</span>
                         </div>
                       )}
-                      {/* 구분선 + 합계 */}
-                      <div style={{borderTop:"1.5px solid #E8E8E8",marginTop:6,paddingTop:8,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                        <span style={{fontSize:13,fontWeight:600,color:"var(--ink)"}}>합계</span>
-                        <span style={{fontFamily:"'Noto Serif KR',serif",fontSize:17,fontWeight:700,color:isPaid?"var(--green)":"var(--ink)"}}>{fmtMoney(total)}</span>
+                      {/* 합계 */}
+                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:8,paddingTop:8,borderTop:"2px solid var(--ink)"}}>
+                        <span style={{fontFamily:"'Noto Serif KR',serif",fontSize:14,fontWeight:700,color:"var(--ink)",letterSpacing:2}}>합　계</span>
+                        <span style={{fontFamily:"'Noto Serif KR',serif",fontSize:20,fontWeight:700,color:"var(--ink)",fontVariantNumeric:"tabular-nums"}}>{fmtMoney(total)}</span>
                       </div>
                       {/* ⛔ p.note는 관리자 전용 비고 — 절대 렌더링 금지 */}
+                    </div>
+
+                    {/* 납부 상태 푸터 */}
+                    <div style={{padding:"10px 18px 14px",borderTop:"1px solid var(--border)",background:isPaid?"var(--green-lt)":"var(--gold-lt)",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                      <div style={{fontSize:11,color:isPaid?"var(--green)":"var(--gold-dk)"}}>
+                        <div style={{fontWeight:700,fontSize:12}}>{isPaid?"납부 완료":"수납 안내 중"}</div>
+                        {isPaid && p.paidDate && <div style={{marginTop:2,opacity:.75}}>{fmtDate(p.paidDate)}{p.method?` · ${METHOD[p.method]||p.method}`:""}</div>}
+                        {!isPaid && <div style={{marginTop:2,opacity:.75}}>센터로 문의해 주세요</div>}
+                      </div>
+                      {/* 원형 도장 */}
+                      <div style={{width:50,height:50,borderRadius:"50%",border:`2px solid ${isPaid?"var(--green)":"var(--gold-dk)"}`,display:"flex",alignItems:"center",justifyContent:"center",transform:"rotate(-14deg)",flexShrink:0,opacity:.85}}>
+                        <div style={{fontFamily:"'Noto Serif KR',serif",fontSize:isPaid?12:10,fontWeight:700,color:isPaid?"var(--green)":"var(--gold-dk)",textAlign:"center",lineHeight:1.25}}>{isPaid?"완납":"수납\n안내"}</div>
+                      </div>
                     </div>
                   </div>
                 );
