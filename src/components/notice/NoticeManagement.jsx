@@ -164,7 +164,7 @@ export function StudentNoticeManager({ notices, currentUser, students = [], teac
   const canManage = canManageAll(currentUser.role) || isTeacherRole;
 
   const [editing, setEditing] = useState(null);
-  const [form, setForm] = useState({ title: "", content: "", pinned: false, image: "", expireDays: 0, targetMyStudents: isTeacherRole, targetTeacherId: "" });
+  const [form, setForm] = useState({ title: "", content: "", pinned: false, image: "", expireDays: 0, eventDate: "", targetMyStudents: isTeacherRole, targetTeacherId: "" });
   const [confirmDel, setConfirmDel] = useState(null);
   const [readersModal, setReadersModal] = useState(null);
   const [expandedCards, setExpandedCards] = useState(new Set());
@@ -207,7 +207,7 @@ export function StudentNoticeManager({ notices, currentUser, students = [], teac
   };
 
   const startNew = () => {
-    setForm({ title: "", content: "", pinned: false, image: "", expireDays: 0, targetMyStudents: isTeacherRole, targetTeacherId: "" });
+    setForm({ title: "", content: "", pinned: false, image: "", expireDays: 0, eventDate: "", targetMyStudents: isTeacherRole, targetTeacherId: "" });
     setImgErr("");
     setEditing("new");
   };
@@ -220,6 +220,7 @@ export function StudentNoticeManager({ notices, currentUser, students = [], teac
       pinned: n.pinned || false,
       image: n.imageBase64 || "",
       expireDays: 0,
+      eventDate: n.eventDate || "",
       targetMyStudents: isTeacherRole || hasTarget,
       targetTeacherId: n.targetTeacherId || "",
     });
@@ -242,6 +243,7 @@ export function StudentNoticeManager({ notices, currentUser, students = [], teac
       pinned: isTeacherRole ? false : form.pinned,
       imageBase64: form.image || "",
       expireAt,
+      eventDate: form.eventDate || null,
       targetTeacherId,
       authorId: currentUser.id,
       authorName: currentUser.name,
@@ -304,6 +306,11 @@ export function StudentNoticeManager({ notices, currentUser, students = [], teac
               {hasExpiry && daysLeft !== null && (
                 <span style={{marginLeft:8,fontSize:10.5,color:daysLeft<=3?"var(--red)":"var(--ink-30)"}}>
                   {daysLeft > 0 ? `D-${daysLeft} 만료` : "만료됨"}
+                </span>
+              )}
+              {n.eventDate && (
+                <span style={{marginLeft:8,fontSize:10.5,background:"rgba(168,33,27,0.10)",color:"var(--dancheong-red)",padding:"1px 6px",borderRadius:8,fontWeight:600}}>
+                  📅 {n.eventDate}
                 </span>
               )}
               {n.targetTeacherId && (
@@ -389,6 +396,18 @@ export function StudentNoticeManager({ notices, currentUser, students = [], teac
                   <option value={7}>7일</option>
                   <option value={30}>30일</option>
                 </select>
+              </div>
+
+              {/* 일정 (선택) — 회원 포털 캘린더에 마커 표시 */}
+              <div className="fg">
+                <label className="fg-label">관련 일정 (선택)</label>
+                <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
+                  <input className="inp" type="date" value={form.eventDate} onChange={e => setForm(f=>({...f,eventDate:e.target.value}))} style={{maxWidth:180}} />
+                  {form.eventDate && (
+                    <button type="button" className="btn btn-ghost btn-sm" onClick={() => setForm(f=>({...f,eventDate:""}))}>지우기</button>
+                  )}
+                </div>
+                <div style={{fontSize:11,color:"var(--ink-30)",marginTop:4}}>설정 시 회원 포털 캘린더 해당 날짜에 일정 마커가 표시됩니다 (공연·연습 등).</div>
               </div>
 
               {/* 노출 대상 */}

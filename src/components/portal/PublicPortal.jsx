@@ -335,7 +335,7 @@ function PortalEmptyState({ title, sub }) {
   );
 }
 
-function MonthlyAttendanceHeatmap({ studentId, attendance, lessons = [] }) {
+function MonthlyAttendanceHeatmap({ studentId, attendance, lessons = [], events = [] }) {
   const [isOpen, setIsOpen] = useState(false);
   const [viewDate, setViewDate] = useState(() => {
     const t = new Date();
@@ -370,6 +370,12 @@ function MonthlyAttendanceHeatmap({ studentId, attendance, lessons = [] }) {
 
   const lessonDaySet = new Set((lessons || []).flatMap(l => (l.schedule || []).map(s => s.day)).filter(Boolean));
   const dowKor = ["일","월","화","수","목","금","토"];
+  const eventMap = {};
+  (events || []).forEach(ev => {
+    if (!ev?.date) return;
+    if (!eventMap[ev.date]) eventMap[ev.date] = [];
+    eventMap[ev.date].push(ev);
+  });
 
   const cellStyle = (status, isFuture, isToday) => {
     const base = {
@@ -444,11 +450,16 @@ function MonthlyAttendanceHeatmap({ studentId, attendance, lessons = [] }) {
               const isLessonDay = lessonDaySet.has(dowKor[dow]);
               const status = attMap[dateStr];
               const isFuture = dateStr > todayStr;
+              const dayEvents = eventMap[dateStr] || [];
+              const hasEvent = dayEvents.length > 0;
               return (
-                <div key={dateStr} style={cellStyle(status, isFuture, dateStr === todayStr)}>
+                <div key={dateStr} style={cellStyle(status, isFuture, dateStr === todayStr)} title={hasEvent ? dayEvents.map(e => e.title).join(", ") : undefined}>
                   {day}
                   {isLessonDay && !status && (
                     <span style={{ position: "absolute", bottom: 3, left: "50%", transform: "translateX(-50%)", width: 4, height: 4, borderRadius: "50%", background: "var(--dancheong-blue)", opacity: isFuture ? 0.5 : 0.75 }} />
+                  )}
+                  {hasEvent && (
+                    <span style={{ position: "absolute", top: 2, right: 2, width: 5, height: 5, borderRadius: "50%", background: "var(--dancheong-red)", boxShadow: "0 0 0 1.5px var(--paper)" }} />
                   )}
                 </div>
               );
@@ -462,6 +473,7 @@ function MonthlyAttendanceHeatmap({ studentId, attendance, lessons = [] }) {
             <span style={{ display: "flex", alignItems: "center", gap: 4 }}><span style={{ width: 10, height: 10, borderRadius: 3, background: "var(--green-lt)" }}/>보강 {counts.excused}</span>
             <span style={{ display: "flex", alignItems: "center", gap: 4 }}><span style={{ width: 10, height: 10, borderRadius: 3, background: "rgba(168,33,27,0.15)" }}/>결석 {counts.absent}</span>
             {lessonDaySet.size > 0 && <span style={{ display: "flex", alignItems: "center", gap: 4 }}><span style={{ width: 4, height: 4, borderRadius: "50%", background: "var(--dancheong-blue)", opacity: 0.75 }}/>레슨일</span>}
+            {Object.keys(eventMap).length > 0 && <span style={{ display: "flex", alignItems: "center", gap: 4 }}><span style={{ width: 5, height: 5, borderRadius: "50%", background: "var(--dancheong-red)" }}/>일정</span>}
           </div>
         </div>
       </div>
@@ -1052,7 +1064,7 @@ export function PublicParentView() {
           <div>
             {/* 이달 출석 */}
             <div style={{marginBottom:16}}>
-              <MonthlyAttendanceHeatmap studentId={student.id} attendance={attendance} lessons={student.lessons || []} />
+              <MonthlyAttendanceHeatmap studentId={student.id} attendance={attendance} lessons={student.lessons || []} events={visibleNotices.filter(n => n.eventDate).map(n => ({ id: n.id, date: n.eventDate, title: n.title }))} />
             </div>
             {/* 공지사항 */}
             {visibleNotices.length > 0 && (
