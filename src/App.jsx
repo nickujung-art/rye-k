@@ -242,9 +242,6 @@ function MainApp() {
   const [search, setSearch] = useState("");
   const [toast, setToast] = useState(null);
   const [backupConfirm, setBackupConfirm] = useState(false);
-  const [resetSeedConfirm, setResetSeedConfirm] = useState(false);
-  const [resetSeedPwInput, setResetSeedPwInput] = useState("");
-  const [resetSeedConfirmText, setResetSeedConfirmText] = useState("");
   // Dark mode: null=system, 'dark'=forced dark, 'light'=forced light
   const [darkMode, setDarkMode] = useState(() => {
     try { return localStorage.getItem("rye-theme") || null; } catch { return null; }
@@ -647,7 +644,6 @@ function MainApp() {
   };
 
   const requestFullBackup = () => setBackupConfirm(true);
-  const closeResetSeedModal = () => { setResetSeedConfirm(false); setResetSeedPwInput(""); setResetSeedConfirmText(""); };
   const handleFullBackup = () => {
     setBackupConfirm(false);
     try {
@@ -882,7 +878,7 @@ function MainApp() {
             {view === "systemNews" && <SystemNewsView user={user} navigate={navigate} />}
             {view === "monthlyReports" && (canManageAll(user.role) || user.role === "teacher") && <MonthlyReportsView students={students} teachers={teachers} attendance={attendance} currentUser={user} aiReports={aiReports} onSaveAiReports={saveAiReports} />}
             {view === "aiSettings" && user.role === "admin" && <AiSettingsView settings={ryeSettings} onSave={saveRyeSettings} />}
-            {view === "more" && <MoreMenu user={user} setView={navigate} onLogout={handleLogout} onResetSeed={() => setResetSeedConfirm(true)} counts={{ teachers: teachers.length }} pendingCount={pendingCount} darkMode={darkMode} setDarkMode={setDarkMode} trash={trash} newCommentCount={newCommentCount} />}
+            {view === "more" && <MoreMenu user={user} setView={navigate} onLogout={handleLogout} onResetSeed={resetSeed} counts={{ teachers: teachers.length }} pendingCount={pendingCount} darkMode={darkMode} setDarkMode={setDarkMode} trash={trash} newCommentCount={newCommentCount} />}
           </div>
           </Suspense>
         </div>
@@ -953,41 +949,6 @@ function MainApp() {
                 <button className="btn btn-secondary" onClick={() => setBackupConfirm(false)}>취소</button>
                 <button className="btn btn-primary" onClick={handleFullBackup}>다운로드</button>
               </div>
-            </div>
-          </div>
-        </div>
-      )}
-      {resetSeedConfirm && (
-        <div className="modal-bg" onClick={closeResetSeedModal}>
-          <div className="modal" onClick={e => e.stopPropagation()}>
-            <div className="modal-h"><h3 style={{color:"var(--red)"}}>⚠️ 샘플 데이터 초기화</h3></div>
-            <div className="modal-b">
-              <div style={{padding:"12px 16px",background:"rgba(168,33,27,0.08)",borderRadius:8,marginBottom:16,border:"1px solid rgba(168,33,27,0.2)"}}>
-                <div style={{fontSize:13,fontWeight:700,color:"var(--red)",marginBottom:8}}>다음 데이터가 모두 시드로 덮어써집니다:</div>
-                <div style={{fontSize:12,color:"var(--ink)",lineHeight:2}}>
-                  회원 <b>{students.length}명</b> · 강사 <b>{teachers.length}명</b> · 출석 <b>{attendance.length}건</b><br/>
-                  수납 <b>{payments.length}건</b> · 기관 <b>{institutions.length}개</b> · 공지 <b>{notices.length}건</b><br/>
-                  휴지통 <b>{trash.length}건</b>
-                </div>
-                <div style={{fontSize:12,fontWeight:700,color:"var(--red)",marginTop:8}}>휴지통도 비워집니다. 복구 불가.</div>
-              </div>
-              <div style={{marginBottom:12}}>
-                <div style={{fontSize:12,color:"var(--ink-30)",marginBottom:6}}>현재 비밀번호 입력</div>
-                <input type="password" className="input" placeholder="비밀번호" value={resetSeedPwInput} onChange={e => setResetSeedPwInput(e.target.value)} autoComplete="off" />
-              </div>
-              <div>
-                <div style={{fontSize:12,color:"var(--ink-30)",marginBottom:6}}>아래 칸에 <b>초기화</b> 를 정확히 입력하세요</div>
-                <input type="text" className="input" placeholder="초기화" value={resetSeedConfirmText} onChange={e => setResetSeedConfirmText(e.target.value)} autoComplete="off" />
-              </div>
-            </div>
-            <div className="modal-f">
-              <button className="btn btn-secondary" onClick={closeResetSeedModal}>취소</button>
-              <button
-                className="btn"
-                style={{background:"var(--red)",color:"#fff",opacity:resetSeedPwInput===user?.password&&resetSeedConfirmText==="초기화"?1:0.35}}
-                disabled={resetSeedPwInput!==user?.password||resetSeedConfirmText!=="초기화"}
-                onClick={async()=>{closeResetSeedModal();await resetSeed();}}
-              >정말 초기화</button>
             </div>
           </div>
         </div>

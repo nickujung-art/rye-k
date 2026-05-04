@@ -223,13 +223,6 @@ export function MoreMenu({ user, setView, onLogout, onResetSeed, counts, pending
         <span>{IC.logout}</span>
         <div className="menu-item-label" style={{color:"var(--red)"}}>로그아웃</div>
       </div>
-      {user.role === "admin" && (
-        <div className="menu-item" onClick={onResetSeed} style={{color:"var(--ink-30)",marginTop:4,borderStyle:"dashed"}}>
-          <span style={{fontSize:16}}>↻</span>
-          <div className="menu-item-label" style={{color:"var(--ink-30)"}}>샘플 데이터 초기화</div>
-          <span className="menu-item-desc">테스트용</span>
-        </div>
-      )}
     </div>
   );
 }
