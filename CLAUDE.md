@@ -154,11 +154,9 @@ src/
 | `ryek_last_login` | 30일 재인증 타임스탬프 |
 
 ## 알려진 이슈
-- `package.json` 버전이 `12.1.0`으로 고정 (실제 v14.1+)
 - 회원 `monthlyFee` 전부 0 (실제 금액 미입력)
 - Firebase Auth ↔ 로컬 비밀번호 동기화 깨진 상태 (로컬 fallback 동작 중)
-- 기관 삭제 시 휴지통 미적용 (즉시 삭제), 관련 출석·수납 레코드는 보존
-- esbuild `minHeight: 100vh/100dvh` 중복 경고 2건 (빌드 통과, 기능 이상 없음)
+- UpdatePopup.jsx esbuild JSX `}` 경고 1건 (빌드 통과, 기능 이상 없음)
 
 ## 개발 워크플로우
 1. Nick이 요구사항 설명
