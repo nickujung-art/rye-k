@@ -1,4 +1,4 @@
-﻿import { useState, useRef, useEffect } from "react";
+﻿import { useState, useRef } from "react";
 import knotLineSvg from "../../assets/heritage/knot-line.svg";
 import { IC } from "../../constants.jsx";
 import { uid, fmtDateTime, fmtDate, fmtDateShort, canManageAll, compressImage } from "../../utils.js";
@@ -180,18 +180,6 @@ export function StudentNoticeManager({ notices, currentUser, students = [], teac
     return next;
   });
   const fileRef = useRef();
-  const cleanedRef = useRef(false);
-
-  // 만료 공지 자동 정리 (컴포넌트 마운트 후 notices 첫 로드 시)
-  useEffect(() => {
-    if (!cleanedRef.current && notices.length > 0) {
-      const now = Date.now();
-      const active = notices.filter(n => !(n.expireAt && n.expireAt < now));
-      if (active.length < notices.length) onSave(active);
-      cleanedRef.current = true;
-    }
-  }, [notices]);
-
   const now = Date.now();
   const sorted = [...notices]
     .filter(n => !(n.expireAt && n.expireAt < now))

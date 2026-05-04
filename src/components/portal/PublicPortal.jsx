@@ -352,20 +352,20 @@ function MonthlyAttendanceHeatmap({ studentId, attendance, lessons = [], events 
   const firstDay = new Date(year, month, 1).getDay();
   const mondayOffset = firstDay === 0 ? 6 : firstDay - 1;
 
-  const thisMonthAtt = attendance.filter(a => a.studentId === studentId && a.date?.startsWith(todayStr.slice(0, 7)));
-  const monthAtt = attendance.filter(a => a.studentId === studentId && a.date?.startsWith(monthStr));
-  const attMap = Object.fromEntries(monthAtt.map(a => [a.date, a.status]));
-  const counts = {
-    present: monthAtt.filter(a => a.status === "present").length,
-    late: monthAtt.filter(a => a.status === "late").length,
-    excused: monthAtt.filter(a => a.status === "excused").length,
-    absent: monthAtt.filter(a => a.status === "absent").length,
+  const currentMonthAtt = attendance.filter(a => a.studentId === studentId && a.date?.startsWith(todayStr.slice(0, 7)));
+  const viewedMonthAtt = attendance.filter(a => a.studentId === studentId && a.date?.startsWith(monthStr));
+  const attMap = Object.fromEntries(viewedMonthAtt.map(a => [a.date, a.status]));
+  const viewedMonthCounts = {
+    present: viewedMonthAtt.filter(a => a.status === "present").length,
+    late: viewedMonthAtt.filter(a => a.status === "late").length,
+    excused: viewedMonthAtt.filter(a => a.status === "excused").length,
+    absent: viewedMonthAtt.filter(a => a.status === "absent").length,
   };
-  const thisMonthCounts = {
-    present: thisMonthAtt.filter(a => a.status === "present").length,
-    late: thisMonthAtt.filter(a => a.status === "late").length,
-    excused: thisMonthAtt.filter(a => a.status === "excused").length,
-    absent: thisMonthAtt.filter(a => a.status === "absent").length,
+  const currentMonthCounts = {
+    present: currentMonthAtt.filter(a => a.status === "present").length,
+    late: currentMonthAtt.filter(a => a.status === "late").length,
+    excused: currentMonthAtt.filter(a => a.status === "excused").length,
+    absent: currentMonthAtt.filter(a => a.status === "absent").length,
   };
 
   const lessonDaySet = new Set((lessons || []).flatMap(l => (l.schedule || []).map(s => s.day)).filter(Boolean));
@@ -413,11 +413,11 @@ function MonthlyAttendanceHeatmap({ studentId, attendance, lessons = [], events 
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: "var(--ink-60)" }}>
-            {thisMonthCounts.present > 0 && <span style={{ display: "flex", alignItems: "center", gap: 3 }}><Dot color="var(--dancheong-blue)" />{thisMonthCounts.present}</span>}
-            {thisMonthCounts.late > 0 && <span style={{ display: "flex", alignItems: "center", gap: 3 }}><Dot color="var(--dancheong-yellow)" />{thisMonthCounts.late}</span>}
-            {thisMonthCounts.excused > 0 && <span style={{ display: "flex", alignItems: "center", gap: 3 }}><Dot color="var(--green)" />{thisMonthCounts.excused}</span>}
-            {thisMonthCounts.absent > 0 && <span style={{ display: "flex", alignItems: "center", gap: 3 }}><Dot color="var(--dancheong-red)" />{thisMonthCounts.absent}</span>}
-            {thisMonthCounts.present === 0 && thisMonthCounts.late === 0 && thisMonthCounts.excused === 0 && thisMonthCounts.absent === 0 && <span style={{ color: "var(--ink-30)" }}>기록 없음</span>}
+            {currentMonthCounts.present > 0 && <span style={{ display: "flex", alignItems: "center", gap: 3 }}><Dot color="var(--dancheong-blue)" />{currentMonthCounts.present}</span>}
+            {currentMonthCounts.late > 0 && <span style={{ display: "flex", alignItems: "center", gap: 3 }}><Dot color="var(--dancheong-yellow)" />{currentMonthCounts.late}</span>}
+            {currentMonthCounts.excused > 0 && <span style={{ display: "flex", alignItems: "center", gap: 3 }}><Dot color="var(--green)" />{currentMonthCounts.excused}</span>}
+            {currentMonthCounts.absent > 0 && <span style={{ display: "flex", alignItems: "center", gap: 3 }}><Dot color="var(--dancheong-red)" />{currentMonthCounts.absent}</span>}
+            {currentMonthCounts.present === 0 && currentMonthCounts.late === 0 && currentMonthCounts.excused === 0 && currentMonthCounts.absent === 0 && <span style={{ color: "var(--ink-30)" }}>기록 없음</span>}
           </div>
           <span style={{ display: "inline-block", transform: isOpen ? "rotate(-90deg)" : "rotate(90deg)", transition: "transform 280ms var(--ease-out)", fontSize: 16, color: "var(--ink-30)", lineHeight: 1 }}>›</span>
         </div>
@@ -468,10 +468,10 @@ function MonthlyAttendanceHeatmap({ studentId, attendance, lessons = [], events 
 
           {/* 범례 */}
           <div style={{ display: "flex", gap: 12, marginTop: 14, fontSize: 11, color: "var(--ink-60)", flexWrap: "wrap", justifyContent: "center" }}>
-            <span style={{ display: "flex", alignItems: "center", gap: 4 }}><span style={{ width: 10, height: 10, borderRadius: 3, background: "var(--dancheong-blue)" }}/>출석 {counts.present}</span>
-            <span style={{ display: "flex", alignItems: "center", gap: 4 }}><span style={{ width: 10, height: 10, borderRadius: 3, background: "var(--dancheong-yellow)" }}/>지각 {counts.late}</span>
-            <span style={{ display: "flex", alignItems: "center", gap: 4 }}><span style={{ width: 10, height: 10, borderRadius: 3, background: "var(--green-lt)" }}/>보강 {counts.excused}</span>
-            <span style={{ display: "flex", alignItems: "center", gap: 4 }}><span style={{ width: 10, height: 10, borderRadius: 3, background: "rgba(168,33,27,0.15)" }}/>결석 {counts.absent}</span>
+            <span style={{ display: "flex", alignItems: "center", gap: 4 }}><span style={{ width: 10, height: 10, borderRadius: 3, background: "var(--dancheong-blue)" }}/>출석 {viewedMonthCounts.present}</span>
+            <span style={{ display: "flex", alignItems: "center", gap: 4 }}><span style={{ width: 10, height: 10, borderRadius: 3, background: "var(--dancheong-yellow)" }}/>지각 {viewedMonthCounts.late}</span>
+            <span style={{ display: "flex", alignItems: "center", gap: 4 }}><span style={{ width: 10, height: 10, borderRadius: 3, background: "var(--green-lt)" }}/>보강 {viewedMonthCounts.excused}</span>
+            <span style={{ display: "flex", alignItems: "center", gap: 4 }}><span style={{ width: 10, height: 10, borderRadius: 3, background: "rgba(168,33,27,0.15)" }}/>결석 {viewedMonthCounts.absent}</span>
             {lessonDaySet.size > 0 && <span style={{ display: "flex", alignItems: "center", gap: 4 }}><span style={{ width: 4, height: 4, borderRadius: "50%", background: "var(--dancheong-blue)", opacity: 0.75 }}/>레슨일</span>}
             {Object.keys(eventMap).length > 0 && <span style={{ display: "flex", alignItems: "center", gap: 4 }}><span style={{ width: 5, height: 5, borderRadius: "50%", background: "var(--dancheong-red)" }}/>일정</span>}
           </div>
@@ -1496,7 +1496,7 @@ export function PublicParentView() {
                     {grouped[monthKey].map((a, i) => {
                       const st = attStatusStyle[a.status] || { color:"var(--ink-30)", bg:"var(--ink-10)", icon:"·", text:"" };
                       const ln = a.lessonNote;
-                      const noteTeacher = teachers.find(t => t.id === a.teacherId) || teacher;
+                      const noteTeacher = teachers.find(t => t.id === a.teacherId);
                       const condColor = ln?.condition === "excellent" ? "var(--blue)" : ln?.condition === "good" ? "var(--green)" : ln?.condition === "normal" ? "var(--gold)" : ln?.condition === "poor" ? "var(--red)" : "var(--ink-30)";
                       const condBg = ln?.condition === "excellent" ? "rgba(43,58,159,.08)" : ln?.condition === "good" ? "var(--green-lt)" : ln?.condition === "normal" ? "var(--gold-lt)" : ln?.condition === "poor" ? "var(--red-lt)" : "var(--ink-10)";
                       const condEmoji = { excellent: "✨", good: "😊", normal: "🙂", poor: "💪" }[ln?.condition];
@@ -1507,7 +1507,7 @@ export function PublicParentView() {
                           <div style={{display:"flex",alignItems:"center",gap:10,padding:"12px 16px",borderBottom:"1px solid #F5F5F5"}}>
                             <Av photo={noteTeacher?.photo} name={noteTeacher?.name || "강사"} size="av-sm" />
                             <div style={{flex:1,minWidth:0}}>
-                              <div style={{fontSize:12.5,fontWeight:600,color:"var(--ink)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{noteTeacher?.name || "강사"} 강사</div>
+                              <div style={{fontSize:12.5,fontWeight:600,color:"var(--ink)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{noteTeacher?.name ? `${noteTeacher.name} 강사` : "이전 강사"}</div>
                               <div style={{fontSize:10.5,color:"var(--ink-30)",marginTop:1}}>{dateLabel(a.date)} · {fmtDate(a.date)}</div>
                             </div>
                             <span style={{background:st.bg,color:st.color,fontSize:10.5,fontWeight:700,padding:"3px 9px",borderRadius:8,whiteSpace:"nowrap"}}>{st.icon} {st.text}</span>
