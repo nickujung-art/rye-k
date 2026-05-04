@@ -42,6 +42,7 @@ export const IC = {
   moon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>,
   parent: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>,
   building: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="2" width="16" height="20" rx="1"/><line x1="9" y1="6" x2="9" y2="6"/><line x1="15" y1="6" x2="15" y2="6"/><line x1="9" y1="10" x2="9" y2="10"/><line x1="15" y1="10" x2="15" y2="10"/><line x1="9" y1="14" x2="9" y2="14"/><line x1="15" y1="14" x2="15" y2="14"/><path d="M10 22v-4h4v4"/></svg>,
+  mic: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>,
 };
 
 // ── CSS (Mobile-First) ────────────────────────────────────────────────────────
@@ -677,4 +678,10 @@ input[type="date"]::-webkit-date-and-time-value{text-align:left}
 .settlement-table th{background:#f4f4f4;padding:8px 10px;text-align:left;font-size:11px;font-weight:600;color:#444;border:1px solid #ddd}
 .settlement-table td{padding:9px 10px;border:1px solid #eee;vertical-align:middle}
 .settlement-table tfoot td{background:#f9f9f9;border-top:2px solid #333;font-size:13.5px}
+
+/* ── 음성 입력 버튼 ─────────────────────────────────────── */
+.mic-btn{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border:1.5px solid var(--border);border-radius:50%;background:var(--paper);color:var(--ink-30);cursor:pointer;padding:0;transition:all .12s;flex-shrink:0;font-family:inherit}
+.mic-btn:hover{border-color:var(--blue);color:var(--blue)}
+.mic-btn.mic-btn-active{background:var(--red);border-color:var(--red);color:#fff;animation:mic-pulse 1.2s infinite}
+@keyframes mic-pulse{0%,100%{box-shadow:0 0 0 0 rgba(232,40,28,.35)}60%{box-shadow:0 0 0 5px rgba(232,40,28,0)}}
 `;

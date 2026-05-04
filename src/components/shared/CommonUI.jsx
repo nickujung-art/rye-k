@@ -32,6 +32,79 @@ export function RoleBadge({ role }) {
   if (role === "manager") return <span className="tag tag-mgr">매니저</span>;
   return <span className="tag tag-blue">강사</span>;
 }
+export function MicButton({ onTranscript, onStop }) {
+  const [listening, setListening] = useState(false);
+  const recRef = useRef(null);
+  const bufRef = useRef("");
+  const onTranscriptRef = useRef(onTranscript);
+  const onStopRef = useRef(onStop);
+  onTranscriptRef.current = onTranscript;
+  onStopRef.current = onStop;
+
+  const SR = typeof window !== "undefined" && (window.SpeechRecognition || window.webkitSpeechRecognition);
+  if (!SR) return null;
+
+  const finalize = (rec) => {
+    if (recRef.current !== rec) return;
+    recRef.current = null;
+    const buf = bufRef.current;
+    bufRef.current = "";
+    setListening(false);
+    console.log("[MicButton] finalize buf len:", buf.length);
+    onStopRef.current?.(buf);
+  };
+
+  const toggle = () => {
+    console.log("[MicButton] toggle recRef:", !!recRef.current, "listening:", listening);
+    if (recRef.current) {
+      const rec = recRef.current;
+      try { rec.stop(); } catch (err) { console.warn("[MicButton] stop threw:", err); }
+      setTimeout(() => finalize(rec), 500);
+    } else {
+      bufRef.current = "";
+      const rec = new SR();
+      rec.lang = "ko-KR";
+      rec.interimResults = true;
+      rec.continuous = true;
+      rec.onresult = e => {
+        let finalText = "";
+        for (let i = e.resultIndex; i < e.results.length; i++) {
+          if (e.results[i].isFinal) {
+            const seg = e.results[i][0].transcript.trim();
+            if (seg) finalText += (finalText ? " " : "") + seg;
+          }
+        }
+        if (!finalText) return;
+        bufRef.current = bufRef.current ? bufRef.current + " " + finalText : finalText;
+        console.log("[MicButton] segment:", finalText, "| buf:", bufRef.current);
+        onTranscriptRef.current?.(finalText);
+      };
+      rec.onend = () => {
+        console.log("[MicButton] onend recRef===this:", recRef.current === rec);
+        finalize(rec);
+      };
+      rec.onerror = e => {
+        console.log("[MicButton] onerror:", e.error);
+        if (e.error === "no-speech" || e.error === "aborted") return;
+      };
+      recRef.current = rec;
+      try {
+        rec.start();
+        setListening(true);
+        console.log("[MicButton] started");
+      } catch (err) {
+        console.warn("[MicButton] start threw:", err);
+        recRef.current = null;
+      }
+    }
+  };
+
+  return (
+    <button type="button" className={`mic-btn${listening ? " mic-btn-active" : ""}`} onClick={toggle} title={listening ? "녹음 중단" : "음성 입력"}>
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+    </button>
+  );
+}
 export function DeleteConfirmFooter({ label, canDelete, onDelete, onClose, onEdit }) {
   const [delConfirm, setDelConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);

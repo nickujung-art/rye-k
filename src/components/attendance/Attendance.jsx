@@ -2,8 +2,8 @@
 import knotLineSvg from "../../assets/heritage/knot-line.svg";
 import { TODAY_STR, THIS_MONTH, IC } from "../../constants.jsx";
 import { uid, fmtDateShort, canManageAll, monthLabel, formatLessonNoteSummary, getAudience } from "../../utils.js";
-import { aiPolishLessonNote, aiSuggestReply } from "../../aiClient.js";
-import { Av } from "../shared/CommonUI.jsx";
+import { aiPolishLessonNote, aiSuggestReply, aiPunctuate } from "../../aiClient.js";
+import { Av, MicButton } from "../shared/CommonUI.jsx";
 
 // ── LESSON NOTE MODAL ─────────────────────────────────────────────────────────
 function LessonNoteModal({ student, teacher, date, existingNote, onSave, onClose, inlineMode, comments, onAddComment, onDeleteComment, currentUserType, currentUserName, currentUserId }) {
@@ -19,6 +19,23 @@ function LessonNoteModal({ student, teacher, date, existingNote, onSave, onClose
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
   const [aiLoading, setAiLoading] = useState({});
   const [aiError, setAiError] = useState("");
+  const appendToField = (k, t) => setForm(f => ({ ...f, [k]: f[k] ? f[k] + " " + t : t }));
+  const [punctuating, setPunctuating] = useState({});
+  const autoPunctuate = async (k, recordedText) => {
+    if (!recordedText?.trim()) return;
+    setPunctuating(p => ({ ...p, [k]: true }));
+    try {
+      const punctuated = await aiPunctuate(recordedText);
+      // setForm functional update reads latest committed state — safe after async gap
+      setForm(f => {
+        const current = f[k] || "";
+        const idx = current.lastIndexOf(recordedText);
+        if (idx < 0) return f;
+        return { ...f, [k]: current.slice(0, idx) + punctuated + current.slice(idx + recordedText.length) };
+      });
+    } catch (e) {}
+    finally { setPunctuating(p => ({ ...p, [k]: false })); }
+  };
   const handleAiPolish = async (fieldKey) => {
     const text = form[fieldKey];
     if (!text?.trim()) return;
@@ -94,18 +111,30 @@ function LessonNoteModal({ student, teacher, date, existingNote, onSave, onClose
           {/* Progress */}
           <div className="fg">
             <label className="fg-label">수업 진도</label>
-            <input className="inp" value={form.progress} onChange={e=>set("progress",e.target.value)} placeholder="예: 산조 해금 — 진양조 4장 ~ 중머리 1장" />
+            <div style={{display:"flex",gap:6,alignItems:"center"}}>
+              <input className="inp" style={{flex:1}} value={form.progress} onChange={e=>set("progress",e.target.value)} placeholder="예: 산조 해금 — 진양조 4장 ~ 중머리 1장" />
+              <MicButton onTranscript={t => appendToField("progress", t)} onStop={t => autoPunctuate("progress", t)} />
+            </div>
+            {punctuating.progress && <span style={{fontSize:11,color:"var(--ink-30)"}}>구두점 추가 중…</span>}
           </div>
           {/* Lesson Content */}
           <div className="fg">
             <label className="fg-label">수업 내용</label>
             <textarea className="inp" value={form.content} onChange={e=>set("content",e.target.value)} placeholder="오늘 수업에서 다룬 내용을 기록하세요." rows={3} />
-            {form.content.trim() && <button className="btn btn-ghost btn-sm" onClick={()=>handleAiPolish("content")} disabled={!!aiLoading.content} style={{marginTop:4,fontSize:11}}>{aiLoading.content?"다듬는 중…":"✨ AI 다듬기"}</button>}
+            <div style={{display:"flex",gap:6,marginTop:4,alignItems:"center"}}>
+              <MicButton onTranscript={t => appendToField("content", t)} onStop={t => autoPunctuate("content", t)} />
+              {punctuating.content && <span style={{fontSize:11,color:"var(--ink-30)"}}>구두점 추가 중…</span>}
+              {!punctuating.content && form.content.trim() && <button className="btn btn-ghost btn-sm" onClick={()=>handleAiPolish("content")} disabled={!!aiLoading.content} style={{fontSize:11}}>{aiLoading.content?"다듬는 중…":"✨ AI 다듬기"}</button>}
+            </div>
           </div>
           {/* Practice Guide */}
           <div className="fg" style={{background:"var(--blue-lt)",borderRadius:10,padding:"12px 14px",border:"1px solid rgba(43,58,159,.12)"}}>
             <label className="fg-label" style={{margin:"0 0 8px",color:"var(--blue)"}}>🎯 다음 주 과제 · 연습 가이드</label>
-            <textarea className="inp" value={form.practiceGuideText} onChange={e=>set("practiceGuideText",e.target.value)} placeholder="예: 산조 진양조 4장 5번 반복, 시김새 표현에 신경쓰기" rows={3} style={{background:"#fff",marginBottom:8}} />
+            <textarea className="inp" value={form.practiceGuideText} onChange={e=>set("practiceGuideText",e.target.value)} placeholder="예: 산조 진양조 4장 5번 반복, 시김새 표현에 신경쓰기" rows={3} style={{background:"#fff",marginBottom:4}} />
+            <div style={{display:"flex",gap:6,marginBottom:8,alignItems:"center"}}>
+              <MicButton onTranscript={t => appendToField("practiceGuideText", t)} onStop={t => autoPunctuate("practiceGuideText", t)} />
+              {punctuating.practiceGuideText && <span style={{fontSize:11,color:"var(--ink-30)"}}>구두점 추가 중…</span>}
+            </div>
             <div style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer"}} onClick={()=>set("sharePracticeGuide",!form.sharePracticeGuide)}>
               <div style={{width:18,height:18,border:"1.5px solid var(--blue)",borderRadius:4,display:"flex",alignItems:"center",justifyContent:"center",background:form.sharePracticeGuide?"var(--blue)":"#fff",transition:"all .12s"}}>{form.sharePracticeGuide && <span style={{color:"#fff",fontSize:11,fontWeight:700,lineHeight:1}}>✓</span>}</div>
               <span style={{fontSize:12,color:"var(--blue)"}}>회원 포털에 공유</span>
@@ -169,6 +198,20 @@ function NoteCommentsPanel({ comments = [], onAddComment, onDeleteComment, autho
   const [confirmDel, setConfirmDel] = useState(null);
   const [aiReplyLoading, setAiReplyLoading] = useState(false);
   const [aiReplyError, setAiReplyError] = useState("");
+  const [commentPunctuating, setCommentPunctuating] = useState(false);
+  const autoPunctuateComment = async (recordedText) => {
+    if (!recordedText?.trim()) return;
+    setCommentPunctuating(true);
+    try {
+      const punctuated = await aiPunctuate(recordedText);
+      setText(current => {
+        const idx = current.lastIndexOf(recordedText);
+        if (idx < 0) return current;
+        return current.slice(0, idx) + punctuated + current.slice(idx + recordedText.length);
+      });
+    } catch (e) {}
+    finally { setCommentPunctuating(false); }
+  };
 
   const handleSend = async () => {
     if (!text.trim() || saving) return;
@@ -281,6 +324,7 @@ function NoteCommentsPanel({ comments = [], onAddComment, onDeleteComment, autho
               onKeyDown={e => e.key === "Enter" && !e.shiftKey && handleSend()}
               maxLength={200}
             />
+            <MicButton onTranscript={t => setText(p => p ? p + " " + t : t)} onStop={autoPunctuateComment} />
             <button
               style={{padding:"8px 14px",background:text.trim()?"var(--blue)":"var(--border)",color:text.trim()?"#fff":"var(--ink-30)",border:"none",borderRadius:8,fontSize:12,fontWeight:600,cursor:text.trim()?"pointer":"default",transition:"all .12s",flexShrink:0,fontFamily:"inherit"}}
               onClick={handleSend}

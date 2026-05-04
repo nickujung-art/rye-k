@@ -80,3 +80,9 @@ export async function aiGenerateMonthlyReport({ studentName, instruments, audien
   const { result } = await callAi("monthly-report", { studentName, instruments, audience, month, attendanceSummary, conditionTrend, noteSummaries, commentCount });
   return result;
 }
+
+export async function aiPunctuate(text) {
+  if (!text?.trim()) return text;
+  const { result } = await callAi("punctuate", { text });
+  return result;
+}
