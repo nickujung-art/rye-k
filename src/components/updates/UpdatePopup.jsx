@@ -54,7 +54,6 @@ if (displayFeatures.length === 0) return null; // 권한에 맞는 내용이 없
               </div>
              ))}
           </div>
-          )}
         </div>
         <div className="modal-f">
           <button className="btn btn-primary" style={{ width: "100%" }} onClick={handleConfirm}>
