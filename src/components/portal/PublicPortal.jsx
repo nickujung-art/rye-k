@@ -754,7 +754,7 @@ export function PublicParentView() {
 
   if (loading) return (
     <><style>{CSS}</style>
-    <div style={{minHeight:"100vh",minHeight:"100dvh",background:"var(--bg)",display:"flex",flexDirection:"column"}}>
+    <div style={{minHeight:"100dvh",background:"var(--bg)",display:"flex",flexDirection:"column"}}>
       {/* 헤더 스켈레톤 */}
       <div style={{height:52,background:"var(--paper)",borderBottom:"1px solid var(--border)",display:"flex",alignItems:"center",padding:"0 16px",gap:10,flexShrink:0}}>
         <div className="skel" style={{width:28,height:28,borderRadius:8}}/>
@@ -824,7 +824,7 @@ export function PublicParentView() {
 
     return (
       <><style>{CSS}</style>
-      <div style={{minHeight:"100vh",minHeight:"100dvh",background:"#fff",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:20}}>
+      <div style={{minHeight:"100dvh",background:"#fff",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:20}}>
         <div style={{width:"100%",maxWidth:380,textAlign:"center"}}>
           <Logo size={48} />
           <div style={{fontFamily:"'Noto Serif KR',serif",fontSize:22,fontWeight:700,color:"var(--blue)",marginTop:14}}>My RYE-K</div>
@@ -985,7 +985,7 @@ export function PublicParentView() {
 
   return (
     <><style>{CSS}</style>
-    <div className={textLarge ? "text-large" : ""} style={{minHeight:"100vh",minHeight:"100dvh",background:"var(--bg)"}}>
+    <div className={textLarge ? "text-large" : ""} style={{minHeight:"100dvh",background:"var(--bg)"}}>
       {/* Clean white header */}
       <UpdatePopup user={{ role: "member", id: student.id }} />
       {/* ── Sticky Nav: Header + Tab Bar ── */}
