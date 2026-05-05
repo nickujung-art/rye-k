@@ -323,7 +323,7 @@ export default function Dashboard({ students, teachers, currentUser, notices, ca
 
       {/* Churn Risk */}
       {canManageAll(currentUser.role) && (
-        <ChurnWidget students={students} attendance={attendance} />
+        <ChurnWidget students={students} attendance={attendance} teachers={teachers} />
       )}
 
       {/* Manager Reports — 매니저 보고사항 */}

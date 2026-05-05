@@ -467,6 +467,13 @@ export default function MonthlyReportsView({ students, teachers, attendance, cur
                     <button className="btn btn-sm" onClick={() => handleEditPublished(report)} style={{background:"var(--ink-10)",color:"var(--ink)",fontSize:12}}>
                       ✏️ 수정
                     </button>
+                    <button
+                      className="btn btn-sm"
+                      onClick={() => {/* Phase 4: AlimTalk Worker 연결 예정 */}}
+                      style={{background:"var(--gold-lt)",color:"var(--gold-dk)",border:"1px solid #FCD34D",fontSize:11,whiteSpace:"nowrap"}}
+                    >
+                      📨 발송 준비
+                    </button>
                     <button className="btn btn-sm" onClick={() => handleArchive(report)} style={{background:"transparent",color:"var(--ink-30)",border:"1px solid var(--border)",fontSize:11}}>
                       보관 처리
                     </button>

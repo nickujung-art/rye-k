@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { computeStudentRecentAttRate } from "../../utils.js";
 import { Av } from "../shared/CommonUI.jsx";
+import { aiChurnCare } from "../../aiClient.js";
 
 function getConsecutiveAbsences(attendance, sid) {
   const sorted = attendance
@@ -27,8 +28,11 @@ function riskScore(consecutive, rate) {
   return s;
 }
 
-export default function ChurnWidget({ students, attendance }) {
+export default function ChurnWidget({ students, attendance, teachers }) {
   const [expanded, setExpanded] = useState(false);
+  const [generating, setGenerating] = useState(new Set());
+  const [careResults, setCareResults] = useState({});   // { [studentId]: string }
+  const [careErrors, setCareErrors] = useState({});     // { [studentId]: string }
 
   const atRisk = students
     .filter(s => s.status === "active" && !s.isInstitution)
@@ -40,6 +44,29 @@ export default function ChurnWidget({ students, attendance }) {
     })
     .filter(s => s.score >= 25)
     .sort((a, b) => b.score - a.score);
+
+  const handleCareMessage = async (student) => {
+    setGenerating(prev => new Set([...prev, student.id]));
+    setCareErrors(prev => ({ ...prev, [student.id]: null }));
+    try {
+      const teacher = teachers?.find(t => t.id === student.teacherId);
+      const { result } = await aiChurnCare({
+        name: student.name,
+        consecutive: student.consecutive,
+        rate: student.rate,
+        score: student.score,
+        teacherName: teacher?.name,
+      });
+      setCareResults(prev => ({ ...prev, [student.id]: result }));
+    } catch (e) {
+      const msg = e.message === "rate_limited"
+        ? "잠시 후 다시 시도해주세요 (분당 제한)"
+        : "AI 오류가 발생했습니다.";
+      setCareErrors(prev => ({ ...prev, [student.id]: msg }));
+    } finally {
+      setGenerating(prev => { const n = new Set(prev); n.delete(student.id); return n; });
+    }
+  };
 
   if (atRisk.length === 0) return null;
 
@@ -62,26 +89,58 @@ export default function ChurnWidget({ students, attendance }) {
         {shown.map(s => {
           const isDanger = s.score >= 50;
           return (
-            <div key={s.id} style={{display:"flex",alignItems:"center",gap:10,padding:"9px 10px",background:"var(--bg)",borderRadius:8,border:`1px solid ${isDanger ? "rgba(232,40,28,.2)" : "rgba(245,168,0,.25)"}`}}>
-              <Av photo={s.photo} name={s.name} size="av-sm"/>
-              <div style={{flex:1,minWidth:0}}>
-                <div style={{fontSize:13,fontWeight:600,color:"var(--ink)"}}>{s.name}</div>
-                <div style={{display:"flex",flexWrap:"wrap",gap:4,marginTop:3}}>
-                  {s.consecutive >= 2 && (
-                    <span style={{fontSize:11,background: s.consecutive >= 3 ? "var(--red-lt)" : "var(--gold-lt)", color: s.consecutive >= 3 ? "var(--red)" : "var(--gold-dk)", padding:"1px 6px", borderRadius:4, fontWeight:600}}>
-                      연속 결석 {s.consecutive}회
-                    </span>
-                  )}
-                  {s.rate !== null && s.rate < 75 && (
-                    <span style={{fontSize:11,background: s.rate < 50 ? "var(--red-lt)" : "var(--gold-lt)", color: s.rate < 50 ? "var(--red)" : "var(--gold-dk)", padding:"1px 6px", borderRadius:4}}>
-                      4주 출석 {s.rate}%
-                    </span>
-                  )}
+            <div key={s.id} style={{padding:"9px 10px",background:"var(--bg)",borderRadius:8,border:`1px solid ${isDanger ? "rgba(232,40,28,.2)" : "rgba(245,168,0,.25)"}`}}>
+              <div style={{display:"flex",alignItems:"center",gap:10}}>
+                <Av photo={s.photo} name={s.name} size="av-sm"/>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{fontSize:13,fontWeight:600,color:"var(--ink)"}}>{s.name}</div>
+                  <div style={{display:"flex",flexWrap:"wrap",gap:4,marginTop:3}}>
+                    {s.consecutive >= 2 && (
+                      <span style={{fontSize:11,background: s.consecutive >= 3 ? "var(--red-lt)" : "var(--gold-lt)", color: s.consecutive >= 3 ? "var(--red)" : "var(--gold-dk)", padding:"1px 6px", borderRadius:4, fontWeight:600}}>
+                        연속 결석 {s.consecutive}회
+                      </span>
+                    )}
+                    {s.rate !== null && s.rate < 75 && (
+                      <span style={{fontSize:11,background: s.rate < 50 ? "var(--red-lt)" : "var(--gold-lt)", color: s.rate < 50 ? "var(--red)" : "var(--gold-dk)", padding:"1px 6px", borderRadius:4}}>
+                        4주 출석 {s.rate}%
+                      </span>
+                    )}
+                  </div>
                 </div>
+                <span style={{fontSize:11,fontWeight:700,color: isDanger ? "var(--red)" : "var(--gold-dk)",flexShrink:0}}>
+                  {isDanger ? "위험" : "주의"}
+                </span>
+                {generating.has(s.id) ? (
+                  <span style={{fontSize:11,color:"var(--blue)",flexShrink:0}}>생성 중…</span>
+                ) : careResults[s.id] ? (
+                  <button
+                    onClick={() => navigator.clipboard.writeText(careResults[s.id])}
+                    style={{fontSize:10,color:"var(--blue)",background:"none",border:"1px solid var(--blue)",
+                      borderRadius:4,padding:"2px 7px",cursor:"pointer",fontFamily:"inherit",flexShrink:0}}
+                  >
+                    복사
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => handleCareMessage(s)}
+                    style={{fontSize:10,color:"var(--ink-50)",background:"none",border:"1px solid var(--border)",
+                      borderRadius:4,padding:"2px 7px",cursor:"pointer",fontFamily:"inherit",flexShrink:0}}
+                  >
+                    케어 메시지
+                  </button>
+                )}
               </div>
-              <span style={{fontSize:11,fontWeight:700,color: isDanger ? "var(--red)" : "var(--gold-dk)",flexShrink:0}}>
-                {isDanger ? "위험" : "주의"}
-              </span>
+              {careErrors[s.id] && (
+                <div style={{fontSize:11,color:"var(--red)",marginTop:6,paddingLeft:2}}>
+                  {careErrors[s.id]}
+                </div>
+              )}
+              {careResults[s.id] && (
+                <div style={{fontSize:12,color:"var(--ink-60)",lineHeight:1.6,marginTop:6,
+                  padding:"8px 10px",background:"var(--hanji)",borderRadius:6,border:"1px solid var(--border)"}}>
+                  {careResults[s.id]}
+                </div>
+              )}
             </div>
           );
         })}
