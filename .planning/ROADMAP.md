@@ -62,7 +62,11 @@ Plans:
   3. AI 어시스턴트에서 "이번 달 결석 3회 이상 학생"과 같은 자연어 질의에 카드 형식 결과가 반환된다
   4. `studentName`이 Gemini API로 전송될 때 `anonymize.js`를 통과한 익명화 형태로만 전송된다
   5. AI 엔드포인트 파일명과 함수명이 `callGemini` / `gemini.js`로 통일되어 있다
-**Plans**: TBD
+**Plans**: 3 plans
+Plans:
+- [ ] 03-01-PLAN.md — anthropic.js → gemini.js 리네임 + 8개 Worker import 수정 + monthly-report/churn 익명화 (AI-01, SEC-08)
+- [ ] 03-02-PLAN.md — care-message.js Worker 신규 + ChurnWidget 케어 메시지 버튼 + MonthlyReportsView 발송 준비 버튼 (AI-02, AI-03)
+- [ ] 03-03-PLAN.md — AiAssistant ListResult 클릭 → StudentDetailModal 연결 + AI-05 재시도 에러 처리 (AI-04, AI-05)
 
 ### Phase 4: 알림톡 통합 (KakaoTalk AlimTalk)
 **Goal**: 결석·수납·일정 변경 발생 시 학부모에게 카카오 알림톡이 자동 또는 일괄 발송되고, 발송 결과가 관리자 화면에서 추적된다
@@ -107,7 +111,7 @@ Plans:
 |-------|----------------|--------|-----------|
 | 1. 보안 기반 | 0/5 | Planned | - |
 | 2. 포털 완성 | 0/4 | Planned | - |
-| 3. AI 완성 | 0/TBD | Not started | - |
+| 3. AI 완성 | 0/3 | Planned | - |
 | 4. 알림톡 통합 | 0/TBD | Not started | - |
 | 5. 수납 자동화 | 0/TBD | Not started | - |
 | 6. 분석 대시보드 고도화 | 0/TBD | Not started | - |
