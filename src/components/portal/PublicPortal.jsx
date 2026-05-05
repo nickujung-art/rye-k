@@ -512,6 +512,7 @@ export function PublicParentView() {
   // 자녀 전환 (로그인 후)
   const [showSiblingModal, setShowSiblingModal] = useState(false);
   const [switchErr, setSwitchErr] = useState("");
+  const [showExpiryBanner, setShowExpiryBanner] = useState(false);
   const [textLarge, setTextLarge] = useState(() => { try { return localStorage.getItem("rye-text-large") === "1"; } catch { return false; } });
   // 읽음 추적 — localStorage에 학생별 저장
   const [lastNoteRead, setLastNoteRead] = useState(0);       // 강사 댓글 마지막 읽은 시각
@@ -609,11 +610,20 @@ export function PublicParentView() {
       try {
         const saved = JSON.parse(localStorage.getItem("ryekPortal") || "null");
         if (saved?.code && saved?.pw) {
+          // D-06: 30일 만료 체크 (loginAt 없는 기존 세션은 skip — backward compatible)
+          if (saved.loginAt && Date.now() - saved.loginAt > 30 * 24 * 60 * 60 * 1000) {
+            localStorage.removeItem("ryekPortal");
+            return;
+          }
           const found = students.find(s => s.studentCode === saved.code);
           if (found && getBirthPassword(found.birthDate) === saved.pw && (found.status || "active") === "active") {
             setStudent(found);
             setLoggedIn(true);
             initReadState(found.id);
+            // D-07: D-3일 배너 체크
+            if (saved.loginAt && Date.now() - saved.loginAt > 27 * 24 * 60 * 60 * 1000) {
+              setShowExpiryBanner(true);
+            }
           }
         }
       } catch {}
@@ -664,7 +674,7 @@ export function PublicParentView() {
     setLoginStep("id");
     setPendingStudent(null);
     try {
-      localStorage.setItem("ryekPortal", JSON.stringify({ code: found.studentCode, pw: getBirthPassword(found.birthDate) }));
+      localStorage.setItem("ryekPortal", JSON.stringify({ code: found.studentCode, pw: getBirthPassword(found.birthDate), loginAt: Date.now() }));
       if (saveCode) localStorage.setItem("ryekSavedCode", found.studentCode);
       else localStorage.removeItem("ryekSavedCode");
     } catch {}
@@ -964,6 +974,28 @@ export function PublicParentView() {
   };
   const nextLesson = getNextLessonDate();
   const nextLessonTeacher = nextLesson?.lessons?.[0] ? teachers.find(t => t.id === nextLesson.lessons[0].teacherId) : null;
+  const getThisWeekSchedule = () => {
+    const result = [];
+    for (let i = 0; i <= 6; i++) {
+      const d = new Date();
+      d.setDate(d.getDate() + i);
+      const dayName = ["일","월","화","수","목","금","토"][d.getDay()];
+      (student.lessons || []).forEach(l => {
+        (l.schedule || []).filter(sc => sc.day === dayName).forEach(sc => {
+          result.push({
+            dayName, time: sc.time || "", instrument: l.instrument || "",
+            teacherName: teachers.find(t => t.id === l.teacherId)?.name || "강사 미배정",
+            daysFromNow: i
+          });
+        });
+      });
+    }
+    return result.sort((a, b) => {
+      if (a.daysFromNow !== b.daysFromNow) return a.daysFromNow - b.daysFromNow;
+      return (a.time || "").localeCompare(b.time || "");
+    });
+  };
+  const thisWeekSchedule = getThisWeekSchedule();
 
   // Active student notices — 만료·hidden·대상강사 필터링
   const visibleNotices = studentNotices
@@ -1093,6 +1125,71 @@ export function PublicParentView() {
         {/* Home Tab */}
         {tab === "home" && (
           <div>
+            {/* D-07: 세션 만료 배너 */}
+            {showExpiryBanner && (
+              <div className="portal-expiry-banner fade-up">
+                <span className="portal-expiry-text">로그인이 3일 후 만료됩니다.</span>
+                <button
+                  type="button"
+                  className="portal-expiry-extend"
+                  onClick={() => {
+                    const saved = JSON.parse(localStorage.getItem("ryekPortal") || "{}");
+                    localStorage.setItem("ryekPortal", JSON.stringify({ ...saved, loginAt: Date.now() }));
+                    setShowExpiryBanner(false);
+                  }}
+                >
+                  30일 연장
+                </button>
+                <button
+                  type="button"
+                  className="portal-expiry-logout"
+                  onClick={() => {
+                    localStorage.removeItem("ryekPortal");
+                    setLoggedIn(false);
+                    setStudent(null);
+                    setShowExpiryBanner(false);
+                  }}
+                >
+                  로그아웃
+                </button>
+              </div>
+            )}
+            {/* POR-02: 시간표 위젯 — 이달 출석 위에 */}
+            {(student.lessons || []).length > 0 && (
+              <div style={{marginBottom:16}}>
+                <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
+                  <div style={{width:3,height:14,background:"linear-gradient(180deg,var(--blue),var(--dancheong-blue))",borderRadius:2,flexShrink:0}}/>
+                  <div style={{fontFamily:"'Noto Serif KR',serif",fontSize:14,fontWeight:500,color:"var(--ink)"}}>다음 수업</div>
+                </div>
+                {nextLesson
+                  ? nextLesson.lessons.map((l, i) => {
+                      const tName = teachers.find(t => t.id === l.teacherId)?.name || "강사 미배정";
+                      const sc = (l.schedule || []).find(s => s.day === nextLesson.dayName);
+                      return (
+                        <div key={i} className="portal-next-lesson hero-card" style={{marginBottom:8}}>
+                          <div className="portal-next-lesson-inst">{l.instrument}</div>
+                          <div className="portal-next-lesson-time">{nextLesson.dayName}요일 {sc?.time || nextLesson.time}</div>
+                          <div className="portal-next-lesson-teacher">담당: {tName} 강사님</div>
+                        </div>
+                      );
+                    })
+                  : null
+                }
+                {thisWeekSchedule.length > 0 && (
+                  <div>
+                    <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8,marginTop:12}}>
+                      <div style={{width:3,height:14,background:"linear-gradient(180deg,var(--blue),var(--dancheong-blue))",borderRadius:2,flexShrink:0}}/>
+                      <div style={{fontFamily:"'Noto Serif KR',serif",fontSize:14,fontWeight:500,color:"var(--ink)"}}>이번 주 수업</div>
+                    </div>
+                    <div className="portal-week-chips">
+                      {thisWeekSchedule.map((s, i) => (
+                        <span key={i} className="portal-week-chip">{s.dayName} {s.time}</span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
             {/* 이달 출석 */}
             <div style={{marginBottom:16}}>
               <MonthlyAttendanceHeatmap studentId={student.id} attendance={attendance} lessons={student.lessons || []} events={visibleNotices.filter(n => n.eventDate).map(n => ({ id: n.id, date: n.eventDate, title: n.title }))} />
@@ -1235,6 +1332,16 @@ export function PublicParentView() {
                   <div className="ii"><div className="ii-label">수강 상태</div><div className="ii-val" style={{color:"var(--green)",fontWeight:500}}>{(student.status||"active")==="active"?"재원":student.status==="paused"?"휴원":"퇴원"}</div></div>
                 </div>
               </div>
+            </div>
+
+            {/* POR-07: 수강 신청 진입점 */}
+            <div style={{marginTop:16,marginBottom:8}}>
+              <button
+                className="btn btn-secondary btn-full"
+                onClick={() => { window.location.href = "/register"; }}
+              >
+                수강 신청하기 →
+              </button>
             </div>
 
           </div>
