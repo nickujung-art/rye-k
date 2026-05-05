@@ -1,7 +1,7 @@
 ﻿import { useState, useRef } from "react";
 import knotLineSvg from "../../assets/heritage/knot-line.svg";
 import { IC, TODAY_STR, THIS_MONTH, DAYS, ATT_STATUS } from "../../constants.jsx";
-import { uid, calcAge, isMinor, getCat, fmtDate, fmtDateShort, fmtMoney, canManageAll, monthLabel, allLessonInsts, allLessonDays, getBirthPassword, formatLessonNoteSummary, compressImage, fmtPhone } from "../../utils.js";
+import { uid, calcAge, isMinor, getCat, fmtDate, fmtDateShort, fmtMoney, canManageAll, monthLabel, allLessonInsts, allLessonDays, getBirthPassword, formatLessonNoteSummary, compressImage, fmtPhone, computeMonthlyAttStats } from "../../utils.js";
 import { Av, PhotoUpload, DeleteConfirmFooter } from "../shared/CommonUI.jsx";
 
 // ── LESSON EDITOR ─────────────────────────────────────────────────────────────
@@ -368,12 +368,7 @@ export function StudentDetailModal({ student: s, teachers, currentUser, categori
   const days = allLessonDays(s);
   // Attendance history for this student
   const sAtt = (attendance || []).filter(a => a.studentId === s.id).sort((a,b) => b.createdAt - a.createdAt);
-  const attTotal = sAtt.length;
-  const attPresent = sAtt.filter(a => a.status === "present").length;
-  const attAbsent = sAtt.filter(a => a.status === "absent").length;
-  const attLate = sAtt.filter(a => a.status === "late").length;
-  const attExcused = sAtt.filter(a => a.status === "excused").length;
-  const attRate = attTotal > 0 ? Math.round((attPresent + attLate) / attTotal * 100) : null;
+  const { total: attTotal, present: attPresent, absent: attAbsent, late: attLate, excused: attExcused, rate: attRate } = computeMonthlyAttStats(sAtt);
   // Payment history
   const sPay = (payments || []).filter(p => p.studentId === s.id).sort((a,b) => (b.month||"").localeCompare(a.month||""));
   const sNotes = sAtt.filter(a => {

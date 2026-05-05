@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { THIS_MONTH, TODAY_STR } from "../../constants.jsx";
-import { calcAge, isMinor, fmtMoney, fmtDate, monthLabel, expandInstitutionsToMembers } from "../../utils.js";
+import { calcAge, isMinor, fmtMoney, fmtDate, monthLabel, expandInstitutionsToMembers, computeMonthlyAttStats } from "../../utils.js";
 
 // ── ANALYTICS VIEW (현황 분석 — 관리자 전용) ─────────────────────────────────
 export default function AnalyticsView({ students, teachers, attendance, payments, categories, institutions }) {
@@ -64,12 +64,8 @@ export default function AnalyticsView({ students, teachers, attendance, payments
   })).sort((a,b)=>b.count-a.count);
 
   // ── 선택 월 출석률
-  const monthAtt = attendance.filter(a => a.date?.startsWith(selectedMonth));
-  const mTotal = monthAtt.length;
-  const mPresent = monthAtt.filter(a => a.status === "present").length;
-  const mLate = monthAtt.filter(a => a.status === "late").length;
-  const mAbsent = monthAtt.filter(a => a.status === "absent").length;
-  const mRate = mTotal > 0 ? Math.round((mPresent + mLate) / mTotal * 100) : 0;
+  const { total: mTotal, present: mPresent, late: mLate, absent: mAbsent, rate: _mRate } = computeMonthlyAttStats(attendance, selectedMonth);
+  const mRate = _mRate ?? 0;
 
   // ── 선택 월 수납 현황
   const monthPay = payments.filter(p => p.month === selectedMonth);

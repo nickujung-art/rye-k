@@ -118,3 +118,57 @@ export async function sendAligoMessage(targetType, students) {
   console.log(`[알림톡 목업] 발송 대상(${targetType}): ${targets.length}명`, targets);
   await new Promise(resolve => setTimeout(resolve, 1000));
 }
+
+// ── Phase 0: 출석률 헬퍼 (Phase 2·3 공통 기반) ────────────────────────────────
+// {present, late, absent, excused, total, rate(null=데이터없음)}
+export function computeMonthlyAttStats(att, ym) {
+  const filtered = ym ? att.filter(a => a.date?.startsWith(ym)) : att;
+  const present = filtered.filter(a => a.status === "present").length;
+  const late    = filtered.filter(a => a.status === "late").length;
+  const absent  = filtered.filter(a => a.status === "absent").length;
+  const excused = filtered.filter(a => a.status === "excused").length;
+  const total   = filtered.length;
+  const rate    = total > 0 ? Math.round((present + late) / total * 100) : null;
+  return { present, late, absent, excused, total, rate };
+}
+
+// 월별 주차별 출석률 배열 (sparkline용)
+export function computeWeeklyAttRates(att, ym) {
+  const monthAtt = ym ? att.filter(a => a.date?.startsWith(ym)) : att;
+  if (!ym || monthAtt.length === 0) return [];
+  const [sYr, sMo] = ym.split("-").map(Number);
+  const daysInMo = new Date(sYr, sMo, 0).getDate();
+  const rates = [];
+  for (let wk = 0; wk < 5; wk++) {
+    const d1 = wk * 7 + 1;
+    if (d1 > daysInMo) break;
+    const d2 = Math.min(d1 + 6, daysInMo);
+    const wAtt = monthAtt.filter(a => { const d = parseInt(a.date?.slice(8) || "0", 10); return d >= d1 && d <= d2; });
+    if (wAtt.length === 0) continue;
+    rates.push(Math.round(wAtt.filter(a => a.status === "present" || a.status === "late").length / wAtt.length * 100));
+  }
+  return rates;
+}
+
+// 최근 N주 출석률 (단일 학생, Phase 2/3용)
+export function computeStudentRecentAttRate(attendance, sid, weeks = 4) {
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - weeks * 7);
+  const cutoffStr = cutoff.toISOString().slice(0, 10);
+  const recent = attendance.filter(a => a.studentId === sid && a.date >= cutoffStr);
+  if (recent.length === 0) return null;
+  return Math.round(recent.filter(a => a.status === "present" || a.status === "late").length / recent.length * 100);
+}
+
+// 최근 N회 연속 결석 여부 (단일 학생, Phase 3 이탈 감지용)
+export function detectConsecutiveAbsences(attendance, sid, n = 2) {
+  const sorted = attendance
+    .filter(a => a.studentId === sid)
+    .sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+  let count = 0;
+  for (const a of sorted) {
+    if (a.status === "absent") count++;
+    else break;
+  }
+  return count >= n;
+}

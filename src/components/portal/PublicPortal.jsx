@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef, useLayoutEffect } from "react";
 import { db, doc, setDoc, onSnapshot, firebaseSignInAnon, runTransaction } from "../../firebase.js";
 import { DEFAULT_CATEGORIES, TODAY_STR, CSS, DAYS, THIS_MONTH } from "../../constants.jsx";
-import { compressImage, fmtPhone, uid, fmtDate, fmtDateShort, fmtDateTime, fmtMoney, monthLabel, allLessonInsts, allLessonDays, getBirthPassword } from "../../utils.js";
+import { compressImage, fmtPhone, uid, fmtDate, fmtDateShort, fmtDateTime, fmtMoney, monthLabel, allLessonInsts, allLessonDays, getBirthPassword, computeMonthlyAttStats } from "../../utils.js";
 import { Logo, Av } from "../shared/CommonUI.jsx";
 import { NoteCommentsPanel } from "../attendance/Attendance.jsx";
 
@@ -926,13 +926,7 @@ export function PublicParentView() {
     late: { color: "var(--gold)", bg: "var(--gold-lt)", icon: "△", text: "지각" },
     excused: { color: "var(--blue)", bg: "var(--blue-lt)", icon: "○", text: "보강" }
   };
-  const attThisMonth = sAtt.filter(a => a.date && a.date.startsWith(THIS_MONTH));
-  const presentCount = attThisMonth.filter(a => a.status === "present").length;
-  const absentCount = attThisMonth.filter(a => a.status === "absent").length;
-  const lateCount = attThisMonth.filter(a => a.status === "late").length;
-  const excusedCount = attThisMonth.filter(a => a.status === "excused").length;
-  const totalThisMonth = attThisMonth.length;
-  const attRate = totalThisMonth > 0 ? Math.round((presentCount + lateCount) / totalThisMonth * 100) : null;
+  const { present: presentCount, absent: absentCount, late: lateCount, excused: excusedCount, total: totalThisMonth, rate: attRate } = computeMonthlyAttStats(sAtt, THIS_MONTH);
   const latestPay = sPay[0];
   // 이번 달 수납 우선 체크
   const thisMonthPay = sPay.find(p => p.month === THIS_MONTH);

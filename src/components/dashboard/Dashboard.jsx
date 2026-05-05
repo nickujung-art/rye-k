@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { THIS_MONTH, TODAY_DAY, TODAY_STR, ATT_STATUS, IC } from "../../constants.jsx";
-import { canManageAll, fmtDateTime, fmtDateShort, isMinor, monthLabel, getContractDaysLeft, allLessonInsts } from "../../utils.js";
+import { canManageAll, fmtDateTime, fmtDateShort, isMinor, monthLabel, getContractDaysLeft, allLessonInsts, computeMonthlyAttStats, computeWeeklyAttRates } from "../../utils.js";
 import { Av } from "../shared/CommonUI.jsx";
 
 function DonutChart({ paid, total }) {
@@ -355,26 +355,13 @@ export default function Dashboard({ students, teachers, currentUser, notices, ca
         <div className="dash-card">
           <div className="dash-card-title">이번달 출석 현황</div>
           {(() => {
+            const { present: mPresent, absent: mAbsent, late: mLate, total: mTotal, rate: _mRate } = computeMonthlyAttStats(attendance, THIS_MONTH);
+            const mRate = _mRate ?? 0;
             const monthAtt = attendance.filter(a => a.date?.startsWith(THIS_MONTH));
-            const mPresent = monthAtt.filter(a => a.status === "present").length;
-            const mAbsent = monthAtt.filter(a => a.status === "absent").length;
-            const mLate = monthAtt.filter(a => a.status === "late").length;
-            const mTotal = monthAtt.length;
-            const mRate = mTotal > 0 ? Math.round((mPresent + mLate) / mTotal * 100) : 0;
             const absentCounts = {};
             monthAtt.filter(a => a.status === "absent").forEach(a => { absentCounts[a.studentId] = (absentCounts[a.studentId] || 0) + 1; });
             const frequentAbsent = Object.entries(absentCounts).filter(([,c]) => c >= 2).map(([sid, c]) => ({ student: students.find(s => s.id === sid), count: c })).filter(x => x.student);
-            const [sYr, sMo] = THIS_MONTH.split("-").map(Number);
-            const daysInMo = new Date(sYr, sMo, 0).getDate();
-            const weeklyRates = [];
-            for (let wk = 0; wk < 5; wk++) {
-              const d1 = wk * 7 + 1;
-              if (d1 > daysInMo) break;
-              const d2 = Math.min(d1 + 6, daysInMo);
-              const wAtt = monthAtt.filter(a => { const d = parseInt(a.date?.slice(8) || "0", 10); return d >= d1 && d <= d2; });
-              if (wAtt.length === 0) continue;
-              weeklyRates.push(Math.round(wAtt.filter(a => a.status === "present" || a.status === "late").length / wAtt.length * 100));
-            }
+            const weeklyRates = computeWeeklyAttRates(attendance, THIS_MONTH);
             return (
               <>
                 <div style={{display:"flex",gap:12,marginBottom:12,flexWrap:"wrap"}}>
