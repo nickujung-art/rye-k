@@ -1,4 +1,5 @@
 import { useState, useEffect, lazy, Suspense } from "react";
+import { getIdToken } from "firebase/auth";
 import { db, auth, doc, setDoc, onSnapshot, runTransaction, firebaseSignIn, firebaseSignInAnon, firebaseLogout, onAuthStateChanged } from "./firebase.js";
 import { DEFAULT_CATEGORIES, DAYS, ADMIN, TODAY_STR, THIS_MONTH, TODAY_DAY, ATT_STATUS, PAY_METHODS, INST_TYPES, IC, CSS } from "./constants.jsx";
 import { calcAge, isMinor, getCat, fmtDate, fmtDateShort, fmtDateTime, uid, fmtPhone, fmtMoney, allLessonInsts, allLessonDays, canManageAll, monthLabel, generateStudentCode, getBirthPassword, getPhoneInitialPassword, instTypeLabel, expandInstitutionsToMembers, getContractDaysLeft, formatLessonNoteSummary } from "./utils.js";
@@ -800,6 +801,22 @@ function MainApp() {
 
     // Step 2: Sign in with Firebase Auth (creates account on first login)
     const fbUser = await firebaseSignIn(username, password);
+
+    // SEC-05: Firebase Custom Claims 설정 (role, teacherId)
+    if (fbUser) {
+      try {
+        const idToken = await getIdToken(fbUser);
+        await fetch("/api/auth/set-role", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${idToken}` },
+        });
+        // Claims 설정 후 token 강제 갱신 — Firestore rules에서 role claim 즉시 인식
+        await getIdToken(fbUser, /* forceRefresh= */ true);
+      } catch (e) {
+        console.error("[auth] set-role 호출 실패:", e);
+        // set-role 실패 시에도 로컬 로그인은 계속 진행
+      }
+    }
 
     setUserPersist(appUser);
     return true;
