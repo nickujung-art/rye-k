@@ -34,8 +34,11 @@ export function RoleBadge({ role }) {
 }
 export function MicButton({ onTranscript, onStop }) {
   const [listening, setListening] = useState(false);
+  const [interimText, setInterimText] = useState("");
+  const [errText, setErrText] = useState("");
   const recRef = useRef(null);
   const bufRef = useRef("");
+  const errTimerRef = useRef(null);
   const onTranscriptRef = useRef(onTranscript);
   const onStopRef = useRef(onStop);
   onTranscriptRef.current = onTranscript;
@@ -44,12 +47,19 @@ export function MicButton({ onTranscript, onStop }) {
   const SR = typeof window !== "undefined" && (window.SpeechRecognition || window.webkitSpeechRecognition);
   if (!SR) return null;
 
+  const showErr = (msg) => {
+    setErrText(msg);
+    clearTimeout(errTimerRef.current);
+    errTimerRef.current = setTimeout(() => setErrText(""), 3000);
+  };
+
   const finalize = (rec) => {
     if (recRef.current !== rec) return;
     recRef.current = null;
     const buf = bufRef.current;
     bufRef.current = "";
     setListening(false);
+    setInterimText("");
     onStopRef.current?.(buf);
   };
 
@@ -66,21 +76,25 @@ export function MicButton({ onTranscript, onStop }) {
       rec.continuous = true;
       rec.onresult = e => {
         let finalText = "";
+        let interim = "";
         for (let i = e.resultIndex; i < e.results.length; i++) {
           if (e.results[i].isFinal) {
             const seg = e.results[i][0].transcript.trim();
             if (seg) finalText += (finalText ? " " : "") + seg;
+          } else {
+            interim += e.results[i][0].transcript;
           }
         }
+        if (interim) setInterimText(interim);
         if (!finalText) return;
         bufRef.current = bufRef.current ? bufRef.current + " " + finalText : finalText;
+        setInterimText("");
         onTranscriptRef.current?.(finalText);
       };
-      rec.onend = () => {
-        finalize(rec);
-      };
+      rec.onend = () => { finalize(rec); };
       rec.onerror = e => {
         if (e.error === "no-speech" || e.error === "aborted") return;
+        showErr(e.error === "not-allowed" ? "마이크 권한 필요" : "마이크 오류");
       };
       recRef.current = rec;
       try {
@@ -93,10 +107,14 @@ export function MicButton({ onTranscript, onStop }) {
     }
   };
 
+  const preview = errText || interimText;
   return (
-    <button type="button" className={`mic-btn${listening ? " mic-btn-active" : ""}`} onClick={toggle} title={listening ? "녹음 중단" : "음성 입력"}>
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
-    </button>
+    <span className="mic-wrap">
+      <button type="button" className={`mic-btn${listening ? " mic-btn-active" : ""}`} onClick={toggle} title={listening ? "녹음 중단" : "음성 입력"}>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+      </button>
+      {preview && <span className={`mic-preview${errText ? " mic-preview-err" : ""}`}>{preview}</span>}
+    </span>
   );
 }
 export function DeleteConfirmFooter({ label, canDelete, onDelete, onClose, onEdit }) {
