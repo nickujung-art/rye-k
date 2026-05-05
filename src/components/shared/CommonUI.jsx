@@ -50,12 +50,10 @@ export function MicButton({ onTranscript, onStop }) {
     const buf = bufRef.current;
     bufRef.current = "";
     setListening(false);
-    console.log("[MicButton] finalize buf len:", buf.length);
     onStopRef.current?.(buf);
   };
 
   const toggle = () => {
-    console.log("[MicButton] toggle recRef:", !!recRef.current, "listening:", listening);
     if (recRef.current) {
       const rec = recRef.current;
       try { rec.stop(); } catch (err) { console.warn("[MicButton] stop threw:", err); }
@@ -76,22 +74,18 @@ export function MicButton({ onTranscript, onStop }) {
         }
         if (!finalText) return;
         bufRef.current = bufRef.current ? bufRef.current + " " + finalText : finalText;
-        console.log("[MicButton] segment:", finalText, "| buf:", bufRef.current);
         onTranscriptRef.current?.(finalText);
       };
       rec.onend = () => {
-        console.log("[MicButton] onend recRef===this:", recRef.current === rec);
         finalize(rec);
       };
       rec.onerror = e => {
-        console.log("[MicButton] onerror:", e.error);
         if (e.error === "no-speech" || e.error === "aborted") return;
       };
       recRef.current = rec;
       try {
         rec.start();
         setListening(true);
-        console.log("[MicButton] started");
       } catch (err) {
         console.warn("[MicButton] start threw:", err);
         recRef.current = null;
