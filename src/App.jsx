@@ -364,7 +364,7 @@ function MainApp() {
             return { ...s, studentCode: code };
           });
           await sSet("rye-students", migrated);
-          console.log("Migrated studentCodes for", migrated.filter((s,i) => s.studentCode !== studentsArr[i]?.studentCode).length, "students");
+
         }
       }
       // 1회 데이터 복구 — 백업 77명과 현재 Firestore 병합 (현재 데이터 우선)
@@ -378,7 +378,7 @@ function MainApp() {
         const final = [...merged, ...extras];
         await sSet("rye-students", final);
         localStorage.setItem("rye-recovery-v1", "1");
-        console.log(`[Recovery] ${final.length}명 복구 완료 (기존 ${curStudents.length}명 보존)`);
+
       }
       resolved = true;
       setLoading(false);
@@ -681,38 +681,43 @@ function MainApp() {
     }
   };
 
-  const resetSeed = async () => {
-    const seed = generateSeedData();
-    // ── 전체 Firestore 컬렉션 완전 초기화 ──────────────────────
-    await Promise.all([
-      sSet("rye-teachers",          seed.seedTeachers),
-      sSet("rye-students",          seed.seedStudents),
-      sSet("rye-notices",           seed.seedNotices),
-      sSet("rye-attendance",        seed.seedAttendance),
-      sSet("rye-payments",          seed.seedPayments),
-      sSet("rye-activity",          seed.seedActivity),
-      sSet("rye-pending",           []),
-      sSet("rye-trash",             []),
-      sSet("rye-schedule-overrides",[]),
-      sSet("rye-student-notices",   []),
-      sSet("rye-fee-presets",       {}),
-      sSet("rye-institutions",      []),
-    ]);
-    setTeachers(seed.seedTeachers);
-    setStudents(seed.seedStudents);
-    setNotices(seed.seedNotices);
-    setAttendance(seed.seedAttendance);
-    setPayments(seed.seedPayments);
-    setActivity(seed.seedActivity);
-    setPending([]);
-    setTrash([]);
-    setScheduleOverrides([]);
-    setStudentNotices([]);
-    setFeePresets({});
-    setInstitutions([]);
-    showToast("DB 초기화 완료 — 실제 운영 데이터가 로드되었습니다.");
-    setView("dashboard");
-  };
+  let resetSeed;
+  if (import.meta.env.DEV) {
+    resetSeed = async () => {
+      const seed = generateSeedData();
+      // ── 전체 Firestore 컬렉션 완전 초기화 ──────────────────────
+      await Promise.all([
+        sSet("rye-teachers",          seed.seedTeachers),
+        sSet("rye-students",          seed.seedStudents),
+        sSet("rye-notices",           seed.seedNotices),
+        sSet("rye-attendance",        seed.seedAttendance),
+        sSet("rye-payments",          seed.seedPayments),
+        sSet("rye-activity",          seed.seedActivity),
+        sSet("rye-pending",           []),
+        sSet("rye-trash",             []),
+        sSet("rye-schedule-overrides",[]),
+        sSet("rye-student-notices",   []),
+        sSet("rye-fee-presets",       {}),
+        sSet("rye-institutions",      []),
+      ]);
+      setTeachers(seed.seedTeachers);
+      setStudents(seed.seedStudents);
+      setNotices(seed.seedNotices);
+      setAttendance(seed.seedAttendance);
+      setPayments(seed.seedPayments);
+      setActivity(seed.seedActivity);
+      setPending([]);
+      setTrash([]);
+      setScheduleOverrides([]);
+      setStudentNotices([]);
+      setFeePresets({});
+      setInstitutions([]);
+      showToast("DB 초기화 완료 — 실제 운영 데이터가 로드되었습니다.");
+      setView("dashboard");
+    };
+  } else {
+    resetSeed = () => { throw new Error("resetSeed은 개발 환경 전용입니다."); };
+  }
 
   const approvePending = async (reg) => {
     // Convert pending registration to student with edited form data
@@ -775,9 +780,6 @@ function MainApp() {
 
     // Step 2: Sign in with Firebase Auth (creates account on first login)
     const fbUser = await firebaseSignIn(username, password);
-    if (!fbUser) {
-      console.warn("Firebase Auth failed, proceeding with local auth only");
-    }
 
     setUserPersist(appUser);
     return true;
