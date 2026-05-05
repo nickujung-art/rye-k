@@ -7,20 +7,17 @@ export function isAiEnabled() { return _aiEnabled; }
 
 async function getToken() {
   let user = auth.currentUser;
-  console.log("[ai] currentUser:", user?.uid, user?.isAnonymous);
   if (!user) {
     try {
       user = await firebaseSignInAnon();
-      console.log("[ai] anon signin:", user?.uid);
     } catch (e) {
       console.error("[ai] anon failed:", e);
       return null;
     }
   }
-  if (!user) { console.warn("[ai] no user after anon"); return null; }
+  if (!user) return null;
   try {
     const t = await getIdToken(user);
-    console.log("[ai] token len:", t?.length);
     return t;
   } catch (e) {
     console.error("[ai] getIdToken failed:", e);
