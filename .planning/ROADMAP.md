@@ -25,7 +25,13 @@
   3. 강사가 로그인 후 AI 기능을 사용할 때 `RATE_LIMIT_KV` 바인딩 오류 없이 rate limiter가 정상 동작한다
   4. 샘플 데이터 초기화 버튼이 `NODE_ENV=production` 빌드에서 렌더링되지 않는다
   5. 강사가 로그아웃 후 재로그인 시 30일 재인증 흐름이 Firebase Auth를 통해 정상 완료된다
-**Plans**: TBD
+**Plans**: 5 plans
+Plans:
+- [ ] 01-01-PLAN.md — console.log PII 제거 + resetSeed DEV guard + saveStudents 감사 (SEC-01, SEC-02, SEC-03)
+- [ ] 01-02-PLAN.md — Cloudflare KV namespace 바인딩 + rate limiter 강화 (SEC-04)
+- [ ] 01-03-PLAN.md — Firebase Custom Claims Worker 구현 및 로그인 흐름 연결 (SEC-05)
+- [ ] 01-04-PLAN.md — Firestore 보안 규칙 역할 기반 재작성 (SEC-06)
+- [ ] 01-05-PLAN.md — Firebase Auth ↔ localStorage 세션 동기화 (SEC-07)
 **UI hint**: yes
 
 ### Phase 2: 포털 완성 (Portal Completion)
@@ -74,7 +80,7 @@
   2. 관리자 화면에서 이번 달 미납 학생 목록과 수납률을 한눈에 볼 수 있다
   3. 은행에서 입금 웹훅이 수신되면 학생 이름+금액 기반으로 자동 매칭되어 수납 처리된다
   4. 자동 매칭이 불확실한 입금은 "미매칭 입금" 큐에 올라가 관리자가 수동 처리할 수 있다
-  5. 미납 리마인더 알림톡이 미납 학생 학부모에게 자동 발송된다
+  5. 미납 리마인더 알림톡이 미납 학생 학부모에게 자동 발송됨
 **Plans**: TBD
 **Admin prerequisites**: `monthlyFee` 데이터 전체 입력 + Firebase 서비스 계정 설정 + Toss Payments 가상계좌 계정 (Nick 선행 작업)
 
@@ -94,7 +100,7 @@
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. 보안 기반 | 0/TBD | Not started | - |
+| 1. 보안 기반 | 0/5 | Planned | - |
 | 2. 포털 완성 | 0/TBD | Not started | - |
 | 3. AI 완성 | 0/TBD | Not started | - |
 | 4. 알림톡 통합 | 0/TBD | Not started | - |
