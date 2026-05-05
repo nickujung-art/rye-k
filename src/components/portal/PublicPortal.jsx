@@ -1244,23 +1244,6 @@ export function PublicParentView() {
               </div>
             ))}
 
-            {/* 레슨 일정 */}
-            <div style={{marginBottom:16}}>
-              <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
-                <div style={{width:3,height:14,background:"linear-gradient(180deg,var(--blue),var(--dancheong-blue))",borderRadius:2,flexShrink:0}}/>
-                <div style={{fontFamily:"'Noto Serif KR',serif",fontSize:14,fontWeight:500,color:"var(--ink)"}}>레슨 일정</div>
-              </div>
-              {(student.lessons||[]).map((l,i) => (
-                <div key={`${l.instrument||""}-${l.teacherId||""}-${i}`} style={{background:"var(--paper)",borderRadius:"var(--radius)",padding:"14px 16px",marginBottom:6,boxShadow:"var(--shadow)",border:"1px solid var(--border)"}}>
-                  <div style={{fontSize:14,fontWeight:600,color:"var(--blue)",marginBottom:6,fontFamily:"'Noto Serif KR',serif"}}>{l.instrument}</div>
-                  <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
-                    {(l.schedule||[]).filter(sc=>sc.day).map((sc,i) => (
-                      <span key={i} style={{background:"var(--blue-lt)",color:"var(--blue)",padding:"4px 12px",fontSize:12,fontWeight:500,borderRadius:8}}>{sc.day}요일{sc.time && ` ${sc.time}`}</span>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
 
             {/* 최근 레슨 노트 */}
             {notes.length > 0 && (
@@ -1334,15 +1317,6 @@ export function PublicParentView() {
               </div>
             </div>
 
-            {/* POR-07: 수강 신청 진입점 */}
-            <div style={{marginTop:16,marginBottom:8}}>
-              <button
-                className="btn btn-secondary btn-full"
-                onClick={() => { window.location.href = "/register"; }}
-              >
-                수강 신청하기 →
-              </button>
-            </div>
 
           </div>
         )}
