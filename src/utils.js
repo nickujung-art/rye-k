@@ -113,9 +113,7 @@ export function formatLessonNoteSummary(note) {
   return parts.join(" | ") || "";
 }
 
-export async function sendAligoMessage(targetType, students) {
-  const targets = students.map(s => s.parentPhone || s.phone).filter(Boolean);
-  console.log(`[알림톡 목업] 발송 대상(${targetType}): ${targets.length}명`, targets);
+export async function sendAligoMessage(_targetType, _students) {
   await new Promise(resolve => setTimeout(resolve, 1000));
 }
 
