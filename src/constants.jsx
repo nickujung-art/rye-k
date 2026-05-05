@@ -737,4 +737,18 @@ body:has(.ai-backdrop) .ai-fab{display:none}
 .ai-result-more{background:none;border:none;color:var(--blue);font-size:11.5px;cursor:pointer;padding:5px 0;font-family:inherit;text-align:left}
 .ai-stats-row{display:flex;justify-content:space-between;align-items:center;font-size:12.5px;color:var(--ink-60);margin-bottom:4px}
 .ai-stats-row strong{color:var(--ink);font-weight:700}
+
+/* ── Portal Schedule Widget ─────────────────────────────── */
+.portal-next-lesson{background:var(--hanji);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px;box-shadow:var(--shadow)}
+.portal-next-lesson-inst{font-family:'Noto Serif KR',serif;font-size:14px;font-weight:600;color:var(--blue);margin-bottom:4px}
+.portal-next-lesson-time{font-size:20px;font-family:'Noto Serif KR',serif;font-weight:600;color:var(--ink);font-variant-numeric:tabular-nums;line-height:1.2}
+.portal-next-lesson-teacher{font-size:12px;color:var(--ink-60);margin-top:8px}
+.portal-week-chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.portal-week-chip{background:var(--blue-lt);color:var(--blue);font-size:12px;padding:4px 12px;border-radius:8px}
+
+/* ── Portal Expiry Banner ────────────────────────────────── */
+.portal-expiry-banner{background:var(--gold-lt);border-bottom:2px solid var(--gold);padding:12px 16px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;position:sticky;top:0;z-index:10}
+.portal-expiry-text{font-size:14px;color:var(--ink);flex:1;line-height:1.5}
+.portal-expiry-extend{background:var(--blue);color:#fff;font-size:12px;font-weight:600;border-radius:var(--radius-sm);padding:8px 16px;border:none;cursor:pointer;min-height:44px;font-family:inherit}
+.portal-expiry-logout{background:none;border:none;color:var(--red);font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;padding:8px;min-height:44px}
 `;

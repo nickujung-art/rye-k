@@ -5,16 +5,14 @@
 See: .planning/PROJECT.md (updated 2026-05-05)
 
 **Core value:** 강사와 학생이 레슨에 집중할 수 있도록, 행정 업무(수납·출결·소통)를 자동화하고 모든 역할이 하나의 앱에서 필요한 정보를 얻을 수 있게 한다
-**Current focus:** Phase 1 — 보안 기반 (Security Foundation)
+**Current focus:** Phase 2 — 포털 완성 (Portal Completion)
 
 ## Current Position
 
-Phase: 1 of 6 (보안 기반 — Security Foundation)
-Plan: 0 of 5 in current phase
-Status: Ready to execute
-Last activity: 2026-05-05 — Phase 2 planned (4 plans, 4 waves)
-
-**Phase 2 — Ready to execute:** 4 plans, 4 waves. Wave 1→2→3→4 linear dependency (all touch PublicPortal.jsx / constants.jsx).
+Phase: 2 of 6 (포털 완성 — Portal Completion)
+Plan: 0 of 4 in current phase
+Status: Executing
+Last activity: 2026-05-05 — Phase 2 execution started (4 plans, 4 waves)
 
 Progress: [░░░░░░░░░░] 0%
 
