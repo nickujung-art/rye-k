@@ -269,6 +269,26 @@ function MainApp() {
     } catch {}
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // ── Firebase Auth 상태 동기화 (SEC-07) ───────────────────────────────────────
+  // onAuthStateChanged가 로그아웃을 감지하면 localStorage 세션도 제거
+  // Firebase 비밀번호 변경, 계정 비활성화, 토큰 만료 시 자동 로그아웃
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, async (fbUser) => {
+      if (!fbUser && user) {
+        // Firebase가 로그아웃 상태 → localStorage에만 남은 세션 제거
+        setUserPersist(null);
+        return;
+      }
+      if (fbUser && fbUser.email && user) {
+        // Firebase 세션 유효 → last_login 타임스탬프 갱신
+        try {
+          localStorage.setItem("ryek_last_login", String(Date.now()));
+        } catch {}
+      }
+    });
+    return () => unsub();
+  }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
+
   useEffect(() => {
     const root = document.documentElement;
     if (darkMode === "dark") { root.setAttribute("data-theme", "dark"); localStorage.setItem("rye-theme", "dark"); }
