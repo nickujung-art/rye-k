@@ -1,3 +1,8 @@
 name = "rye-k-center"
 pages_build_output_dir = "dist"
 compatibility_date = "2024-09-23"
+
+[[kv_namespaces]]
+binding = "RATE_LIMIT_KV"
+id = "59662ff0f284432db0e024e07fe9219e"
+preview_id = "28d7163b7766455e9b4d4904c78318d1"
