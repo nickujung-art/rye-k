@@ -1,2 +1,13 @@
-node_modules
-node_modules
+node_modules/
+.next/
+out/
+next-env.d.ts
+tsconfig.tsbuildinfo
+
+# phase execution outputs
+phases/**/phase*-output.json
+phases/**/step*-output.json
+
+# DB backups (real PII — never commit)
+rye-k-backup*.json
+*-backup-*.json

@@ -86,3 +86,14 @@ export async function aiPunctuate(text) {
   const { result } = await callAi("punctuate", { text });
   return result;
 }
+
+export async function aiQuery(question) {
+  if (!question?.trim()) return { type: "no_match" };
+  return callAi("query", { question });
+}
+
+export async function aiChurnAnalysis(students) {
+  if (!students?.length) return { comments: [] };
+  const payload = students.slice(0, 5).map(s => ({ name: s.name, consecutive: s.consecutive, rate: s.rate, score: s.score }));
+  return callAi("churn", { students: payload });
+}

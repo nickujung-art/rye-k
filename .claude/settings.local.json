@@ -21,7 +21,22 @@
       "Bash(xargs grep *)",
       "Bash(git *)",
       "Bash(bash *)",
-      "Bash(winget install *)"
+      "Bash(winget install *)",
+      "Bash(npx skills *)",
+      "Bash(npm i *)",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\GIGABYTE\\\\Coding\\\\rye-k\" -Recurse -Filter \"*.jsx\" -File)",
+      "Bash(Select-Object FullName)",
+      "Skill(update-config)",
+      "Bash(grep -n \"CSS\\\\`\\\\|@media\\\\|print\\\\|settlement\\\\|fmtMoney\\\\|monthLabel\" src/constants.jsx)",
+      "Bash(not exist *)",
+      "mcp__plugin_cloudflare_cloudflare-observability__accounts_list",
+      "mcp__plugin_cloudflare_cloudflare-observability__set_active_account",
+      "mcp__plugin_cloudflare_cloudflare-observability__query_worker_observability",
+      "Bash(npx wrangler *)",
+      "Bash(Remove-Item *)",
+      "PowerShell(New-Item *)",
+      "Bash(Get-ChildItem \"C:\\\\Users\\\\GIGABYTE\\\\Coding\\\\rye-k\\\\functions\\\\api\\\\ai\" -Recurse)",
+      "Bash(Select-Object Name, Length)"
     ]
   }
 }

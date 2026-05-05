@@ -2,6 +2,7 @@ import { useState } from "react";
 import { THIS_MONTH, TODAY_DAY, TODAY_STR, ATT_STATUS, IC } from "../../constants.jsx";
 import { canManageAll, fmtDateTime, fmtDateShort, isMinor, monthLabel, getContractDaysLeft, allLessonInsts, computeMonthlyAttStats, computeWeeklyAttRates } from "../../utils.js";
 import { Av } from "../shared/CommonUI.jsx";
+import ChurnWidget from "./ChurnWidget.jsx";
 
 function DonutChart({ paid, total }) {
   const r = 28, cx = 38, cy = 38;
@@ -318,6 +319,11 @@ export default function Dashboard({ students, teachers, currentUser, notices, ca
             </div>
           ))}
         </div>
+      )}
+
+      {/* Churn Risk */}
+      {canManageAll(currentUser.role) && (
+        <ChurnWidget students={students} attendance={attendance} />
       )}
 
       {/* Manager Reports — 매니저 보고사항 */}

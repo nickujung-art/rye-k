@@ -17,6 +17,7 @@ import { LoginScreen, ProfileView } from "./components/auth/UserAuth.jsx";
 import { BottomNav, Sidebar, MoreMenu } from "./components/layout/NavLayout.jsx";
 import { UpdatePopup } from "./components/updates/UpdatePopup.jsx";
 import { setAiEnabled } from "./aiClient.js";
+import AiAssistant from "./components/ai/AiAssistant.jsx";
 
 // ── Lazy-loaded views (code-split) ────────────────────────────────────────────
 const AnalyticsView       = lazy(() => import("./components/analytics/AnalyticsView.jsx"));
@@ -886,6 +887,9 @@ function MainApp() {
       </div>
 
       <UpdatePopup user={user} />
+      {canManageAll(user.role) && (
+        <AiAssistant students={students} attendance={attendance} payments={payments} teachers={teachers} />
+      )}
 
       {modal === "sForm" && <StudentFormModal student={selected} teachers={teachers} currentUser={user} categories={categories} feePresets={feePresets} onClose={() => setModal(null)} onSave={async data => {
         const isNew = !data.id;
