@@ -44,7 +44,12 @@ Plans:
   3. 학부모가 포털에서 자녀의 이번 달 수납 완납/미납 현황을 확인할 수 있다
   4. 포털 로그인 후 브라우저를 닫았다가 30일 이내 재방문 시 자동 로그인된다
   5. 학생 또는 학부모가 포털에서 수강 신청을 제출하면 관리자 화면에 승인 대기 항목이 나타난다
-**Plans**: TBD
+**Plans**: 4 plans
+Plans:
+- [ ] 02-01-PLAN.md — 포털 CSS 클래스 추가 (배너 + 시간표 위젯) (POR-01, POR-02)
+- [ ] 02-02-PLAN.md — 세션 만료 정책 + 시간표 위젯 + 수강 신청 CTA (POR-01, POR-02, POR-03, POR-07)
+- [ ] 02-03-PLAN.md — pay 탭 empty state + sibling 모달 CSS + 학부모 뷰 gap (POR-05, POR-06, POR-08)
+- [ ] 02-04-PLAN.md — 연습 가이드 Worker 연결 + firebase getPortalIdToken (POR-04)
 **UI hint**: yes
 
 ### Phase 3: AI 완성 (AI Completion)
@@ -101,7 +106,7 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. 보안 기반 | 0/5 | Planned | - |
-| 2. 포털 완성 | 0/TBD | Not started | - |
+| 2. 포털 완성 | 0/4 | Planned | - |
 | 3. AI 완성 | 0/TBD | Not started | - |
 | 4. 알림톡 통합 | 0/TBD | Not started | - |
 | 5. 수납 자동화 | 0/TBD | Not started | - |

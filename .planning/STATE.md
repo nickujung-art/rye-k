@@ -12,7 +12,9 @@ See: .planning/PROJECT.md (updated 2026-05-05)
 Phase: 1 of 6 (보안 기반 — Security Foundation)
 Plan: 0 of 5 in current phase
 Status: Ready to execute
-Last activity: 2026-05-05 — Phase 1 planned (5 plans, 3 waves)
+Last activity: 2026-05-05 — Phase 2 planned (4 plans, 4 waves)
+
+**Phase 2 — Ready to execute:** 4 plans, 4 waves. Wave 1→2→3→4 linear dependency (all touch PublicPortal.jsx / constants.jsx).
 
 Progress: [░░░░░░░░░░] 0%
 
