@@ -1,6 +1,6 @@
 ﻿import { UpdatePopup } from "../updates/UpdatePopup";
 import { useState, useEffect, useRef, useLayoutEffect } from "react";
-import { db, doc, setDoc, onSnapshot, firebaseSignInAnon, runTransaction } from "../../firebase.js";
+import { db, doc, setDoc, onSnapshot, firebaseSignInAnon, runTransaction, getPortalIdToken } from "../../firebase.js";
 import { DEFAULT_CATEGORIES, TODAY_STR, CSS, DAYS, THIS_MONTH } from "../../constants.jsx";
 import { compressImage, fmtPhone, uid, fmtDate, fmtDateShort, fmtDateTime, fmtMoney, monthLabel, allLessonInsts, allLessonDays, getBirthPassword, computeMonthlyAttStats } from "../../utils.js";
 import { Logo, Av } from "../shared/CommonUI.jsx";
@@ -330,7 +330,7 @@ function PortalEmptyState({ title, sub }) {
         <circle cx="56" cy="30" r="2" fill="var(--dancheong-blue)" fillOpacity="0.45"/>
       </svg>
       <div style={{fontFamily:"'Noto Serif KR',serif",fontSize:14,fontWeight:600,color:"var(--ink)",marginBottom:6}}>{title}</div>
-      {sub && <div style={{fontSize:12,color:"var(--ink-30)",lineHeight:1.75,whiteSpace:"pre-line"}}>{sub}</div>}
+      {sub && <div style={{fontSize:12,color:"var(--ink-30)",lineHeight:1.75}}>{sub}</div>}
     </div>
   );
 }
@@ -512,6 +512,10 @@ export function PublicParentView() {
   // 자녀 전환 (로그인 후)
   const [showSiblingModal, setShowSiblingModal] = useState(false);
   const [switchErr, setSwitchErr] = useState("");
+  // POR-04: 연습 가이드 생성 (임시 state — 저장은 Phase 3)
+  const [practiceGuideResult, setPracticeGuideResult] = useState(null);
+  const [practiceGuideLoading, setPracticeGuideLoading] = useState(false);
+  const [practiceGuideErr, setPracticeGuideErr] = useState("");
   const [textLarge, setTextLarge] = useState(() => { try { return localStorage.getItem("rye-text-large") === "1"; } catch { return false; } });
   // 읽음 추적 — localStorage에 학생별 저장
   const [lastNoteRead, setLastNoteRead] = useState(0);       // 강사 댓글 마지막 읽은 시각
@@ -1136,7 +1140,7 @@ export function PublicParentView() {
 
             {/* 월간 리포트 */}
             {aiReports.filter(r => r.studentId === student.id && r.status === "published").sort((a,b)=>b.publishedAt-a.publishedAt).slice(0,3).map(rep => (
-              <div key={rep.id} style={{marginBottom:16}}>
+              <div key={rep.id} style={{marginBottom:12}}>
                 <details style={{background:"var(--green-lt)",borderRadius:"var(--radius-lg)",border:"1px solid rgba(26,122,64,.15)",overflow:"hidden"}}>
                   <summary style={{padding:"14px 16px",cursor:"pointer",fontSize:13,fontWeight:600,color:"var(--green)",display:"flex",justifyContent:"space-between",alignItems:"center",listStyle:"none",gap:8}}>
                     <span>📋 월간 리포트 {rep.month?.slice(0,7).replace("-","년 ")}월</span>
@@ -1476,6 +1480,56 @@ export function PublicParentView() {
                 </div>
               )}
 
+              {/* POR-04: 연습 가이드 생성 (Phase 2 — 결과는 임시 state, 저장은 Phase 3) */}
+              {notes.length > 0 && (
+                <div style={{marginBottom:16}}>
+                  <button
+                    type="button"
+                    className="btn btn-secondary btn-full"
+                    disabled={practiceGuideLoading}
+                    onClick={async () => {
+                      setPracticeGuideLoading(true);
+                      setPracticeGuideErr("");
+                      try {
+                        const token = await getPortalIdToken();
+                        const lastNote = notes[0];
+                        const res = await fetch("/api/ai/practice-guide", {
+                          method: "POST",
+                          headers: {
+                            "Content-Type": "application/json",
+                            ...(token ? { "Authorization": `Bearer ${token}` } : {})
+                          },
+                          body: JSON.stringify({
+                            progress: lastNote?.lessonNote?.progress || "",
+                            assignment: lastNote?.lessonNote?.assignment || "",
+                            content: lastNote?.lessonNote?.content || "",
+                            instrument: student?.lessons?.[0]?.instrument || ""
+                          })
+                        });
+                        if (!res.ok) throw new Error(`${res.status}`);
+                        const data = await res.json();
+                        setPracticeGuideResult(data.body || data.result || "");
+                      } catch {
+                        setPracticeGuideErr("연습 가이드 생성에 실패했습니다. 잠시 후 다시 시도해주세요.");
+                      } finally {
+                        setPracticeGuideLoading(false);
+                      }
+                    }}
+                  >
+                    {practiceGuideLoading ? "생성 중..." : "🎵 연습 가이드 생성"}
+                  </button>
+                  {practiceGuideErr && (
+                    <div className="form-err" style={{marginTop:8,borderRadius:10,fontSize:13}}>⚠ {practiceGuideErr}</div>
+                  )}
+                  {practiceGuideResult && (
+                    <div style={{marginTop:12,background:"var(--blue-lt)",borderRadius:"var(--radius)",padding:16,fontSize:14,color:"var(--ink)",lineHeight:1.7}}>
+                      <div style={{fontFamily:"'Noto Serif KR',serif",fontWeight:600,marginBottom:8,color:"var(--blue)"}}>연습 가이드</div>
+                      <p style={{margin:0,whiteSpace:"pre-wrap"}}>{practiceGuideResult}</p>
+                    </div>
+                  )}
+                </div>
+              )}
+
               {notes.length === 0 ? (
                 <PortalEmptyState title="아직 레슨노트가 없어요" sub={"강사님이 레슨 후 작성하시면\n이곳에서 확인하실 수 있어요."} />
               ) : (
@@ -1660,14 +1714,8 @@ export function PublicParentView() {
         {tab === "pay" && (
           <div>
             <div style={{fontSize:13,fontWeight:600,color:"var(--ink)",marginBottom:10}}>수납 이력</div>
-            {(sPay.length === 0 && (student.monthlyFee || 0) === 0)
-              ? <PortalEmptyState
-                  title="수납 정보 없음"
-                  sub={"이번 달 수강료가 등록되지 않았습니다.\n담당 선생님이나 관리자에게 문의해주세요."}
-                />
-              : sPay.length === 0
-                ? <PortalEmptyState title="수납 기록이 없습니다" sub="수납 정보가 등록되면 이곳에서 확인하실 수 있어요." />
-                : sPay.slice(0, 24).map((p, i) => {
+            {sPay.length === 0 ? <PortalEmptyState title="수납 기록이 없습니다" sub="수납 정보가 등록되면 이곳에서 확인하실 수 있어요." /> :
+              sPay.slice(0, 24).map((p, i) => {
                 const baseFee = student.monthlyFee || 0;
                 const rentalFee = student.instrumentRental ? (student.rentalFee || 0) : 0;
                 const rentalLabel = student.rentalType ? student.rentalType.replace("rental:", "") : "악기 대여";
@@ -1794,40 +1842,36 @@ export function PublicParentView() {
 
     {/* ── 자녀 전환 모달 (로그인 후) ── */}
     {showSiblingModal && (
-      <div className="mb" onClick={() => setShowSiblingModal(false)}>
-        <div className="modal" onClick={e => e.stopPropagation()}>
-          <div className="modal-h">
-            <span style={{fontFamily:"'Noto Serif KR',serif",fontWeight:600}}>자녀 변경</span>
-            <button
-              type="button"
-              style={{background:"none",border:"none",cursor:"pointer",padding:8,color:"var(--ink-60)"}}
-              onClick={() => { setShowSiblingModal(false); setSwitchErr(""); }}
-            >✕</button>
+      <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.55)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
+        <div style={{background:"#fff",borderRadius:24,padding:"32px 24px",width:"100%",maxWidth:380,boxShadow:"0 12px 48px rgba(0,0,0,.25)"}}>
+          <div style={{textAlign:"center",marginBottom:24}}>
+            <div style={{fontSize:32,marginBottom:10}}>🔄</div>
+            <div style={{fontSize:18,fontWeight:700,color:"var(--ink)",fontFamily:"'Noto Serif KR',serif"}}>자녀 전환</div>
+            <div style={{fontSize:13,color:"var(--ink-30)",marginTop:6}}>전환할 자녀를 선택하세요</div>
           </div>
-          <div className="modal-b">
-            {switchErr && (
-              <div className="form-err" style={{marginBottom:14,borderRadius:10,fontSize:13}}>⚠ {switchErr}</div>
-            )}
+          {switchErr && <div className="form-err" style={{marginBottom:14,borderRadius:10,fontSize:13}}>⚠ {switchErr}</div>}
+          <div style={{display:"flex",flexDirection:"column",gap:12}}>
             {siblings.map(sib => {
               const insts = (sib.lessons||[]).map(l=>l.instrument).filter(Boolean).join(" · ");
               const isActive = (sib.status||"active") === "active";
               return (
-                <div
-                  key={sib.id}
-                  className="tl-student-item"
-                  onClick={() => handleSiblingSwitch(sib)}
-                  style={{opacity:isActive?1:.7,marginBottom:8}}
+                <button key={sib.id} onClick={()=>handleSiblingSwitch(sib)}
+                  style={{background: isActive?"var(--blue-lt)":"var(--bg)",border:`2px solid ${isActive?"var(--blue-lt)":"var(--border)"}`,borderRadius:16,padding:"18px 20px",cursor:"pointer",fontFamily:"inherit",textAlign:"left",transition:"all .15s",WebkitTapHighlightColor:"transparent",width:"100%",minHeight:72,opacity:isActive?1:.7}}
+                  onMouseEnter={e=>{if(isActive){e.currentTarget.style.border="2px solid var(--blue)";e.currentTarget.style.background="var(--blue-lt)";}}}
+                  onMouseLeave={e=>{if(isActive){e.currentTarget.style.border="2px solid #E8EAF6";e.currentTarget.style.background="var(--blue-lt)";}}}
                 >
                   <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-                    <span style={{fontWeight:600,color:"var(--ink)",fontSize:15}}>{sib.name}</span>
+                    <div style={{fontSize:18,fontWeight:700,color:"var(--ink)"}}>{sib.name}</div>
                     {!isActive && <span style={{fontSize:11,color:"var(--gold)",background:"var(--gold-lt)",padding:"2px 8px",borderRadius:6,fontWeight:600}}>휴원</span>}
                   </div>
-                  {insts && <div style={{fontSize:13,color:"var(--blue)",marginTop:2,fontWeight:500}}>{insts}</div>}
-                  <div style={{fontSize:11,color:"var(--ink-30)",marginTop:2,fontFamily:"monospace",letterSpacing:1}}>{sib.studentCode}</div>
-                </div>
+                  {insts && <div style={{fontSize:14,color:"var(--blue)",marginTop:4,fontWeight:500}}>{insts}</div>}
+                  <div style={{fontSize:11,color:"var(--ink-30)",marginTop:4,fontFamily:"monospace",letterSpacing:1}}>{sib.studentCode}</div>
+                </button>
               );
             })}
           </div>
+          <button onClick={()=>{setShowSiblingModal(false);setSwitchErr("");}}
+            style={{width:"100%",marginTop:16,background:"none",border:"1.5px solid #E8E8E8",borderRadius:12,padding:"12px",fontSize:13,color:"var(--ink-30)",cursor:"pointer",fontFamily:"inherit"}}>닫기</button>
         </div>
       </div>
     )}

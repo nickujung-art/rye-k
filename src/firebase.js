@@ -76,4 +76,14 @@ async function firebaseLogout() {
   try { await signOut(auth); } catch (e) { console.error("Sign out error:", e); }
 }
 
+export async function getPortalIdToken() {
+  try {
+    const user = auth.currentUser;
+    if (!user) return null;
+    return await user.getIdToken();
+  } catch {
+    return null;
+  }
+}
+
 export { db, auth, doc, setDoc, onSnapshot, runTransaction, firebaseSignIn, firebaseSignInAnon, firebaseLogout, onAuthStateChanged };
