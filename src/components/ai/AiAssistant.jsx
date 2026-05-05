@@ -28,7 +28,7 @@ function RobotSvg({ size = 22 }) {
   );
 }
 
-function ListResult({ data }) {
+function ListResult({ data, onOpenStudent }) {
   const [expanded, setExpanded] = useState(false);
   const shown = expanded ? data : data.slice(0, 5);
   if (data.length === 0) {
@@ -38,7 +38,12 @@ function ListResult({ data }) {
     <div className="ai-result-list">
       <div style={{fontSize:11,color:"var(--ink-30)",marginBottom:4}}>{data.length}명</div>
       {shown.map(s => (
-        <div key={s.id} className="ai-result-row">
+        <div
+          key={s.id}
+          className="ai-result-row"
+          onClick={onOpenStudent ? () => onOpenStudent(s.id) : undefined}
+          style={onOpenStudent ? {cursor:"pointer"} : undefined}
+        >
           <Av photo={s.photo} name={s.name} size="av-sm"/>
           <div style={{flex:1,minWidth:0}}>
             <span className="ai-result-name">{s.name}</span>
@@ -161,7 +166,7 @@ function ChurnAiResult({ data }) {
   );
 }
 
-function MessageBubble({ msg }) {
+function MessageBubble({ msg, onOpenStudent }) {
   if (msg.role === "user") {
     return <div className="ai-msg-user">{msg.content}</div>;
   }
@@ -169,7 +174,7 @@ function MessageBubble({ msg }) {
     <div className="ai-msg-bot">
       <div className="ai-msg-av"><RobotSvg size={14}/></div>
       <div className="ai-msg-body">
-        {msg.type === "list" && <ListResult data={msg.content}/>}
+        {msg.type === "list" && <ListResult data={msg.content} onOpenStudent={onOpenStudent}/>}
         {msg.type === "stats" && <StatsResult data={msg.content}/>}
         {msg.type === "churn-list" && <ChurnListResult data={msg.content}/>}
         {msg.type === "churn-pending" && <ChurnPending/>}
@@ -191,7 +196,7 @@ function TypingIndicator() {
   );
 }
 
-export default function AiAssistant({ students, attendance, payments, teachers }) {
+export default function AiAssistant({ students, attendance, payments, teachers, onOpenStudent }) {
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
@@ -234,8 +239,22 @@ export default function AiAssistant({ students, attendance, payments, teachers }
     setMessages(m => [...m, { id: Date.now() + "u", role: "user", type: "text", content: q }]);
     setLoading(true);
     let churnResult = null;
+
+    // AI-05: 재시도 헬퍼 (429 rate limit 시 1회 재시도)
+    async function queryWithRetry(question) {
+      try {
+        return await aiQuery(question);
+      } catch (e) {
+        if (e.message === "rate_limited") {
+          await new Promise(r => setTimeout(r, 3000));
+          return await aiQuery(question);
+        }
+        throw e;
+      }
+    }
+
     try {
-      const res = await aiQuery(q);
+      const res = await queryWithRetry(q);
       let aiMsg;
       if (res.type === "no_match") {
         aiMsg = { id: Date.now() + "a", role: "assistant", type: "text", content: "아직 그 질문에 답하기 어려워요. 회원·출석·수납 관련 질문을 해보세요." };
@@ -255,8 +274,14 @@ export default function AiAssistant({ students, attendance, payments, teachers }
         }
       }
       if (aiMsg) setMessages(m => [...m, aiMsg]);
-    } catch {
-      setMessages(m => [...m, { id: Date.now() + "e", role: "assistant", type: "text", content: "오류가 발생했어요. 잠시 후 다시 시도해주세요." }]);
+    } catch (e) {
+      // AI-05: 에러 유형별 메시지
+      const errMsg = e.message === "rate_limited"
+        ? "요청이 많아 잠시 후 다시 시도해주세요. (분당 제한)"
+        : e.message === "ai_disabled"
+        ? "AI 기능이 현재 비활성화되어 있습니다."
+        : "오류가 발생했어요. 잠시 후 다시 시도해주세요.";
+      setMessages(m => [...m, { id: Date.now() + "e", role: "assistant", type: "text", content: errMsg }]);
     } finally {
       setLoading(false);
     }
@@ -300,7 +325,7 @@ export default function AiAssistant({ students, attendance, payments, teachers }
                   </div>
                 </div>
               ) : (
-                messages.map(msg => <MessageBubble key={msg.id} msg={msg}/>)
+                messages.map(msg => <MessageBubble key={msg.id} msg={msg} onOpenStudent={onOpenStudent}/>)
               )}
               {loading && <TypingIndicator/>}
               <div ref={msgEndRef}/>
