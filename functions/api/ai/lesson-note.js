@@ -1,4 +1,4 @@
-import { callAnthropic } from "./_utils/anthropic.js";
+import { callGemini } from "./_utils/gemini.js";
 import { stripPii } from "./_utils/pii-guard.js";
 import { buildNameMap, anonymize, deanonymize } from "./_utils/anonymize.js";
 
@@ -42,7 +42,7 @@ export async function onRequest(context) {
   lines.push(`톤: ${audienceLabel}`);
 
   try {
-    let result = await callAnthropic(env.GEMINI_API_KEY, {
+    let result = await callGemini(env.GEMINI_API_KEY, {
       model: "claude-haiku-4-5-20251001",
       system: systemPrompt,
       user: lines.join("\n"),

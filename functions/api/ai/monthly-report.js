@@ -1,5 +1,6 @@
-import { callAnthropic } from "./_utils/anthropic.js";
+import { callGemini } from "./_utils/gemini.js";
 import { stripPii } from "./_utils/pii-guard.js";
+import { buildNameMap, deanonymize } from "./_utils/anonymize.js";
 
 const TREND_LABELS = { improving: "향상", stable: "안정", declining: "하락" };
 
@@ -15,6 +16,10 @@ export async function onRequest(context) {
   if (!studentName || !month) {
     return json({ error: "required fields missing" }, 400);
   }
+
+  // SEC-08: Gemini로 전송 전 학생 실명 익명화
+  const nameMap = studentName ? buildNameMap([studentName]) : {};
+  const anonName = nameMap[studentName] || studentName;
 
   const isAdult = audience === "adult_self";
   const audienceBlock = isAdult
@@ -66,7 +71,7 @@ ${audienceBlock}
 - 전체 길이는 한국어 600~900자 수준으로 유지하세요.`;
 
   const lines = [
-    `회원: ${studentName}`,
+    `회원: ${anonName}`,
     instrumentStr ? `과목: ${instrumentStr}` : null,
     `기간: ${month}`,
     total != null ? `출석: 총 ${total}회 (출석 ${present} / 결석 ${absent} / 지각 ${late} / 사유결석 ${excused}), 출석률 ${rate}%` : null,
@@ -76,13 +81,15 @@ ${audienceBlock}
   ].filter(Boolean);
 
   try {
-    const result = await callAnthropic(env.GEMINI_API_KEY, {
+    const result = await callGemini(env.GEMINI_API_KEY, {
       system: systemPrompt,
       user: lines.join("\n"),
       max_tokens: 3000,
       temperature: 0.4,
     });
-    return json({ result });
+    // SEC-08: 응답에서 학생A → 실명 복원
+    const finalResult = Object.keys(nameMap).length ? deanonymize(result, nameMap) : result;
+    return json({ result: finalResult });
   } catch (e) {
     console.error("monthly-report AI error:", e);
     if (e.status === 429) return new Response("Too Many Requests", { status: 429 });

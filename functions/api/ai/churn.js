@@ -1,5 +1,6 @@
-import { callAnthropic } from "./_utils/anthropic.js";
+import { callGemini } from "./_utils/gemini.js";
 import { stripPii } from "./_utils/pii-guard.js";
+import { buildNameMap, deanonymize } from "./_utils/anonymize.js";
 
 export async function onRequest(context) {
   const { request, env } = context;
@@ -14,19 +15,23 @@ export async function onRequest(context) {
 
   const top = students.slice(0, 5);
 
+  // SEC-08: 배열 전체 이름 익명화 맵 생성 (buildNameMap 최대 26명 — top은 5명 이므로 안전)
+  const nameMap = buildNameMap(top.map(s => s.name));
+
   const studentList = top.map(s => {
+    const anonName = nameMap[s.name] || s.name;
     const parts = [];
     if (s.consecutive >= 2) parts.push(`연속 결석 ${s.consecutive}회`);
     if (s.rate != null) parts.push(`최근 4주 출석률 ${s.rate}%`);
     const level = s.score >= 50 ? "위험" : "주의";
-    return `- ${s.name}: ${parts.join(", ")} (위험도: ${level})`;
+    return `- ${anonName}: ${parts.join(", ")} (위험도: ${level})`;
   }).join("\n");
 
   const system = "당신은 국악 교육기관 RYE-K의 학원 관리 AI 비서입니다. 이탈 위험 회원 데이터를 분석해 원장·매니저에게 실용적인 관리 조언을 한국어로 제공합니다.";
   const user = `다음 이탈 위험 회원들에 대해 JSON 배열로만 답변하세요. 각 항목 형식: {"name":"회원명","comment":"1-2문장 조언"}. 조언은 구체적이고 따뜻한 어조로 작성하세요. JSON 이외의 텍스트는 절대 포함하지 마세요.\n\n회원 데이터:\n${studentList}`;
 
   try {
-    const text = await callAnthropic(env.GEMINI_API_KEY, {
+    const text = await callGemini(env.GEMINI_API_KEY, {
       system,
       user,
       max_tokens: 500,
@@ -36,7 +41,10 @@ export async function onRequest(context) {
     let comments = [];
     try {
       const match = text.match(/\[[\s\S]*\]/);
-      if (match) comments = JSON.parse(match[0]);
+      if (match) {
+        const raw = JSON.parse(match[0]);
+        comments = raw.map(c => ({ ...c, name: deanonymize(c.name, nameMap) }));
+      }
     } catch {}
 
     return json({ comments });

@@ -1,4 +1,4 @@
-import { callGeminiTools } from "./_utils/anthropic.js";
+import { callGeminiTools } from "./_utils/gemini.js";
 import { stripPii } from "./_utils/pii-guard.js";
 
 // 화이트리스트 — 클라이언트가 실행 가능한 함수만 허용

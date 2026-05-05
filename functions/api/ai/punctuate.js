@@ -1,4 +1,4 @@
-import { callAnthropic } from "./_utils/anthropic.js";
+import { callGemini } from "./_utils/gemini.js";
 import { stripPii } from "./_utils/pii-guard.js";
 
 export async function onRequest(context) {
@@ -10,7 +10,7 @@ export async function onRequest(context) {
   if (!text?.trim()) return json({ result: text || "" });
 
   try {
-    const result = await callAnthropic(env.GEMINI_API_KEY, {
+    const result = await callGemini(env.GEMINI_API_KEY, {
       model: "claude-haiku-4-5-20251001",
       system: `한국어 텍스트에 구두점(마침표, 쉼표, 물음표, 느낌표)을 자연스럽게 추가합니다.
 규칙:
