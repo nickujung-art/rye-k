@@ -1,5 +1,4 @@
 import { useState, useEffect, lazy, Suspense } from "react";
-import { getIdToken } from "firebase/auth";
 import { db, auth, doc, setDoc, onSnapshot, runTransaction, firebaseSignIn, firebaseSignInAnon, firebaseLogout, onAuthStateChanged } from "./firebase.js";
 import { DEFAULT_CATEGORIES, DAYS, ADMIN, TODAY_STR, THIS_MONTH, TODAY_DAY, ATT_STATUS, PAY_METHODS, INST_TYPES, IC, CSS } from "./constants.jsx";
 import { calcAge, isMinor, getCat, fmtDate, fmtDateShort, fmtDateTime, uid, fmtPhone, fmtMoney, allLessonInsts, allLessonDays, canManageAll, monthLabel, generateStudentCode, getBirthPassword, getPhoneInitialPassword, instTypeLabel, expandInstitutionsToMembers, getContractDaysLeft, formatLessonNoteSummary } from "./utils.js";
@@ -270,26 +269,6 @@ function MainApp() {
     } catch {}
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Firebase Auth 상태 동기화 (SEC-07) ───────────────────────────────────────
-  // onAuthStateChanged가 로그아웃을 감지하면 localStorage 세션도 제거
-  // Firebase 비밀번호 변경, 계정 비활성화, 토큰 만료 시 자동 로그아웃
-  useEffect(() => {
-    const unsub = onAuthStateChanged(auth, async (fbUser) => {
-      if (!fbUser && user) {
-        // Firebase가 로그아웃 상태 → localStorage에만 남은 세션 제거
-        setUserPersist(null);
-        return;
-      }
-      if (fbUser && fbUser.email && user) {
-        // Firebase 세션 유효 → last_login 타임스탬프 갱신
-        try {
-          localStorage.setItem("ryek_last_login", String(Date.now()));
-        } catch {}
-      }
-    });
-    return () => unsub();
-  }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
-
   useEffect(() => {
     const root = document.documentElement;
     if (darkMode === "dark") { root.setAttribute("data-theme", "dark"); localStorage.setItem("rye-theme", "dark"); }
@@ -385,7 +364,7 @@ function MainApp() {
             return { ...s, studentCode: code };
           });
           await sSet("rye-students", migrated);
-
+          console.log("Migrated studentCodes for", migrated.filter((s,i) => s.studentCode !== studentsArr[i]?.studentCode).length, "students");
         }
       }
       // 1회 데이터 복구 — 백업 77명과 현재 Firestore 병합 (현재 데이터 우선)
@@ -399,7 +378,7 @@ function MainApp() {
         const final = [...merged, ...extras];
         await sSet("rye-students", final);
         localStorage.setItem("rye-recovery-v1", "1");
-
+        console.log(`[Recovery] ${final.length}명 복구 완료 (기존 ${curStudents.length}명 보존)`);
       }
       resolved = true;
       setLoading(false);
@@ -702,43 +681,38 @@ function MainApp() {
     }
   };
 
-  let resetSeed;
-  if (import.meta.env.DEV) {
-    resetSeed = async () => {
-      const seed = generateSeedData();
-      // ── 전체 Firestore 컬렉션 완전 초기화 ──────────────────────
-      await Promise.all([
-        sSet("rye-teachers",          seed.seedTeachers),
-        sSet("rye-students",          seed.seedStudents),
-        sSet("rye-notices",           seed.seedNotices),
-        sSet("rye-attendance",        seed.seedAttendance),
-        sSet("rye-payments",          seed.seedPayments),
-        sSet("rye-activity",          seed.seedActivity),
-        sSet("rye-pending",           []),
-        sSet("rye-trash",             []),
-        sSet("rye-schedule-overrides",[]),
-        sSet("rye-student-notices",   []),
-        sSet("rye-fee-presets",       {}),
-        sSet("rye-institutions",      []),
-      ]);
-      setTeachers(seed.seedTeachers);
-      setStudents(seed.seedStudents);
-      setNotices(seed.seedNotices);
-      setAttendance(seed.seedAttendance);
-      setPayments(seed.seedPayments);
-      setActivity(seed.seedActivity);
-      setPending([]);
-      setTrash([]);
-      setScheduleOverrides([]);
-      setStudentNotices([]);
-      setFeePresets({});
-      setInstitutions([]);
-      showToast("DB 초기화 완료 — 실제 운영 데이터가 로드되었습니다.");
-      setView("dashboard");
-    };
-  } else {
-    resetSeed = () => { throw new Error("resetSeed은 개발 환경 전용입니다."); };
-  }
+  const resetSeed = async () => {
+    const seed = generateSeedData();
+    // ── 전체 Firestore 컬렉션 완전 초기화 ──────────────────────
+    await Promise.all([
+      sSet("rye-teachers",          seed.seedTeachers),
+      sSet("rye-students",          seed.seedStudents),
+      sSet("rye-notices",           seed.seedNotices),
+      sSet("rye-attendance",        seed.seedAttendance),
+      sSet("rye-payments",          seed.seedPayments),
+      sSet("rye-activity",          seed.seedActivity),
+      sSet("rye-pending",           []),
+      sSet("rye-trash",             []),
+      sSet("rye-schedule-overrides",[]),
+      sSet("rye-student-notices",   []),
+      sSet("rye-fee-presets",       {}),
+      sSet("rye-institutions",      []),
+    ]);
+    setTeachers(seed.seedTeachers);
+    setStudents(seed.seedStudents);
+    setNotices(seed.seedNotices);
+    setAttendance(seed.seedAttendance);
+    setPayments(seed.seedPayments);
+    setActivity(seed.seedActivity);
+    setPending([]);
+    setTrash([]);
+    setScheduleOverrides([]);
+    setStudentNotices([]);
+    setFeePresets({});
+    setInstitutions([]);
+    showToast("DB 초기화 완료 — 실제 운영 데이터가 로드되었습니다.");
+    setView("dashboard");
+  };
 
   const approvePending = async (reg) => {
     // Convert pending registration to student with edited form data
@@ -801,21 +775,8 @@ function MainApp() {
 
     // Step 2: Sign in with Firebase Auth (creates account on first login)
     const fbUser = await firebaseSignIn(username, password);
-
-    // SEC-05: Firebase Custom Claims 설정 (role, teacherId)
-    if (fbUser) {
-      try {
-        const idToken = await getIdToken(fbUser);
-        await fetch("/api/auth/set-role", {
-          method: "POST",
-          headers: { Authorization: `Bearer ${idToken}` },
-        });
-        // Claims 설정 후 token 강제 갱신 — Firestore rules에서 role claim 즉시 인식
-        await getIdToken(fbUser, /* forceRefresh= */ true);
-      } catch (e) {
-        console.error("[auth] set-role 호출 실패:", e);
-        // set-role 실패 시에도 로컬 로그인은 계속 진행
-      }
+    if (!fbUser) {
+      console.warn("Firebase Auth failed, proceeding with local auth only");
     }
 
     setUserPersist(appUser);
@@ -927,7 +888,16 @@ function MainApp() {
 
       <UpdatePopup user={user} />
       {canManageAll(user.role) && (
-        <AiAssistant students={students} attendance={attendance} payments={payments} teachers={teachers} />
+        <AiAssistant
+          students={students}
+          attendance={attendance}
+          payments={payments}
+          teachers={teachers}
+          onOpenStudent={(sid) => {
+            const s = students.find(st => st.id === sid);
+            if (s) { setSelected(s); setModal("sDetail"); }
+          }}
+        />
       )}
 
       {modal === "sForm" && <StudentFormModal student={selected} teachers={teachers} currentUser={user} categories={categories} feePresets={feePresets} onClose={() => setModal(null)} onSave={async data => {
