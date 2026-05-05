@@ -4,61 +4,113 @@ service cloud.firestore {
 
     // ── 헬퍼 함수 ─────────────────────────────────────────────────────────────
 
-    // 인증된 모든 사용자 (익명 포함) — 포털·등록폼 진입용
-    function isAuthed() {
-      return request.auth != null;
-    }
-
     // 이메일 로그인 사용자 (강사·관리자) — password provider 확인
-    // firebaseSignIn: {username}@ryek.app 형식으로 Firebase Auth 생성
     function isEmailUser() {
       return request.auth != null &&
         request.auth.token.firebase.sign_in_provider == 'password';
     }
 
-    // ── appData 컬렉션 ────────────────────────────────────────────────────────
-
-    // 기본 규칙: 읽기는 인증된 모든 사용자, 쓰기는 이메일 사용자만
-    match /appData/{document} {
-      allow read:  if isAuthed();
-      allow write: if isEmailUser();
+    // 익명 로그인 사용자 (포털·등록폼)
+    function isAnonymous() {
+      return request.auth != null &&
+        request.auth.token.firebase.sign_in_provider == 'anonymous';
     }
 
-    // 공개 수강 등록 폼 — 익명 사용자가 rye-pending에 신청서 제출
-    match /appData/rye-pending {
-      allow read, write: if isAuthed();
+    // Custom Claims 기반 역할 확인
+    function hasRole(r) {
+      return isEmailUser() && request.auth.token.role == r;
     }
 
-    // 출석 레코드 — 포털 회원이 레슨노트에 댓글 작성 (rye-attendance 내 comments[])
+    function isAdmin()          { return hasRole('admin'); }
+    function isManagerOrAbove() { return isEmailUser() && request.auth.token.role in ['admin', 'manager']; }
+    function isStaff()          { return isEmailUser() && request.auth.token.role in ['admin', 'manager', 'teacher']; }
+
+    // ── appData 컬렉션별 규칙 ─────────────────────────────────────────────────
+
+    // 학생 PII — staff만 읽기, 관리자 이상만 쓰기
+    match /appData/rye-students {
+      allow read:  if isStaff();
+      allow write: if isManagerOrAbove();
+    }
+
+    // 강사 정보 — staff만 읽기, 관리자 이상만 쓰기
+    match /appData/rye-teachers {
+      allow read:  if isStaff();
+      allow write: if isManagerOrAbove();
+    }
+
+    // 수납 기록 — 관리자/매니저만 읽기·쓰기 (강사 숨김)
+    match /appData/rye-payments {
+      allow read:  if isManagerOrAbove();
+      allow write: if isManagerOrAbove();
+    }
+
+    // 출석 기록 — staff + 익명(포털 댓글 읽기·쓰기)
+    // NOTE(Phase 2): 포털 댓글은 Phase 2에서 서브컬렉션 분리 예정
     match /appData/rye-attendance {
-      allow read, write: if isAuthed();
+      allow read:  if isStaff() || isAnonymous();
+      allow write: if isStaff() || isAnonymous();
     }
 
-    // 수강생 공지 — 포털 회원이 readBy[] 업데이트 (읽음 처리)
+    // 수강 등록 대기 — staff 읽기, 인증된 모든 사용자 쓰기 (/register 폼)
+    match /appData/rye-pending {
+      allow read:  if isStaff();
+      allow write: if request.auth != null;
+    }
+
+    // 회원 공지 — staff + 익명(포털 읽음 처리)
     match /appData/rye-student-notices {
-      allow read, write: if isAuthed();
+      allow read:  if isStaff() || isAnonymous();
+      allow write: if isStaff() || isAnonymous();
     }
 
-    // 휴지통 — 운영자(강사·관리자)만 쓰기 (익명 포털은 접근 불가)
-    match /appData/rye-trash {
-      allow read: if isAuthed();
-      allow write: if isEmailUser();
+    // 기관(B2B) — staff 읽기, 관리자 이상 쓰기
+    match /appData/rye-institutions {
+      allow read:  if isStaff();
+      allow write: if isManagerOrAbove();
     }
 
-    // 활동 로그 — 운영자(강사·관리자)만 쓰기 (익명 포털은 접근 불가)
+    // 카테고리 설정 — staff 읽기, 관리자 이상 쓰기
+    match /appData/rye-categories {
+      allow read:  if isStaff();
+      allow write: if isManagerOrAbove();
+    }
+
+    // 수강료 프리셋 — staff 읽기, 관리자 이상 쓰기
+    match /appData/rye-fee-presets {
+      allow read:  if isStaff();
+      allow write: if isManagerOrAbove();
+    }
+
+    // 스케줄 변경 — staff + 익명 읽기(포털 일정 확인), staff만 쓰기
+    match /appData/rye-schedule-overrides {
+      allow read:  if isStaff() || isAnonymous();
+      allow write: if isStaff();
+    }
+
+    // 활동 로그 — admin만 읽기, staff 쓰기
     match /appData/rye-activity {
-      allow read: if isAuthed();
-      allow write: if isEmailUser();
+      allow read:  if isAdmin();
+      allow write: if isStaff();
     }
 
-    // ── 보안 노트 (v14.3) ─────────────────────────────────────────────────────
-    // rye-teachers: 익명 read 허용 (PublicPortal에서 강사 이름 lookup). v14.4에서
-    //   student doc에 teacherName denormalize 후 emailUser-only로 잠글 예정.
-    // rye-attendance: 익명 write 허용 (포털 학부모 댓글). v14.4에서 comments를
-    //   서브컬렉션으로 분리하여 부모 doc은 emailUser-only로 잠글 예정.
-    // rye-pending: 익명 write 필수 (/register 폼). 변경 없음.
+    // 휴지통 — admin만 읽기·쓰기
+    match /appData/rye-trash {
+      allow read, write: if isAdmin();
+    }
 
-    // ── 그 외 모든 컬렉션: 차단 ───────────────────────────────────────────────
+    // 공지사항 — staff + 익명 읽기, staff 쓰기
+    match /appData/rye-notices {
+      allow read:  if isStaff() || isAnonymous();
+      allow write: if isStaff();
+    }
+
+    // 미지정 appData 문서 — 관리자 이상만 (신규 컬렉션 추가 시 기본 보호)
+    match /appData/{document} {
+      allow read, write: if isManagerOrAbove();
+    }
+
+    // 그 외 모든 경로 — 차단
     match /{document=**} {
       allow read, write: if false;
     }
