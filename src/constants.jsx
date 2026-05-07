@@ -738,4 +738,20 @@ body:has(.ai-backdrop) .ai-fab{display:none}
 .ai-result-more{background:none;border:none;color:var(--blue);font-size:11.5px;cursor:pointer;padding:5px 0;font-family:inherit;text-align:left}
 .ai-stats-row{display:flex;justify-content:space-between;align-items:center;font-size:12.5px;color:var(--ink-60);margin-bottom:4px}
 .ai-stats-row strong{color:var(--ink);font-weight:700}
+
+/* ── 포털: 시간표 위젯 ────────────────────────────────────── */
+.portal-next-lesson{background:var(--hanji);border:1px solid rgba(43,58,159,.12);border-left:3px solid var(--blue);border-radius:var(--radius-lg);padding:14px 16px}
+.portal-next-lesson-inst{font-family:'Noto Serif KR',serif;font-size:16px;font-weight:600;color:var(--blue);margin-bottom:4px;letter-spacing:-.2px}
+.portal-next-lesson-time{font-size:14px;color:var(--ink);font-weight:500;margin-bottom:3px}
+.portal-next-lesson-teacher{font-size:12px;color:var(--ink-30)}
+.portal-week-chips{display:flex;flex-wrap:wrap;gap:6px}
+.portal-week-chip{background:var(--blue-lt);color:var(--blue);font-size:12px;font-weight:600;padding:5px 12px;border-radius:20px;border:1px solid rgba(43,58,159,.15);white-space:nowrap;letter-spacing:-.1px}
+
+/* ── 포털: 세션 만료 배너 ─────────────────────────────────── */
+.portal-expiry-banner{display:flex;align-items:center;gap:8px;background:var(--gold-lt);border:1px solid rgba(245,168,0,.3);border-radius:var(--radius);padding:10px 14px;margin-bottom:12px;flex-wrap:wrap}
+.portal-expiry-text{flex:1;font-size:13px;color:var(--gold-dk);font-weight:500;min-width:0}
+.portal-expiry-extend{background:var(--gold);color:#fff;border:none;border-radius:var(--radius-sm);padding:6px 12px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap;transition:opacity .12s}
+.portal-expiry-extend:hover{opacity:.85}
+.portal-expiry-logout{background:none;border:1px solid rgba(200,136,0,.4);color:var(--gold-dk);border-radius:var(--radius-sm);padding:6px 12px;font-size:12px;font-weight:500;cursor:pointer;font-family:inherit;white-space:nowrap;transition:all .12s}
+.portal-expiry-logout:hover{background:rgba(245,168,0,.12)}
 `;

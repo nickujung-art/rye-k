@@ -1361,7 +1361,7 @@ export function PublicParentView() {
             excused: { bg:"transparent", border:"1px solid var(--blue)" },
           };
           // 이달 데이터가 없으면 가장 최근 기록이 있는 달로 fallback
-          const displayMonth = attThisMonth.length > 0 ? THIS_MONTH : (months[0] || THIS_MONTH);
+          const displayMonth = totalThisMonth > 0 ? THIS_MONTH : (months[0] || THIS_MONTH);
           const isThisMonth = displayMonth === THIS_MONTH;
           const dispRecs = byMonth[displayMonth] || [];
           const dPresent = dispRecs.filter(a => a.status === "present").length;
