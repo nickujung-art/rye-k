@@ -484,6 +484,68 @@ function MainApp() {
     try { await sSet("rye-unmatched-payments", u); }
     catch (e) { showToast("저장에 실패했습니다. 네트워크를 확인해주세요.", true); throw e; }
   };
+
+  // PAY-05: Drain Worker KV buffer → rye-payments when PaymentsView opens
+  // Fires once on each navigation to payments view.
+  // GET /api/payments/kakaobank-webhook returns { matched: [...], unmatched: [...] }
+  // and atomically deletes the KV keys (drain semantics).
+  useEffect(() => {
+    if (view !== "payments") return;
+    const drainPending = async () => {
+      try {
+        const currentUser = auth.currentUser;
+        if (!currentUser) return;
+        const token = await currentUser.getIdToken();
+        const res = await fetch("/api/payments/kakaobank-webhook", {
+          method: "GET",
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) return; // silent — don't interrupt UI on drain failure
+        const { matched = [], unmatched = [] } = await res.json();
+
+        // Process matched records → create rye-payments entries
+        if (matched.length > 0) {
+          const month = new Date().toISOString().slice(0, 7); // "YYYY-MM"
+          const newPayments = matched.map(record => ({
+            id: record.id,
+            studentId: record.matchedStudentId,
+            month,
+            paid: true,
+            amount: record.amount,
+            paidAmount: record.amount,
+            paidDate: new Date(record.matchedAt || record.createdAt).toISOString().slice(0, 10),
+            method: "transfer",
+            note: `카카오뱅크 자동매칭 (${record.senderName})`,
+            source: "kakaobank",
+            createdAt: record.createdAt,
+          }));
+          // Merge with existing payments — matched records may duplicate existing ones,
+          // so deduplicate by studentId+month (keep newest).
+          const merged = [...payments];
+          for (const np of newPayments) {
+            const idx = merged.findIndex(p => p.studentId === np.studentId && p.month === np.month);
+            if (idx >= 0) {
+              merged[idx] = { ...merged[idx], ...np };
+            } else {
+              merged.push(np);
+            }
+          }
+          await savePayments(merged);
+          showToast(`카카오뱅크 입금 ${matched.length}건 자동 처리되었습니다.`);
+        }
+
+        // Process unmatched records → add to rye-unmatched-payments
+        if (unmatched.length > 0) {
+          const merged = [...unmatchedPayments, ...unmatched];
+          await saveUnmatchedPayments(merged);
+        }
+      } catch {
+        // Silent fail — drain is best-effort, never block the UI
+      }
+    };
+    drainPending();
+  }, [view]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const saveScheduleOverrides = async u => { setScheduleOverrides(u); try { await sSet("rye-schedule-overrides", u); } catch { showToast("저장에 실패했습니다. 네트워크를 확인해주세요.", true); } };
   const saveTrash = async u => { setTrash(u); try { await sSet("rye-trash", u); } catch (e) { showToast("저장에 실패했습니다. 네트워크를 확인해주세요.", true); throw e; } };
   const saveStudentNotices = async u => { setStudentNotices(u); try { await sSet("rye-student-notices", u); } catch { showToast("저장에 실패했습니다. 네트워크를 확인해주세요.", true); } };
