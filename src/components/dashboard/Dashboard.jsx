@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { THIS_MONTH, TODAY_DAY, TODAY_STR, ATT_STATUS, IC } from "../../constants.jsx";
-import { canManageAll, fmtDateTime, fmtDateShort, isMinor, monthLabel, getContractDaysLeft, allLessonInsts, computeMonthlyAttStats, computeWeeklyAttRates } from "../../utils.js";
+import { canManageAll, fmtDateTime, fmtDateShort, fmtMoney, isMinor, monthLabel, getContractDaysLeft, allLessonInsts, computeMonthlyAttStats, computeWeeklyAttRates } from "../../utils.js";
 import { Av } from "../shared/CommonUI.jsx";
 import ChurnWidget from "./ChurnWidget.jsx";
 
