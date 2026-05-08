@@ -5,14 +5,14 @@
 See: .planning/PROJECT.md (updated 2026-05-05)
 
 **Core value:** 강사와 학생이 레슨에 집중할 수 있도록, 행정 업무(수납·출결·소통)를 자동화하고 모든 역할이 하나의 앱에서 필요한 정보를 얻을 수 있게 한다
-**Current focus:** Phase 3 완료 → Phase 4 — 알림톡 발송 (AlimTalk)
+**Current focus:** Phase 3 완료 → Phase 5 — 수납 자동화 (Phase 4 AlimTalk API 미수령, 나중에 처리)
 
 ## Current Position
 
-Phase: 3 of 6 (AI 완성 — AI Completion)
-Plan: 3 of 3 in current phase
-Status: **COMPLETE** — 자동 검증 통과, human UAT 대기
-Last activity: 2026-05-05 — Phase 3 실행 완료 (3 plans, 6 requirements: AI-01~05, SEC-08)
+Phase: 5 of 6 (수납 자동화 — Payment Automation)
+Plan: 0 of ? in current phase
+Status: **DISCUSS COMPLETE** — 05-CONTEXT.md 작성 완료, 플래닝 대기
+Last activity: 2026-05-08 — Phase 5 discuss-phase 완료 (카카오뱅크 Tasker Webhook 아키텍처 확정)
 
 Progress: [██████████] 100%
 
@@ -50,9 +50,10 @@ None yet.
 
 ### Blockers/Concerns
 
-- **Phase 4 blocker**: 카카오 비즈니스 채널 개설 + Solapi 계정 등록 + 알림톡 템플릿 심사 — Nick 선행 작업 필요 (심사 최대 7영업일 소요)
-- **Phase 5 blocker**: `monthlyFee` 전체 0원 — 수납 자동화 전 Nick이 데이터 직접 입력 필요
-- **Phase 5 blocker**: Firebase 서비스 계정 생성 + Cloudflare secret 등록 — Toss Payments 가상계좌 Webhook Worker에 필요
+- **Phase 4 blocker**: 카카오 비즈니스 채널 개설 + Solapi 계정 등록 + 알림톡 템플릿 심사 — Nick 선행 작업 필요 (심사 최대 7영업일 소요) — Phase 5 이후 처리
+- **Phase 5 action (Nick)**: `monthlyFee` 전체 0원 — PAY-01 스프레드시트 UI 완성 후 Nick이 직접 입력
+- **Phase 5 action (Nick)**: Cloudflare secret `RYE_WEBHOOK_SECRET` 등록 — 카카오뱅크 Webhook Worker 배포 후
+- **Phase 5 action (Nick)**: Tasker + AutoNotification 플러그인 설치 + Profile 설정 — 업무폰 Android에서
 - **Phase 1 risk**: Custom Claims Worker 배포 후 Firestore 규칙 순차 적용 필수 — 순서 역전 시 강사 전원 로그아웃됨
 - **Ongoing**: App.jsx 840+ 줄 god-file — Phase 5-6에서 리스너 추가 시 `useAppData()` 훅 분리 고려
 
@@ -69,6 +70,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-05
-Stopped at: Phase 2 완료 — 4 plans + fix commit (Wave overwrite 복원). Phase 3 미시작.
+Last session: 2026-05-08
+Stopped at: Phase 5 discuss-phase 완료. 05-CONTEXT.md + 05-DISCUSSION-LOG.md 커밋됨. 다음: `/gsd-plan-phase 5`
 Resume file: None
