@@ -233,6 +233,8 @@ function MainApp() {
   const [trash, setTrash] = useState([]);
   const [studentNotices, setStudentNotices] = useState([]);
   const [institutions, setInstitutions] = useState([]);
+  const [unmatchedPayments, setUnmatchedPayments] = useState([]);
+  const [paymentsInitFilter, setPaymentsInitFilter] = useState(false);
   const [aiReports, setAiReports] = useState([]);
   const [ryeSettings, setRyeSettings] = useState({ aiEnabled: true, aiSafeMode: false });
   const [loading, setLoading] = useState(true);
@@ -333,6 +335,7 @@ function MainApp() {
       { key: "rye-trash", setter: setTrash, default: [] },
       { key: "rye-student-notices", setter: setStudentNotices, default: [] },
       { key: "rye-institutions", setter: setInstitutions, default: [] },
+      { key: "rye-unmatched-payments", setter: setUnmatchedPayments, default: [] },
       { key: "rye-ai-reports", setter: setAiReports, default: [] },
       { key: "rye-settings", setter: setRyeSettings, default: { aiEnabled: true, aiSafeMode: false } },
     ];
@@ -476,6 +479,11 @@ function MainApp() {
   const saveCategories = async u => { setCategories(u); try { await sSet("rye-categories", u); } catch { showToast("저장에 실패했습니다. 네트워크를 확인해주세요.", true); } };
   const saveAttendance = async u => { setAttendance(u); try { await sSet("rye-attendance", u); } catch { showToast("저장에 실패했습니다. 네트워크를 확인해주세요.", true); } };
   const savePayments = async u => { setPayments(u); try { await sSet("rye-payments", u); } catch (e) { showToast("저장에 실패했습니다. 네트워크를 확인해주세요.", true); throw e; } };
+  const saveUnmatchedPayments = async u => {
+    setUnmatchedPayments(u);
+    try { await sSet("rye-unmatched-payments", u); }
+    catch (e) { showToast("저장에 실패했습니다. 네트워크를 확인해주세요.", true); throw e; }
+  };
   const saveScheduleOverrides = async u => { setScheduleOverrides(u); try { await sSet("rye-schedule-overrides", u); } catch { showToast("저장에 실패했습니다. 네트워크를 확인해주세요.", true); } };
   const saveTrash = async u => { setTrash(u); try { await sSet("rye-trash", u); } catch (e) { showToast("저장에 실패했습니다. 네트워크를 확인해주세요.", true); throw e; } };
   const saveStudentNotices = async u => { setStudentNotices(u); try { await sSet("rye-student-notices", u); } catch { showToast("저장에 실패했습니다. 네트워크를 확인해주세요.", true); } };
@@ -856,14 +864,26 @@ function MainApp() {
           </div>
           <Suspense fallback={null}>
           <div className="main-content">
-            {view === "dashboard" && <Dashboard students={visible} teachers={teachers} currentUser={user} notices={notices} categories={categories} attendance={attendance} payments={payments} pending={pending} institutions={institutions} nav={navigate} />}
+            {view === "dashboard" && <Dashboard
+              students={visible} teachers={teachers} currentUser={user}
+              notices={notices} categories={categories}
+              attendance={attendance} payments={payments}
+              pending={pending} institutions={institutions}
+              nav={navigate}
+              onUnpaidCardClick={() => { setPaymentsInitFilter(true); navigate("payments"); }}
+            />}
             {view === "students" && <StudentsView students={filtered} allStudents={visible} teachers={teachers} categories={categories} filter={filter} setFilter={setFilter} search={search} setSearch={setSearch} onAdd={() => { setSelected(null); setModal("sForm"); }} onSelect={s => { setSelected(s); setModal("sDetail"); }} currentUser={user} onBulkFeeUpdate={async (updatedStudents) => { await batchStudentDocs(updatedStudents); addLog("수강료 일괄 설정"); showToast("수강료가 일괄 변경되었습니다."); }} payments={payments} />}
             {view === "attendance" && <AttendanceView students={allMembers} teachers={teachers} currentUser={user} attendance={attendance} onSaveAttendance={async (upd) => { await saveAttendance(upd); }} categories={categories} scheduleOverrides={scheduleOverrides} onSaveScheduleOverride={saveScheduleOverrides} onUpdateStudent={async (s) => { await updateStudentDoc(s); }} />}
             {view === "payments" && <PaymentsView students={allMembers} teachers={teachers} currentUser={user} payments={payments} attendance={attendance} onSavePayments={async (upd) => { await savePayments(upd); showToast("수납 정보가 저장되었습니다."); }} onSaveStudents={async (upd) => {
                 // inst 가상회원 제외 후 트랜잭션으로 개별 업데이트
                 const realUpd = upd.filter(s => !s.isInstitution);
                 await batchStudentDocs(realUpd);
-              }} onLog={addLog} />}
+              }} onLog={addLog}
+              unmatchedPayments={unmatchedPayments}
+              onSaveUnmatched={saveUnmatchedPayments}
+              initFilterUnpaid={paymentsInitFilter}
+              onMountFilterConsumed={() => setPaymentsInitFilter(false)}
+            />}
             {view === "teachers" && canManageAll(user.role) && <TeachersView teachers={teachers} students={students} onAdd={() => { setSelected(null); setModal("tForm"); }} onSelect={t => { setSelected(t); setModal("tDetail"); }} attendance={attendance} />}
             {view === "institutions" && <InstitutionsView institutions={institutions} teachers={teachers} currentUser={user} onAdd={() => { setSelected(null); setModal("instForm"); }} onSelect={i => { setSelected(i); setModal("instDetail"); }} />}
             {view === "notices" && <NoticesView notices={notices} currentUser={user} onAdd={() => { setSelected(null); setModal("nForm"); }} onEdit={n => { setSelected(n); setModal("nForm"); }} onDelete={async id => { const upd = notices.filter(n => n.id !== id); await saveNotices(upd); addLog("공지 삭제"); showToast("공지가 삭제되었습니다."); }} />}
