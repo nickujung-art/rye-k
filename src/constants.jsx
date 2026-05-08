@@ -346,6 +346,12 @@ input[type="date"]::-webkit-date-and-time-value{text-align:left}
 .pay-footer{background:var(--hanji);border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px 16px;margin-top:8px;display:flex;justify-content:space-between;align-items:center}
 .pay-footer-label{font-size:12px;color:var(--ink-60)}
 .pay-footer-amount{font-family:'Noto Serif KR',serif;font-size:20px;font-weight:700;color:var(--ink);font-variant-numeric:tabular-nums}
+/* ── Inline fee editor (PAY-01) ── */
+.fee-inp-cell{display:flex;align-items:center;gap:4px}
+.fee-inp-cell .inp{width:90px;height:28px;padding:3px 7px;font-size:12px;text-align:right;font-variant-numeric:tabular-nums}
+/* ── Unmatched payments tab / card (PAY-06) ── */
+.unmatched-card{background:var(--paper);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;margin-bottom:8px;display:flex;align-items:center;gap:10px}
+.unmatched-badge{background:var(--red);color:#fff;font-size:10px;font-weight:700;padding:2px 6px;border-radius:10px;margin-left:4px}
 
 /* ── Activity log ──────────────────────────────────────── */
 .log-item{display:flex;gap:10px;padding:10px 0;border-bottom:1px solid var(--ink-10);align-items:flex-start}
