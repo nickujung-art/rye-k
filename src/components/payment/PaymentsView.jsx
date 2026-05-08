@@ -1,4 +1,4 @@
-﻿import { useState } from "react";
+﻿import { useState, useEffect } from "react";
 import knotLineSvg from "../../assets/heritage/knot-line.svg";
 import { PAY_METHODS, IC, TODAY_STR, THIS_MONTH } from "../../constants.jsx";
 import { canManageAll, monthLabel, fmtMoney, fmtDateShort, fmtDate, calcAge, isMinor, instTypeLabel, uid, sendAligoMessage } from "../../utils.js";
@@ -6,12 +6,22 @@ import { Av } from "../shared/CommonUI.jsx";
 import AlimtalkModal from "../shared/AlimtalkModal.jsx";
 import { ChargeRequestModal } from "../student/StudentManagement.jsx";
 
-export default function PaymentsView({ students, teachers, currentUser, payments, onSavePayments, onLog, attendance = [], onSaveStudents }) {
+export default function PaymentsView({
+  students, teachers, currentUser, payments, onSavePayments, onLog,
+  attendance = [], onSaveStudents,
+  unmatchedPayments = [],
+  onSaveUnmatched,
+  initFilterUnpaid = false,
+  onMountFilterConsumed,
+}) {
   const [month, setMonth] = useState(THIS_MONTH);
   const [editingId, setEditingId] = useState(null);
   const [editForm, setEditForm] = useState({});
   const [filterTeacher, setFilterTeacher] = useState(currentUser.role === "teacher" ? currentUser.id : "all");
-  const [filterUnpaid, setFilterUnpaid] = useState(false);
+  const [filterUnpaid, setFilterUnpaid] = useState(initFilterUnpaid);
+  useEffect(() => {
+    if (initFilterUnpaid && onMountFilterConsumed) onMountFilterConsumed();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const [previewStudent, setPreviewStudent] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [acctToast, setAcctToast] = useState(false);
@@ -26,6 +36,9 @@ export default function PaymentsView({ students, teachers, currentUser, payments
   const [bulkInstModal, setBulkInstModal] = useState(false);
   const [bulkInstData, setBulkInstData] = useState({});
   const [bulkInstSaving, setBulkInstSaving] = useState(false);
+  const [feeEdits, setFeeEdits] = useState({});
+  const [savingFeeId, setSavingFeeId] = useState(null);
+  const [activeTab, setActiveTab] = useState("payments");
 
   const pendingRequestStudents = students.filter(s => (s.pendingOneTimeCharges||[]).length > 0);
 
@@ -269,6 +282,23 @@ export default function PaymentsView({ students, teachers, currentUser, payments
           </select>
         )}
       </div>
+      {/* 탭 전환 */}
+      {canManageAll(currentUser.role) && (
+        <div className="ftabs" style={{marginBottom:8}}>
+          <button className={`ftab${activeTab==="payments"?" active":""}`}
+            onClick={() => setActiveTab("payments")}>수납 관리</button>
+          <button className={`ftab${activeTab==="unmatched"?" active":""}`}
+            onClick={() => setActiveTab("unmatched")}>
+            미매칭 입금
+            {unmatchedPayments.filter(u => !u.matchedAt).length > 0 && (
+              <span className="unmatched-badge">
+                {unmatchedPayments.filter(u => !u.matchedAt).length}
+              </span>
+            )}
+          </button>
+        </div>
+      )}
+      {activeTab === "payments" && <>
       {/* 학생 검색 */}
       <div className="srch-wrap" style={{marginBottom:10}}>
         <span className="srch-icon">{IC.search}</span>
@@ -344,9 +374,77 @@ export default function PaymentsView({ students, teachers, currentUser, payments
                 {quickPayingId === s.id ? "…" : "✓ 입금"}
               </button>
             )}
+            {canManageAll(currentUser.role) && !isPaid && !isInst && (
+              <button
+                onClick={e => {
+                  e.stopPropagation();
+                  setAlimtalkModal("unpaid_reminder");
+                }}
+                style={{
+                  background: "var(--blue-lt)", color: "var(--blue)",
+                  border: "1px solid var(--blue)", borderRadius: 8,
+                  padding: "5px 9px", fontSize: 11, fontWeight: 700,
+                  flexShrink: 0, cursor: "pointer", fontFamily: "inherit",
+                  whiteSpace: "nowrap",
+                }}
+                title="ALM-07: Phase 4 AlimTalk 연동 후 활성화"
+              >💬</button>
+            )}
+            {canManageAll(currentUser.role) && !isInst && (
+              <div className="fee-inp-cell" onClick={e => e.stopPropagation()}>
+                <input
+                  className="inp"
+                  inputMode="numeric"
+                  value={feeEdits[s.id] !== undefined
+                    ? (feeEdits[s.id] === 0 ? "" : feeEdits[s.id].toLocaleString("ko-KR"))
+                    : (s.monthlyFee ? s.monthlyFee.toLocaleString("ko-KR") : "")}
+                  onChange={e => setFeeEdits(f => ({
+                    ...f,
+                    [s.id]: parseInt(e.target.value.replace(/[^\d]/g, "")) || 0,
+                  }))}
+                  onBlur={async () => {
+                    if (feeEdits[s.id] === undefined || feeEdits[s.id] === s.monthlyFee) return;
+                    setSavingFeeId(s.id);
+                    await onSaveStudents([{ ...s, monthlyFee: feeEdits[s.id] }]);
+                    setFeeEdits(f => { const n = { ...f }; delete n[s.id]; return n; });
+                    setSavingFeeId(null);
+                  }}
+                  onKeyDown={e => {
+                    if (e.key === "Tab" || e.key === "Enter") {
+                      e.preventDefault();
+                      const idx = visibleStudents.findIndex(st => st.id === s.id);
+                      const nextId = visibleStudents[idx + 1]?.id;
+                      if (nextId) document.querySelector(`[data-fee-input="${nextId}"]`)?.focus();
+                    }
+                  }}
+                  data-fee-input={s.id}
+                  style={{
+                    width: 90, height: 28, padding: "3px 7px", fontSize: 12,
+                    textAlign: "right", opacity: savingFeeId === s.id ? 0.5 : 1,
+                  }}
+                />
+                <span style={{ fontSize: 11, color: "var(--ink-30)", flexShrink: 0 }}>원</span>
+                {savingFeeId === s.id && <span style={{ fontSize: 10, color: "var(--ink-30)" }}>…</span>}
+              </div>
+            )}
           </div>
         );
       })}
+      </>}
+      {activeTab === "unmatched" && canManageAll(currentUser.role) && (
+        <UnmatchedPaymentsTab
+          unmatchedPayments={unmatchedPayments}
+          students={students}
+          payments={payments}
+          month={month}
+          onSavePayments={onSavePayments}
+          onSaveUnmatched={onSaveUnmatched}
+          onLog={onLog}
+          uid={uid}
+          TODAY_STR={TODAY_STR}
+          autoFee={autoFee}
+        />
+      )}
 
       {editingId && (() => {
         const s = visibleStudents.find(st => st.id === editingId);
@@ -576,6 +674,11 @@ export default function PaymentsView({ students, teachers, currentUser, payments
           getPayment={getPayment}
           onClose={() => setAlimtalkModal(null)}
           onSend={async (type, targets) => {
+            if (type === "unpaid_reminder") {
+              onLog("ALM-07 stub: Phase 4 AlimTalk 연동 후 활성화됩니다");
+              setAlimtalkModal(null);
+              return;
+            }
             await sendAligoMessage(type, targets);
           }}
         />
@@ -760,6 +863,150 @@ export default function PaymentsView({ students, teachers, currentUser, payments
             <div className="modal-f"><button className="btn btn-secondary" onClick={() => setRequestsModal(false)}>닫기</button></div>
           </div>
         </div>
+      )}
+    </div>
+  );
+}
+
+function UnmatchedPaymentsTab({
+  unmatchedPayments, students, payments, month,
+  onSavePayments, onSaveUnmatched, onLog, uid, TODAY_STR, autoFee,
+}) {
+  const [matchingId, setMatchingId] = useState(null);
+  const [selectedStudentId, setSelectedStudentId] = useState({});
+  const pending = unmatchedPayments.filter(u => !u.matchedAt);
+  const matched = unmatchedPayments.filter(u => u.matchedAt);
+
+  if (pending.length === 0 && matched.length === 0) {
+    return (
+      <div className="empty" style={{paddingTop:40}}>
+        <div className="empty-txt">미매칭 입금 내역이 없습니다.</div>
+        <div style={{fontSize:12,color:"var(--ink-30)",marginTop:6}}>
+          카카오뱅크 Webhook이 자동 연결되면 미매칭 입금이 여기에 표시됩니다.
+        </div>
+      </div>
+    );
+  }
+
+  const handleMatch = async (unmatched) => {
+    const sid = selectedStudentId[unmatched.id];
+    if (!sid) return;
+    const s = students.find(st => st.id === sid);
+    if (!s) return;
+
+    setMatchingId(unmatched.id);
+    try {
+      const existing = payments.find(p => p.studentId === sid && p.month === month);
+      const amount = unmatched.amount || (autoFee ? autoFee(s) : (s.monthlyFee || 0));
+      const record = {
+        ...(existing || {}),
+        id: existing?.id || uid(),
+        studentId: sid,
+        month,
+        amount,
+        paid: true,
+        paidAmount: unmatched.amount || amount,
+        paidDate: TODAY_STR,
+        method: "transfer",
+        note: `미매칭 수동 매칭 — 입금자: ${unmatched.senderName}`,
+        extraCharges: existing?.extraCharges || [],
+        createdAt: existing?.createdAt || Date.now(),
+        updatedAt: Date.now(),
+      };
+      const updPayments = existing
+        ? payments.map(p => p.id === existing.id ? record : p)
+        : [...payments, record];
+      await onSavePayments(updPayments);
+
+      const updUnmatched = unmatchedPayments.map(u =>
+        u.id === unmatched.id
+          ? { ...u, matchedAt: Date.now(), matchedStudentId: sid }
+          : u
+      );
+      await onSaveUnmatched(updUnmatched);
+
+      onLog(`미매칭 입금 수동 매칭 완료 — ${unmatched.senderName} → ${s.name} ${(unmatched.amount || 0).toLocaleString()}원`);
+      setSelectedStudentId(prev => { const n = { ...prev }; delete n[unmatched.id]; return n; });
+    } catch (e) {
+      onLog("미매칭 매칭 실패: " + e.message);
+    } finally {
+      setMatchingId(null);
+    }
+  };
+
+  return (
+    <div>
+      {pending.length > 0 && (
+        <>
+          <div style={{fontSize:12,color:"var(--ink-60)",marginBottom:8,fontWeight:600}}>
+            미처리 입금 {pending.length}건
+          </div>
+          {pending.map(u => (
+            <div key={u.id} className="unmatched-card">
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontSize:13.5,fontWeight:700}}>{u.senderName || "알 수 없음"}</div>
+                <div style={{fontSize:12,color:"var(--green)",fontWeight:600}}>
+                  {(u.amount || 0).toLocaleString()}원
+                </div>
+                <div style={{fontSize:11,color:"var(--ink-30)"}}>
+                  {u.timestamp ? new Date(u.timestamp).toLocaleString("ko-KR", {month:"numeric",day:"numeric",hour:"2-digit",minute:"2-digit"}) : ""}
+                  {u.rawText ? ` · ${u.rawText.slice(0, 30)}` : ""}
+                </div>
+              </div>
+              <div style={{display:"flex",flexDirection:"column",gap:6,alignItems:"flex-end"}}>
+                <select
+                  className="sel"
+                  style={{fontSize:12,height:30,minWidth:120}}
+                  value={selectedStudentId[u.id] || ""}
+                  onChange={e => setSelectedStudentId(prev => ({ ...prev, [u.id]: e.target.value }))}
+                >
+                  <option value="">학생 선택</option>
+                  {students
+                    .filter(s => !s.isInstitution && (s.status || "active") === "active")
+                    .sort((a, b) => a.name.localeCompare(b.name, "ko"))
+                    .map(s => (
+                      <option key={s.id} value={s.id}>{s.name}</option>
+                    ))
+                  }
+                </select>
+                <button
+                  className="btn btn-sm"
+                  style={{
+                    background: selectedStudentId[u.id] ? "var(--green)" : "var(--ink-10)",
+                    color: selectedStudentId[u.id] ? "#fff" : "var(--ink-30)",
+                    border: "none", opacity: matchingId === u.id ? 0.5 : 1,
+                  }}
+                  disabled={!selectedStudentId[u.id] || !!matchingId}
+                  onClick={() => handleMatch(u)}
+                >
+                  {matchingId === u.id ? "처리 중…" : "✓ 수납 처리"}
+                </button>
+              </div>
+            </div>
+          ))}
+        </>
+      )}
+      {matched.length > 0 && (
+        <>
+          <div style={{fontSize:12,color:"var(--ink-30)",margin:"16px 0 8px",fontWeight:600}}>
+            처리 완료 {matched.length}건
+          </div>
+          {matched.map(u => {
+            const s = students.find(st => st.id === u.matchedStudentId);
+            return (
+              <div key={u.id} className="unmatched-card" style={{opacity:0.6}}>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{fontSize:13,fontWeight:600}}>{u.senderName || "알 수 없음"}</div>
+                  <div style={{fontSize:11,color:"var(--ink-60)"}}>
+                    {(u.amount || 0).toLocaleString()}원
+                    {s ? ` → ${s.name}` : ""}
+                  </div>
+                </div>
+                <span style={{fontSize:11,color:"var(--green)",fontWeight:700}}>✓ 매칭 완료</span>
+              </div>
+            );
+          })}
+        </>
       )}
     </div>
   );
