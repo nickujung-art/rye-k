@@ -124,13 +124,7 @@ async function handleGet(request, env) {
     return json({ error: "Unauthorized" }, 401);
   }
 
-  // 2. Role check — only admin/manager may drain the payment queue
-  const role = payload.role;
-  if (role !== "admin" && role !== "manager") {
-    return json({ error: "Forbidden" }, 403);
-  }
-
-  // 3. Drain all pending:* keys from KV
+  // 2. Drain all pending:* keys from KV
   const matched   = [];
   const unmatched = [];
 
