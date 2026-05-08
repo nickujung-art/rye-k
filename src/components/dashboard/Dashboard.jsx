@@ -41,7 +41,7 @@ function Sparkline({ data }) {
   );
 }
 
-export default function Dashboard({ students, teachers, currentUser, notices, categories, attendance, payments, pending, institutions, nav }) {
+export default function Dashboard({ students, teachers, currentUser, notices, categories, attendance, payments, pending, institutions, nav, onUnpaidCardClick }) {
   const [todayListModal, setTodayListModal] = useState(false);
   const [expandedNotices, setExpandedNotices] = useState(new Set());
   const toggleNotice = (id) => setExpandedNotices(prev => { const next = new Set(prev); if (next.has(id)) next.delete(id); else next.add(id); return next; });
@@ -52,6 +52,14 @@ export default function Dashboard({ students, teachers, currentUser, notices, ca
   const pinnedNotices = notices.filter(n => n.pinned).slice(0, 2);
   const monthPayments = payments.filter(p => p.month === THIS_MONTH);
   const unpaidThisMonth = students.filter(s => !monthPayments.find(p => p.studentId === s.id && p.paid)).length;
+  const activeStudents = students.filter(s => !s.isInstitution);
+  const unpaidAmount = activeStudents.reduce((sum, s) => {
+    const p = monthPayments.find(mp => mp.studentId === s.id);
+    if (p?.paid) return sum;
+    return sum + (p?.amount ?? ((s.monthlyFee || 0) + (s.instrumentRental ? (s.rentalFee || 0) : 0)));
+  }, 0);
+  const paidActiveCount = activeStudents.filter(s => monthPayments.find(p => p.studentId === s.id && p.paid)).length;
+  const payRate = activeStudents.length > 0 ? Math.round(paidActiveCount / activeStudents.length * 100) : 0;
   const thisMonthStart = new Date(THIS_MONTH + "-01").getTime();
   const newStudents = students.filter(s => s.createdAt && s.createdAt >= thisMonthStart).sort((a, b) => b.createdAt - a.createdAt);
 
@@ -163,7 +171,7 @@ export default function Dashboard({ students, teachers, currentUser, notices, ca
       <div className="stat-grid">
         <div className="stat-card" onClick={() => nav("students")} style={{cursor:"pointer"}}><div className="stat-num">{students.length}</div><div className="stat-label">수강생</div><div className="stat-sub">미성년 {students.filter(s => isMinor(s.birthDate)).length}명</div></div>
         <div className="stat-card" onClick={() => nav("attendance")} style={{cursor:"pointer"}}><div className="stat-num">{todayStudents.length}</div><div className="stat-label">오늘 수업</div><div className="stat-sub">출석 {todayChecked.length}/{todayStudents.length}</div></div>
-        {canManageAll(currentUser.role) && <div className="stat-card" onClick={() => nav("payments")} style={{cursor:"pointer"}}><div className="stat-num" style={{color: unpaidThisMonth > 0 ? "var(--red)" : "var(--green)"}}>{unpaidThisMonth}</div><div className="stat-label">이번달 미납</div><div className="stat-sub">{monthLabel(THIS_MONTH)}</div></div>}
+        {canManageAll(currentUser.role) && <div className="stat-card" onClick={() => onUnpaidCardClick ? onUnpaidCardClick() : nav("payments")} style={{cursor:"pointer"}}><div className="stat-num" style={{color: unpaidThisMonth > 0 ? "var(--red)" : "var(--green)"}}>{unpaidThisMonth}</div><div className="stat-label">이번달 미납</div><div className="stat-sub">{unpaidAmount > 0 ? fmtMoney(unpaidAmount) : monthLabel(THIS_MONTH)}</div></div>}
         {canManageAll(currentUser.role) && <div className="stat-card">{(() => { const active = (institutions || []).filter(i => (i.status || "active") === "active").length; const totalClasses = (institutions || []).reduce((s, i) => s + (i.classes || []).length, 0); return (<><div className="stat-num" onClick={() => nav("institutions")} style={{cursor:"pointer"}}>{active}</div><div className="stat-label">기관</div><div className="stat-sub">{totalClasses}개 반</div></>); })()}</div>}
         {canManageAll(currentUser.role) && <div className="stat-card"><div className="stat-num">{teachers.length}</div><div className="stat-label">강사/매니저</div></div>}
       </div>
@@ -172,7 +180,9 @@ export default function Dashboard({ students, teachers, currentUser, notices, ca
         const paidCount = students.filter(s => monthPayments.find(p => p.studentId === s.id && p.paid)).length;
         const unpaidCount = students.length - paidCount;
         return (
-          <div className="dash-card" style={{marginBottom:12}}>
+          <div className="dash-card"
+            style={{marginBottom:12, cursor:"pointer"}}
+            onClick={() => onUnpaidCardClick ? onUnpaidCardClick() : nav("payments")}>
             <div className="dash-card-title">이번달 수납 현황 <span style={{fontSize:11,color:"var(--ink-30)",fontWeight:400}}>{monthLabel(THIS_MONTH)}</span></div>
             <div style={{display:"flex",alignItems:"center",gap:16}}>
               <DonutChart paid={paidCount} total={students.length} />
@@ -182,10 +192,18 @@ export default function Dashboard({ students, teachers, currentUser, notices, ca
                   <span style={{fontSize:12.5,color:"var(--ink-60)"}}>납부 완료</span>
                   <span style={{fontSize:15,fontWeight:700,color:"var(--green)",marginLeft:"auto"}}>{paidCount}명</span>
                 </div>
-                <div style={{display:"flex",alignItems:"center",gap:8}}>
+                <div style={{fontSize:12,color:"var(--text2)",marginTop:4}}>
+                  납부율 <span style={{fontWeight:600,color: payRate >= 80 ? "var(--green)" : "var(--red)"}}>{payRate}%</span>
+                </div>
+                <div style={{display:"flex",alignItems:"center",gap:8,marginTop:8}}>
                   <div style={{width:8,height:8,borderRadius:"50%",background:"var(--ink-10)",flexShrink:0}} />
                   <span style={{fontSize:12.5,color:"var(--ink-60)"}}>미납</span>
                   <span style={{fontSize:15,fontWeight:700,color: unpaidCount > 0 ? "var(--red)" : "var(--ink-30)",marginLeft:"auto"}}>{unpaidCount}명</span>
+                  {unpaidAmount > 0 && (
+                    <span style={{fontSize:12,color:"var(--red)",fontFamily:"'Noto Serif KR',serif",fontVariantNumeric:"tabular-nums",marginLeft:4}}>
+                      {fmtMoney(unpaidAmount)}
+                    </span>
+                  )}
                 </div>
               </div>
             </div>
