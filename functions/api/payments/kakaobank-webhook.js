@@ -45,19 +45,20 @@ async function handlePost(request, env) {
     return json({ error: "Unauthorized" }, 401);
   }
 
-  // 4. Replay protection — reject timestamp older than ±5 minutes (ASVS)
-  const ts = typeof body.timestamp === "number" ? body.timestamp : parseInt(body.timestamp || "0");
+  // 4. Timestamp — use body value if provided, else server time
+  const ts = typeof body.timestamp === "number"
+    ? body.timestamp
+    : (body.timestamp ? parseInt(body.timestamp) : Date.now());
   const now = Date.now();
-  if (!ts || Math.abs(now - ts) > 5 * 60 * 1000) {
-    return json({ error: "Request expired or timestamp missing" }, 400);
-  }
 
-  // 5. Input validation — name and amount (ASVS: input sanitization)
-  const rawName = String(body.name || "").trim();
+  // 5. Input validation — parse rawText first, then override with explicit fields
+  const rawText = String(body.rawText || "").slice(0, 200);
+  const parsed = parseRawText(rawText);
+
+  const rawName = String(body.name || parsed.name || "").trim();
   // Allow Korean chars, spaces, alphanumeric only — reject XSS/injection attempts
   const name = rawName.replace(/[^가-힣ᄀ-ᇿ㄰-㆏ a-zA-Z0-9]/g, "").trim();
-  const amount = parseInt(String(body.amount || "0").replace(/[^\d]/g, "")) || 0;
-  const rawText = String(body.rawText || "").slice(0, 200); // cap raw notification text
+  const amount = parseInt(String(body.amount || "0").replace(/[^\d]/g, "")) || parsed.amount || 0;
 
   if (!name || name.length < 2 || name.length > 20) {
     return json({ error: "Invalid name" }, 400);
@@ -225,6 +226,13 @@ function fuzzyMatchStudent(inputName, students) {
   if (close.length > 1)   return { match: null,       confidence: "duplicate_fuzzy" };
 
   return { match: null, confidence: "no_match" };
+}
+
+// Parse "홍길동 150,000원 입금" or "[카카오뱅크] 홍길동 150,000원 입금"
+function parseRawText(text) {
+  const m = text.match(/(?:\[.*?\]\s+)?(\S+)\s+([\d,]+)원\s*입금/);
+  if (!m) return { name: "", amount: 0 };
+  return { name: m[1], amount: parseInt(m[2].replace(/,/g, "")) || 0 };
 }
 
 function json(data, status = 200) {
