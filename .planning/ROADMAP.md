@@ -90,8 +90,13 @@ Plans:
   3. 은행에서 입금 웹훅이 수신되면 학생 이름+금액 기반으로 자동 매칭되어 수납 처리된다
   4. 자동 매칭이 불확실한 입금은 "미매칭 입금" 큐에 올라가 관리자가 수동 처리할 수 있다
   5. 미납 리마인더 알림톡이 미납 학생 학부모에게 자동 발송됨
-**Plans**: TBD
-**Admin prerequisites**: `monthlyFee` 데이터 전체 입력 + Firebase 서비스 계정 설정 + Toss Payments 가상계좌 계정 (Nick 선행 작업)
+**Plans**: 4 plans
+Plans:
+- [ ] 05-01-PLAN.md — App.jsx state 추가 (unmatchedPayments, paymentsInitFilter) + constants.jsx CSS (PAY-01, PAY-02, PAY-06)
+- [ ] 05-02-PLAN.md — PaymentsView 인라인 수강료 편집 + 미매칭 탭 + ALM-07 stub (PAY-01, PAY-03, PAY-06, ALM-07)
+- [ ] 05-03-PLAN.md — Dashboard 미납 현황 카드 클릭 가능 + 미납 금액 표시 (PAY-02)
+- [ ] 05-04-PLAN.md — KakaoBank Webhook Worker + fuzzy match + KV buffer + Tasker 설정 가이드 (PAY-04, PAY-05)
+**Admin prerequisites**: `monthlyFee` 데이터 전체 입력 (Nick 선행) + RYE_WEBHOOK_SECRET Cloudflare secret 등록 + Tasker Android 설정
 
 ### Phase 6: 분석 대시보드 고도화 (Analytics Enhancement)
 **Goal**: 관리자는 매출 추이를, 강사는 담당 학생 출석률을, 학부모는 자녀 월별 리포트를 각자의 역할 화면에서 확인할 수 있으며, Firestore 1MB 한도 대응 아카이빙이 적용되어 있다
@@ -113,7 +118,7 @@ Plans:
 | 2. 포털 완성 | 0/4 | Planned | - |
 | 3. AI 완성 | 0/3 | Planned | - |
 | 4. 알림톡 통합 | 0/TBD | Not started | - |
-| 5. 수납 자동화 | 0/TBD | Not started | - |
+| 5. 수납 자동화 | 0/4 | Planned | - |
 | 6. 분석 대시보드 고도화 | 0/TBD | Not started | - |
 
 ---
