@@ -497,21 +497,27 @@ function MainApp() {
         if (!currentUser) return;
         const token = await currentUser.getIdToken();
 
-        // Sync student list to KV so webhook can fuzzy-match incoming deposits
+        // PAY-04/05 gap: students_cache KV 갱신 — drain 직전에 실행
+        // 실패해도 drain을 막지 않는다 (best-effort).
         if (canManageAll(user?.role)) {
           try {
             await fetch("/api/payments/sync-students", {
               method: "POST",
-              headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`,
+              },
               body: JSON.stringify({
+                role: user.role,
                 students: students.map(s => ({
-                  id: s.id, name: s.name,
+                  id: s.id,
+                  name: s.name,
                   status: s.status || "active",
                   isInstitution: s.isInstitution || false,
                 })),
               }),
             });
-          } catch { /* silent */ }
+          } catch { /* silent — cache sync failure must not block drain */ }
         }
 
         const res = await fetch("/api/payments/kakaobank-webhook", {
