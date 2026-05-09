@@ -9,12 +9,12 @@ See: .planning/PROJECT.md (updated 2026-05-05)
 
 ## Current Position
 
-Phase: 5 of 6 (수납 자동화 — Payment Automation)
-Plan: 4 of 4 in current phase
-Status: **EXECUTION COMPLETE** — Wave 1 (05-01, 05-04) + Wave 2 (05-02, 05-03) 실행 완료. 브라우저 검증 대기.
-Last activity: 2026-05-09 — Phase 5 execute-phase 완료 (4개 플랜, 빌드 통과)
+Phase: FS-fee-split (레슨별 수강료 분리)
+Plan: 1 of 4 in current phase
+Status: **IN PROGRESS** — FS-01 (utils 헬퍼 추가) 완료. FS-02~04 대기.
+Last activity: 2026-05-09 — FS-01 calcLessonFeeWithFallback + calcTotalFee 함수 추가 완료
 
-Progress: [██████████] 100% (실행 완료)
+Progress: [██░░░░░░░░] 25% (FS-01/4 완료)
 
 ## Performance Metrics
 
@@ -43,6 +43,8 @@ Recent decisions affecting current work:
 - 외부 결제 미연동, 은행 알림 자동화만 채택
 - 카카오 알림톡 우선, FCM 나중 (AlimtalkModal UI 이미 존재)
 - Gemini 2.5 Flash 사용 (anthropic.js 이름 정리 필요 — Phase 3)
+- [FS-01] lesson.fee 양수 체크 (0="미설정" 구분), monthlyFee/lessonCount 균등 분배 폴백 채택
+- [FS-01] isInstitution 가상회원 별도 분기 없이 기존 폴백으로 처리 (lessons[0].fee 없으면 monthlyFee 반환)
 
 ### Pending Todos
 
@@ -71,14 +73,11 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-05-09
-Stopped at: Phase 5 execute-phase 완료. Wave 1 (05-01 App.jsx wiring + constants CSS, 05-04 kakaobank-webhook Worker) + Wave 2 (05-02 PaymentsView 인라인편집/미매칭탭/ALM-07, 05-03 Dashboard payRate/unpaidAmount) 모두 실행됨. 빌드 통과. 브라우저 검증 + `/gsd-verify-phase 5` 대기.
+Stopped at: FS-fee-split FS-01 완료 (utils.js calcLessonFeeWithFallback + calcTotalFee 추가, 빌드 통과, 커밋 b047d93). FS-02~04 실행 대기.
 Resume file: None
 
-## Plans Completed This Phase
+## Plans Completed This Phase (FS-fee-split)
 
 | Plan | Wave | Requirements | Files |
 |------|------|-------------|-------|
-| 05-01 | 1 | PAY-01, PAY-02, PAY-05, PAY-06 | App.jsx, constants.jsx |
-| 05-02 | 2 | PAY-01, PAY-03, PAY-06, ALM-07 | PaymentsView.jsx |
-| 05-03 | 2 | PAY-02 | Dashboard.jsx |
-| 05-04 | 1 | PAY-04, PAY-05 | functions/api/payments/kakaobank-webhook.js |
+| FS-01 | 1 | FS-FEE-01, FS-FEE-02 | src/utils.js |
