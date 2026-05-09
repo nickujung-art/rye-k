@@ -50,6 +50,9 @@ async function handlePost(request, env) {
     ? body.timestamp
     : (body.timestamp ? parseInt(body.timestamp) : Date.now());
   const now = Date.now();
+  if (Math.abs(now - ts) > 5 * 60 * 1000) {
+    return json({ error: "Request expired" }, 400);
+  }
 
   // 5. Input validation — parse rawText first, then override with explicit fields
   const rawText = String(body.rawText || "").slice(0, 200);
@@ -122,6 +125,10 @@ async function handleGet(request, env) {
   const payload = await verifyToken(request);
   if (!payload) {
     return json({ error: "Unauthorized" }, 401);
+  }
+  const role = String(payload?.role || payload?.claims?.role || "").toLowerCase();
+  if (role !== "admin" && role !== "manager") {
+    return json({ error: "Forbidden" }, 403);
   }
 
   // 2. Drain all pending:* keys from KV
