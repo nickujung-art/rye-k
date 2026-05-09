@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-05-05)
 ## Current Position
 
 Phase: FS-fee-split (레슨별 수강료 분리)
-Plan: 2 of 4 in current phase
-Status: **IN PROGRESS** — FS-01, FS-02 완료. FS-03~04 대기.
-Last activity: 2026-05-09 — FS-02 LessonEditor fee 입력 UI + StudentFormModal 합계 표시 교체 완료
+Plan: 3 of 4 in current phase
+Status: **IN PROGRESS** — FS-01, FS-02, FS-03 완료. FS-04 대기.
+Last activity: 2026-05-09 — FS-03 PaymentsView/Dashboard calcTotalFee 교체 + 상세 모달 breakdown 추가 완료
 
-Progress: [████░░░░░░] 50% (FS-02/4 완료)
+Progress: [██████░░░░] 75% (FS-03/4 완료)
 
 ## Performance Metrics
 
@@ -48,6 +48,9 @@ Recent decisions affecting current work:
 - [FS-02] set() 함수에서 monthlyFee 자동계산 제거 — feePresets 기반 fee 적용은 toggleInst에서만 (신규 과목 추가 시)
 - [FS-02] handleConfirm에서 calcTotalFee 파생 계산 후 monthlyFee 덮어씀 — 기존 PaymentsView의 s.monthlyFee 참조 보호
 - [FS-02] 월 수강료 입력 필드 → 읽기 전용 합계 표시로 교체, 수강료 편집은 LessonEditor 내부에서
+- [FS-03] PaymentsView autoFee를 calcTotalFee 기반으로 교체, 인라인 monthlyFee 편집창 제거
+- [FS-03] 수납 상세 모달에 lessons[].fee 기반 과목별 breakdown UI 추가
+- [FS-03] feePresets prop을 App.jsx에서 PaymentsView, Dashboard로 전달
 
 ### Pending Todos
 
@@ -76,7 +79,7 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-05-09
-Stopped at: FS-fee-split FS-02 완료 (StudentManagement.jsx LessonEditor fee 입력 UI + StudentFormModal 합계 표시 교체, 커밋 0c238c4). FS-03~04 실행 대기.
+Stopped at: FS-fee-split FS-03 완료 (PaymentsView calcTotalFee 교체 + breakdown UI, Dashboard unpaidAmount 교체, App.jsx feePresets prop 연결, 커밋 1772ffb, 4008c59). FS-04 실행 대기.
 Resume file: None
 
 ## Plans Completed This Phase (FS-fee-split)
@@ -85,3 +88,4 @@ Resume file: None
 |------|------|-------------|-------|
 | FS-01 | 1 | FS-FEE-01, FS-FEE-02 | src/utils.js |
 | FS-02 | 2 | FS-FEE-03 | src/components/student/StudentManagement.jsx |
+| FS-03 | 2 | FS-FEE-04, FS-FEE-05 | src/components/payment/PaymentsView.jsx, src/components/dashboard/Dashboard.jsx, src/App.jsx |
