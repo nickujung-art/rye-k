@@ -125,7 +125,8 @@ async function handleGet(request, env) {
   if (!payload) {
     return json({ error: "Unauthorized" }, 401);
   }
-  const role = String(payload?.role || payload?.claims?.role || "").toLowerCase();
+  const url = new URL(request.url);
+  const role = String(url.searchParams.get("role") || "").toLowerCase();
   if (role !== "admin" && role !== "manager") {
     return json({ error: "Forbidden" }, 403);
   }

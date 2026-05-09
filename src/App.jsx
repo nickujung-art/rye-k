@@ -520,7 +520,7 @@ function MainApp() {
           } catch { /* silent — cache sync failure must not block drain */ }
         }
 
-        const res = await fetch("/api/payments/kakaobank-webhook", {
+        const res = await fetch(`/api/payments/kakaobank-webhook?role=${encodeURIComponent(user?.role || "")}`, {
           method: "GET",
           headers: { Authorization: `Bearer ${token}` },
         });
