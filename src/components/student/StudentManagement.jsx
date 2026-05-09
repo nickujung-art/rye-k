@@ -1,15 +1,18 @@
 ﻿import { useState, useRef } from "react";
 import knotLineSvg from "../../assets/heritage/knot-line.svg";
 import { IC, TODAY_STR, THIS_MONTH, DAYS, ATT_STATUS } from "../../constants.jsx";
-import { uid, calcAge, isMinor, getCat, fmtDate, fmtDateShort, fmtMoney, canManageAll, monthLabel, allLessonInsts, allLessonDays, getBirthPassword, formatLessonNoteSummary, compressImage, fmtPhone, computeMonthlyAttStats } from "../../utils.js";
+import { uid, calcAge, isMinor, getCat, fmtDate, fmtDateShort, fmtMoney, canManageAll, monthLabel, allLessonInsts, allLessonDays, getBirthPassword, formatLessonNoteSummary, compressImage, fmtPhone, computeMonthlyAttStats, calcTotalFee } from "../../utils.js";
 import { Av, PhotoUpload, DeleteConfirmFooter } from "../shared/CommonUI.jsx";
 
 // ── LESSON EDITOR ─────────────────────────────────────────────────────────────
-export function LessonEditor({ lessons, onChange, categories, teachers }) {
+export function LessonEditor({ lessons, onChange, categories, teachers, feePresets }) {
   const selectedInsts = lessons.map(l => l.instrument);
   const toggleInst = inst => {
     if (selectedInsts.includes(inst)) onChange(lessons.filter(l => l.instrument !== inst));
-    else onChange([...lessons, { instrument: inst, teacherId: "", schedule: [{ day: "", time: "" }] }]);
+    else {
+      const fee = feePresets ? (feePresets[inst] || 0) : 0;
+      onChange([...lessons, { instrument: inst, teacherId: "", fee, schedule: [{ day: "", time: "" }] }]);
+    }
   };
   const updSch = (inst, idx, field, val) => onChange(lessons.map(l => l.instrument !== inst ? l : { ...l, schedule: l.schedule.map((s, i) => i !== idx ? s : { ...s, [field]: val }) }));
   const addSch = inst => onChange(lessons.map(l => l.instrument !== inst ? l : { ...l, schedule: [...l.schedule, { day: "", time: "" }] }));
@@ -52,6 +55,20 @@ export function LessonEditor({ lessons, onChange, categories, teachers }) {
                   </select>
                 </div>
               )}
+              <div style={{ marginBottom: 8 }}>
+                <div style={{ fontSize: 10.5, color: "var(--ink-30)", fontWeight: 600, letterSpacing: .5, marginBottom: 4 }}>수강료 (월)</div>
+                <div style={{ display: "flex", alignItems: "center", gap: 6, maxWidth: 200 }}>
+                  <input
+                    className="inp"
+                    inputMode="numeric"
+                    value={l.fee != null && l.fee > 0 ? l.fee.toLocaleString("ko-KR") : ""}
+                    onChange={e => onChange(lessons.map(x => x.instrument !== l.instrument ? x : { ...x, fee: parseInt(e.target.value.replace(/[^\d]/g, "")) || 0 }))}
+                    placeholder={(feePresets && feePresets[l.instrument]) ? (feePresets[l.instrument]).toLocaleString("ko-KR") : "0"}
+                    style={{ flex: 1, paddingRight: 24 }}
+                  />
+                  <span style={{ fontSize: 12, color: "var(--ink-30)", flexShrink: 0 }}>원</span>
+                </div>
+              </div>
               {(l.schedule || []).map((sc, idx) => (
                 <div key={idx} className="schedule-row">
                   {DAYS.map(d => (<button key={d} type="button" className={`sch-day-btn ${sc.day === d ? "on" : ""}`} onClick={() => updSch(l.instrument, idx, "day", sc.day === d ? "" : d)}>{d}</button>))}
@@ -85,12 +102,8 @@ export function StudentFormModal({ student, teachers, currentUser, categories, f
   const set = (k, v) => {
     setForm(f => {
       const next = { ...f, [k]: v };
-      // Auto-calculate fee from presets when lessons change (only for new students with fee=0)
-      if (k === "lessons" && !isEdit && feePresets) {
-        const autoFee = (v || []).reduce((sum, l) => sum + (feePresets[l.instrument] || 0), 0);
-        if (autoFee > 0 && f.monthlyFee === 0) {
-          next.monthlyFee = autoFee;
-        }
+      if (k === "lessons") {
+        next.lessons = (v || []).map(l => ({ ...l, fee: l.fee ?? 0 }));
       }
       return next;
     });
@@ -106,7 +119,10 @@ export function StudentFormModal({ student, teachers, currentUser, categories, f
   const handleSaveClick = () => { if (!validate()) return; setConfirming(true); };
   const handleConfirm = async () => {
     if (saving) return; setSaving(true);
-    try { await onSave({ ...form, createdAt: form.createdAt || Date.now() }); }
+    try {
+      const totalFee = calcTotalFee(form, feePresets);
+      await onSave({ ...form, monthlyFee: totalFee, createdAt: form.createdAt || Date.now() });
+    }
     catch(e) { setErr("저장 중 오류가 발생했습니다."); setConfirming(false); }
     finally { setSaving(false); }
   };
@@ -154,11 +170,32 @@ export function StudentFormModal({ student, teachers, currentUser, categories, f
           </div>
           {canManageAll(currentUser.role) ? (
             <div className="fg">
-              <label className="fg-label">월 수강료</label>
-              <div style={{position:"relative",maxWidth:220}}>
-                <input className="inp" inputMode="numeric" value={form.monthlyFee ? form.monthlyFee.toLocaleString("ko-KR") : ""} onChange={e => set("monthlyFee", parseInt(e.target.value.replace(/[^\d]/g,"")) || 0)} placeholder="0" style={{paddingRight:30}} />
-                <span style={{position:"absolute",right:12,top:"50%",transform:"translateY(-50%)",fontSize:13,color:"var(--ink-30)",pointerEvents:"none"}}>원</span>
+              <label className="fg-label">월 수강료 (과목별 합계)</label>
+              <div style={{ background: "var(--ink-5,#F8F8F8)", border: "1px solid var(--border)", borderRadius: "var(--radius-sm)", padding: "10px 14px", fontSize: 13 }}>
+                {(form.lessons || []).length === 0 ? (
+                  <span style={{ color: "var(--ink-30)" }}>과목 선택 후 수강료가 표시됩니다</span>
+                ) : (
+                  <>
+                    {(form.lessons || []).map(l => (
+                      <div key={l.instrument} style={{ display: "flex", justifyContent: "space-between", color: "var(--ink-60)", marginBottom: 4 }}>
+                        <span>{l.instrument}</span>
+                        <span>{l.fee != null && l.fee > 0 ? l.fee.toLocaleString("ko-KR") + "원" : <span style={{ color: "var(--ink-30)" }}>미설정</span>}</span>
+                      </div>
+                    ))}
+                    {form.instrumentRental && (
+                      <div style={{ display: "flex", justifyContent: "space-between", color: "var(--ink-60)", marginBottom: 4 }}>
+                        <span>악기 대여료</span>
+                        <span>{(form.rentalFee || 0).toLocaleString("ko-KR")}원</span>
+                      </div>
+                    )}
+                    <div style={{ borderTop: "1px dashed var(--border)", paddingTop: 6, marginTop: 4, display: "flex", justifyContent: "space-between", fontWeight: 700, fontSize: 14 }}>
+                      <span>합계</span>
+                      <span>{calcTotalFee(form, feePresets).toLocaleString("ko-KR")}원</span>
+                    </div>
+                  </>
+                )}
               </div>
+              <div style={{ fontSize: 11, color: "var(--ink-30)", marginTop: 4 }}>각 과목의 수강료는 위 레슨 설정에서 입력하세요.</div>
             </div>
           ) : (
             <div style={{background:"var(--ink-10)",border:"1px solid var(--border)",borderRadius:"var(--radius-sm)",padding:"10px 14px",fontSize:12.5,color:"var(--ink-30)",marginBottom:4}}>
@@ -244,7 +281,7 @@ export function StudentFormModal({ student, teachers, currentUser, categories, f
             </div>
           )}
           <div className="divider" />
-          <div className="fg"><LessonEditor lessons={editorLessons} onChange={v => set("lessons", isTeacherEdit ? [...(form.lessons || []).filter(l => l.teacherId !== currentUser.id), ...v] : v)} categories={categories} teachers={canManageAll(currentUser.role) ? teachers : []} /></div>
+          <div className="fg"><LessonEditor lessons={editorLessons} onChange={v => set("lessons", isTeacherEdit ? [...(form.lessons || []).filter(l => l.teacherId !== currentUser.id), ...v] : v)} categories={categories} teachers={canManageAll(currentUser.role) ? teachers : []} feePresets={feePresets} /></div>
           <div className="fg"><label className="fg-label">메모 / 특이사항</label><textarea className="inp" value={form.notes} onChange={e => set("notes", e.target.value)} placeholder="수업 참고사항, 특이사항 등" rows={3} /></div>
         </div>
         {confirming ? (
