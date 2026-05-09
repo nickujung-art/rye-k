@@ -248,7 +248,7 @@ export function PendingView({ pending, teachers, categories, onApprove, onReject
 }
 
 // ── CATEGORIES VIEW ───────────────────────────────────────────────────────────
-export function CategoriesView({ categories, onSave, feePresets, onSaveFees }) {
+export function CategoriesView({ categories, onSave, feePresets, onSaveFees, onMigrateFeeSplit }) {
   const [cats, setCats] = useState(JSON.parse(JSON.stringify(categories)));
   const [fees, setFees] = useState({ ...(feePresets || {}) });
   const [newCat, setNewCat] = useState("");
@@ -265,6 +265,10 @@ export function CategoriesView({ categories, onSave, feePresets, onSaveFees }) {
   const [editingRentalVal, setEditingRentalVal] = useState("");
   const [savedFlash, setSavedFlash] = useState("");
   const [errMsg, setErrMsg] = useState("");
+  // 마이그레이션 상태
+  const [migrateConfirm, setMigrateConfirm] = useState(false);
+  const [migrating, setMigrating] = useState(false);
+  const [migrateResult, setMigrateResult] = useState(null); // null | { updated: number, skipped: number }
   const showErr = (msg) => { setErrMsg(msg); setTimeout(() => setErrMsg(""), 2500); };
 
   const flashSaved = (msg = "저장됨 ✓") => { setSavedFlash(msg); setTimeout(() => setSavedFlash(""), 1800); };
@@ -507,6 +511,66 @@ export function CategoriesView({ categories, onSave, feePresets, onSaveFees }) {
           <button className="btn btn-primary btn-sm" onClick={addCat}>추가</button>
         </div>
       </div>
+
+      {/* ── 수강료 마이그레이션 (Admin 전용) ── */}
+      {onMigrateFeeSplit && (
+        <div style={{ marginTop: 24, padding: "14px 16px", background: "var(--gold-lt)", border: "1.5px solid rgba(245,168,0,.3)", borderRadius: 12 }}>
+          <div style={{ fontWeight: 700, fontSize: 13, color: "var(--gold-dk)", marginBottom: 4 }}>레슨별 수강료 마이그레이션</div>
+          <div style={{ fontSize: 12, color: "var(--ink-60)", marginBottom: 10, lineHeight: 1.6 }}>
+            기존 학생의 <code>monthlyFee</code>를 각 레슨의 <code>fee</code>로 분리합니다.
+            feePresets에 등록된 악기는 해당 금액, 없으면 monthlyFee를 레슨 수로 균등 분배합니다.
+            이미 fee가 설정된 레슨은 건너뜁니다.
+          </div>
+          {migrateResult && (
+            <div style={{ fontSize: 12, color: migrateResult.error ? "var(--red)" : "var(--green)", fontWeight: 600, marginBottom: 8 }}>
+              {migrateResult.error
+                ? `오류: ${migrateResult.error}`
+                : `완료: ${migrateResult.updated}명 업데이트, ${migrateResult.skipped}명 건너뜀`}
+            </div>
+          )}
+          {!migrateConfirm ? (
+            <button
+              className="btn btn-secondary btn-sm"
+              onClick={() => { setMigrateConfirm(true); setMigrateResult(null); }}
+              disabled={migrating}
+            >
+              수강료 마이그레이션 실행
+            </button>
+          ) : (
+            <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+              <span style={{ fontSize: 12, color: "var(--red)", fontWeight: 600 }}>
+                재원·휴원 학생 전체에 적용됩니다. 계속하시겠습니까?
+              </span>
+              <button
+                className="btn btn-sm"
+                style={{ background: "var(--green)", color: "#fff", border: "none" }}
+                onClick={async () => {
+                  setMigrating(true);
+                  try {
+                    const result = await onMigrateFeeSplit();
+                    setMigrateResult(result);
+                  } catch (e) {
+                    setMigrateResult({ updated: 0, skipped: 0, error: e.message });
+                  } finally {
+                    setMigrating(false);
+                    setMigrateConfirm(false);
+                  }
+                }}
+                disabled={migrating}
+              >
+                {migrating ? "실행 중…" : "확인 — 실행"}
+              </button>
+              <button
+                className="btn btn-secondary btn-sm"
+                onClick={() => setMigrateConfirm(false)}
+                disabled={migrating}
+              >
+                취소
+              </button>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

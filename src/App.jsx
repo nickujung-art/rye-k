@@ -1,7 +1,7 @@
 import { useState, useEffect, lazy, Suspense } from "react";
 import { db, auth, doc, setDoc, onSnapshot, runTransaction, firebaseSignIn, firebaseSignInAnon, firebaseLogout, onAuthStateChanged } from "./firebase.js";
 import { DEFAULT_CATEGORIES, DAYS, ADMIN, TODAY_STR, THIS_MONTH, TODAY_DAY, ATT_STATUS, PAY_METHODS, INST_TYPES, IC, CSS } from "./constants.jsx";
-import { calcAge, isMinor, getCat, fmtDate, fmtDateShort, fmtDateTime, uid, fmtPhone, fmtMoney, allLessonInsts, allLessonDays, canManageAll, monthLabel, generateStudentCode, getBirthPassword, getPhoneInitialPassword, instTypeLabel, expandInstitutionsToMembers, getContractDaysLeft, formatLessonNoteSummary } from "./utils.js";
+import { calcAge, isMinor, getCat, fmtDate, fmtDateShort, fmtDateTime, uid, fmtPhone, fmtMoney, allLessonInsts, allLessonDays, canManageAll, monthLabel, generateStudentCode, getBirthPassword, getPhoneInitialPassword, instTypeLabel, expandInstitutionsToMembers, getContractDaysLeft, formatLessonNoteSummary, calcLessonFeeWithFallback } from "./utils.js";
 import { InstitutionFormModal, InstitutionDetailModal, InstitutionsView } from "./components/institution/Institutions.jsx";
 import { Logo } from "./components/shared/CommonUI.jsx";
 import { AttendanceView, LessonNotesView, NoteCommentsPanel } from "./components/attendance/Attendance.jsx";
@@ -970,7 +970,43 @@ function MainApp() {
             {view === "teachers" && canManageAll(user.role) && <TeachersView teachers={teachers} students={students} categories={categories} onAdd={() => { setSelected(null); setModal("tForm"); }} onSelect={t => { setSelected(t); setModal("tDetail"); }} attendance={attendance} />}
             {view === "institutions" && <InstitutionsView institutions={institutions} teachers={teachers} currentUser={user} onAdd={() => { setSelected(null); setModal("instForm"); }} onSelect={i => { setSelected(i); setModal("instDetail"); }} />}
             {view === "notices" && <NoticesView notices={notices} currentUser={user} onAdd={() => { setSelected(null); setModal("nForm"); }} onEdit={n => { setSelected(n); setModal("nForm"); }} onDelete={async id => { const upd = notices.filter(n => n.id !== id); await saveNotices(upd); addLog("공지 삭제"); showToast("공지가 삭제되었습니다."); }} />}
-            {view === "categories" && user.role === "admin" && <CategoriesView categories={categories} onSave={async c => { await saveCategories(c); addLog("과목 카테고리 수정"); showToast("저장되었습니다."); }} feePresets={feePresets} onSaveFees={async f => { setFeePresets(f); try { await sSet("rye-fee-presets", f); showToast("저장되었습니다."); } catch { showToast("저장에 실패했습니다. 네트워크를 확인해주세요.", true); } }} />}
+            {view === "categories" && user.role === "admin" && <CategoriesView
+              categories={categories}
+              onSave={async c => { await saveCategories(c); addLog("과목 카테고리 수정"); showToast("저장되었습니다."); }}
+              feePresets={feePresets}
+              onSaveFees={async f => { setFeePresets(f); try { await sSet("rye-fee-presets", f); showToast("저장되었습니다."); } catch { showToast("저장에 실패했습니다. 네트워크를 확인해주세요.", true); } }}
+              onMigrateFeeSplit={async () => {
+                const targets = students.filter(s =>
+                  !s.isInstitution &&
+                  (s.status === "active" || s.status === "paused") &&
+                  (s.lessons || []).length > 0
+                );
+                const toUpdate = [];
+                let skipped = 0;
+                for (const s of targets) {
+                  const lessons = s.lessons || [];
+                  const legacyPerLesson = Math.round((s.monthlyFee || 0) / lessons.length);
+                  const updatedLessons = lessons.map(l => ({
+                    ...l,
+                    fee: l.fee != null && l.fee > 0
+                      ? l.fee
+                      : calcLessonFeeWithFallback(l, feePresets, legacyPerLesson),
+                  }));
+                  const changed = updatedLessons.some((ul, i) => ul.fee !== (lessons[i].fee ?? 0));
+                  if (changed) {
+                    toUpdate.push({ ...s, lessons: updatedLessons });
+                  } else {
+                    skipped++;
+                  }
+                }
+                if (toUpdate.length > 0) {
+                  await batchStudentDocs(toUpdate);
+                  addLog(`수강료 마이그레이션 완료 — ${toUpdate.length}명 업데이트`);
+                  showToast(`${toUpdate.length}명 수강료 마이그레이션 완료`);
+                }
+                return { updated: toUpdate.length, skipped };
+              }}
+            />}
             {view === "analytics" && user.role === "admin" && <AnalyticsView students={students} teachers={teachers} attendance={attendance} payments={payments} categories={categories} institutions={institutions} />}
             {view === "profile" && <ProfileView currentUser={user} teachers={teachers} students={visible} categories={categories} onProfileSave={async form => { const upd = teachers.map(t => t.id === user.id ? { ...t, ...form } : t); await saveTeachers(upd); setUserPersist({ ...user, name: form.name || user.name }); addLog("프로필 수정"); showToast("프로필이 수정되었습니다."); }} />}
             {view === "activity" && canManageAll(user.role) && <ActivityView activity={activity} onFullBackup={requestFullBackup} />}
