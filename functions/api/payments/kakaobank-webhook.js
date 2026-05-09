@@ -237,7 +237,10 @@ function parseRawText(text) {
   if (mA) return { name: mA[1], amount: parseInt(mA[2].replace(/,/g, "")) || 0 };
 
   const mB = text.match(/입금\s+([\d,]+)원[\r\n]+(.+)/);
-  if (mB) return { name: mB[2].trim(), amount: parseInt(mB[1].replace(/,/g, "")) || 0 };
+  if (mB) {
+    const senderName = mB[2].split(/\s*→\s*/)[0].trim();
+    return { name: senderName, amount: parseInt(mB[1].replace(/,/g, "")) || 0 };
+  }
 
   return { name: "", amount: 0 };
 }
