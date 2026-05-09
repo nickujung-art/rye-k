@@ -228,11 +228,17 @@ function fuzzyMatchStudent(inputName, students) {
   return { match: null, confidence: "no_match" };
 }
 
-// Parse "홍길동 150,000원 입금" or "[카카오뱅크] 홍길동 150,000원 입금"
+// Parse KakaoBank notification text — two formats supported:
+// Format A: "홍길동 150,000원 입금" or "[카카오뱅크] 홍길동 150,000원 입금"
+// Format B (actual KakaoBank app): "05/08 15:36\n입금 150,000원\n홍길동"
 function parseRawText(text) {
-  const m = text.match(/(?:\[.*?\]\s+)?(\S+)\s+([\d,]+)원\s*입금/);
-  if (!m) return { name: "", amount: 0 };
-  return { name: m[1], amount: parseInt(m[2].replace(/,/g, "")) || 0 };
+  const mA = text.match(/(?:\[.*?\]\s+)?(\S+)\s+([\d,]+)원\s*입금/);
+  if (mA) return { name: mA[1], amount: parseInt(mA[2].replace(/,/g, "")) || 0 };
+
+  const mB = text.match(/입금\s+([\d,]+)원[\r\n]+(.+)/);
+  if (mB) return { name: mB[2].trim(), amount: parseInt(mB[1].replace(/,/g, "")) || 0 };
+
+  return { name: "", amount: 0 };
 }
 
 function json(data, status = 200) {
