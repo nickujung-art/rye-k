@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { THIS_MONTH, TODAY_DAY, TODAY_STR, ATT_STATUS, IC } from "../../constants.jsx";
-import { canManageAll, fmtDateTime, fmtDateShort, fmtMoney, isMinor, monthLabel, getContractDaysLeft, allLessonInsts, computeMonthlyAttStats, computeWeeklyAttRates } from "../../utils.js";
+import { canManageAll, fmtDateTime, fmtDateShort, fmtMoney, isMinor, monthLabel, getContractDaysLeft, allLessonInsts, computeMonthlyAttStats, computeWeeklyAttRates, calcTotalFee } from "../../utils.js";
 import { Av } from "../shared/CommonUI.jsx";
 import ChurnWidget from "./ChurnWidget.jsx";
 
@@ -41,7 +41,7 @@ function Sparkline({ data }) {
   );
 }
 
-export default function Dashboard({ students, teachers, currentUser, notices, categories, attendance, payments, pending, institutions, nav, onUnpaidCardClick }) {
+export default function Dashboard({ students, teachers, currentUser, notices, categories, attendance, payments, pending, institutions, nav, onUnpaidCardClick, feePresets = {} }) {
   const [todayListModal, setTodayListModal] = useState(false);
   const [expandedNotices, setExpandedNotices] = useState(new Set());
   const toggleNotice = (id) => setExpandedNotices(prev => { const next = new Set(prev); if (next.has(id)) next.delete(id); else next.add(id); return next; });
@@ -56,7 +56,7 @@ export default function Dashboard({ students, teachers, currentUser, notices, ca
   const unpaidAmount = activeStudents.reduce((sum, s) => {
     const p = monthPayments.find(mp => mp.studentId === s.id);
     if (p?.paid) return sum;
-    return sum + (p?.amount ?? ((s.monthlyFee || 0) + (s.instrumentRental ? (s.rentalFee || 0) : 0)));
+    return sum + (p?.amount ?? calcTotalFee(s, feePresets));
   }, 0);
   const paidActiveCount = activeStudents.filter(s => monthPayments.find(p => p.studentId === s.id && p.paid)).length;
   const payRate = activeStudents.length > 0 ? Math.round(paidActiveCount / activeStudents.length * 100) : 0;

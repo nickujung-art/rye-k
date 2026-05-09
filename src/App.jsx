@@ -952,6 +952,7 @@ function MainApp() {
               pending={pending} institutions={institutions}
               nav={navigate}
               onUnpaidCardClick={() => { setPaymentsInitFilter(true); navigate("payments"); }}
+              feePresets={feePresets}
             />}
             {view === "students" && <StudentsView students={filtered} allStudents={visible} teachers={teachers} categories={categories} filter={filter} setFilter={setFilter} search={search} setSearch={setSearch} onAdd={() => { setSelected(null); setModal("sForm"); }} onSelect={s => { setSelected(s); setModal("sDetail"); }} currentUser={user} onBulkFeeUpdate={async (updatedStudents) => { await batchStudentDocs(updatedStudents); addLog("수강료 일괄 설정"); showToast("수강료가 일괄 변경되었습니다."); }} payments={payments} />}
             {view === "attendance" && <AttendanceView students={allMembers} teachers={teachers} currentUser={user} attendance={attendance} onSaveAttendance={async (upd) => { await saveAttendance(upd); }} categories={categories} scheduleOverrides={scheduleOverrides} onSaveScheduleOverride={saveScheduleOverrides} onUpdateStudent={async (s) => { await updateStudentDoc(s); }} />}
@@ -964,6 +965,7 @@ function MainApp() {
               onSaveUnmatched={saveUnmatchedPayments}
               initFilterUnpaid={paymentsInitFilter}
               onMountFilterConsumed={() => setPaymentsInitFilter(false)}
+              feePresets={feePresets}
             />}
             {view === "teachers" && canManageAll(user.role) && <TeachersView teachers={teachers} students={students} categories={categories} onAdd={() => { setSelected(null); setModal("tForm"); }} onSelect={t => { setSelected(t); setModal("tDetail"); }} attendance={attendance} />}
             {view === "institutions" && <InstitutionsView institutions={institutions} teachers={teachers} currentUser={user} onAdd={() => { setSelected(null); setModal("instForm"); }} onSelect={i => { setSelected(i); setModal("instDetail"); }} />}
