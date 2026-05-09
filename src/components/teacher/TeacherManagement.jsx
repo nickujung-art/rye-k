@@ -155,6 +155,11 @@ export function TeacherDetailModal({ teacher: t, students, currentUser, categori
             </div>
           </div>
         )}
+        {canManageAll(currentUser.role) && students.length > 0 && (
+          <div style={{margin:"0 20px 8px",padding:"10px 14px",background:"var(--gold-lt)",border:"1px solid rgba(245,158,11,.25)",borderRadius:10,fontSize:12.5,color:"var(--gold-dk)"}}>
+            ⚠ 이 강사를 삭제하면 담당 회원 <strong>{students.length}명</strong>이 강사 미배정 상태가 됩니다.
+          </div>
+        )}
         <DeleteConfirmFooter label={`${t.name}`} canDelete={canManageAll(currentUser.role)} onDelete={onDelete} onClose={onClose} onEdit={onEdit} />
       </div>
     </div>
@@ -185,12 +190,12 @@ export function TeachersView({ teachers, students, categories, onAdd, onSelect, 
               (s.teacherId === t.id || (s.lessons||[]).some(l => l.teacherId === t.id)) &&
               (s.lessons||[]).some(l => (l.schedule||[]).some(sc => sc.day === todayDayName))
             ).length;
-            const thisMonthAttIds = new Set(
-              attendance.filter(a => a.teacherId === t.id && (a.date||"").startsWith(THIS_MONTH) && (a.lessonNote || a.note)).map(a => a.studentId)
+            const attWithNote = new Set(
+              attendance.filter(a => a.teacherId === t.id && (a.date||"").startsWith(THIS_MONTH) && (a.lessonNote || a.note)).map(a => a.studentId + "_" + a.date)
             );
-            const missingNotes = [...new Set(
-              attendance.filter(a => a.teacherId === t.id && (a.date||"").startsWith(THIS_MONTH) && (a.status === "present" || a.status === "late") && !thisMonthAttIds.has(a.studentId)).map(a => a.studentId)
-            )].length;
+            const missingNotes = attendance.filter(
+              a => a.teacherId === t.id && (a.date||"").startsWith(THIS_MONTH) && (a.status === "present" || a.status === "late") && !attWithNote.has(a.studentId + "_" + a.date)
+            ).length;
             return (
               <div key={t.id} className="s-card" onClick={() => onSelect(t)}>
                 <Av photo={t.photo} name={t.name} />
@@ -203,7 +208,7 @@ export function TeachersView({ teachers, students, categories, onAdd, onSelect, 
                   </div>
                   <div style={{display:"flex",gap:6,marginTop:4,flexWrap:"wrap"}}>
                     {todayCount > 0 && <span style={{fontSize:10,background:"var(--blue-lt)",color:"var(--blue)",padding:"2px 7px",borderRadius:4,fontWeight:600}}>오늘 {todayCount}명</span>}
-                    {missingNotes > 0 && <span style={{fontSize:10,background:"var(--gold-lt)",color:"var(--gold-dk)",padding:"2px 7px",borderRadius:4,fontWeight:600}}>미작성 {missingNotes}명</span>}
+                    {missingNotes > 0 && <span style={{fontSize:10,background:"var(--gold-lt)",color:"var(--gold-dk)",padding:"2px 7px",borderRadius:4,fontWeight:600}}>미작성 {missingNotes}건</span>}
                   </div>
                 </div>
               </div>

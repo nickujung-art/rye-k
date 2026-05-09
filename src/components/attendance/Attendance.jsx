@@ -773,9 +773,11 @@ function LessonNotesView({ students, teachers, currentUser, attendance, onSaveAt
 
   // 이달 미작성 현황: 출석(present/late) 기록은 있으나 해당 날짜에 노트가 없는 레코드 (날짜 단위)
   const noteRecordKeys = new Set(noteRecords.map(a => `${a.studentId}_${a.date}`));
+  const currentTeacherId = isManager && filterTeacher !== "all" ? filterTeacher : (!isManager ? currentUser.id : null);
   const missingNoteRecords = attendance
     .filter(a =>
       filteredStudentIds.has(a.studentId) &&
+      (currentTeacherId === null || a.teacherId === currentTeacherId) &&
       a.date && a.date.startsWith(filterMonth) &&
       (a.status === "present" || a.status === "late") &&
       !noteRecordKeys.has(`${a.studentId}_${a.date}`)

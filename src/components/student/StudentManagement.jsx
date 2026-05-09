@@ -88,7 +88,7 @@ export function StudentFormModal({ student, teachers, currentUser, categories, f
       // Auto-calculate fee from presets when lessons change (only for new students with fee=0)
       if (k === "lessons" && !isEdit && feePresets) {
         const autoFee = (v || []).reduce((sum, l) => sum + (feePresets[l.instrument] || 0), 0);
-        if (autoFee > 0 && (f.monthlyFee === 0 || f.monthlyFee === (f.lessons || []).reduce((s, l) => s + (feePresets[l.instrument] || 0), 0))) {
+        if (autoFee > 0 && f.monthlyFee === 0) {
           next.monthlyFee = autoFee;
         }
       }
