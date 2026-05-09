@@ -458,7 +458,8 @@ export default function PaymentsView({
 
       {editingId && (() => {
         const s = visibleStudents.find(st => st.id === editingId);
-        const baseAmount = s ? autoFee(s) : 0;
+        const extraSum = (editForm.extraCharges || []).reduce((acc, x) => acc + (x.amount || 0), 0);
+        const baseAmount = editForm.amount - extraSum;
         const pendingCharges = s?.pendingOneTimeCharges || [];
         const absenceCount = attendance.filter(a =>
           a.studentId === editForm.studentId &&
@@ -483,7 +484,7 @@ export default function PaymentsView({
                 {/* 강사에게 금액 숨김 */}
                 {!isTeacher && (
                   <div className="fg">
-                    <label className="fg-label">수강료</label>
+                    <label className="fg-label">수강료{extraSum > 0 ? <span style={{fontWeight:400,color:"var(--ink-30)",marginLeft:4,textTransform:"none",letterSpacing:0}}>(기본 + 추가 청구 합계)</span> : ""}</label>
                     <div style={{position:"relative"}}>
                       <input className="inp" inputMode="numeric" value={editForm.amount ? editForm.amount.toLocaleString("ko-KR") : ""} onChange={e => setEditForm(f => ({...f, amount: parseInt(e.target.value.replace(/[^\d]/g,"")) || 0}))} style={{paddingRight:30}} />
                       <span style={{position:"absolute",right:12,top:"50%",transform:"translateY(-50%)",fontSize:13,color:"var(--ink-30)",pointerEvents:"none"}}>원</span>
@@ -608,6 +609,20 @@ export default function PaymentsView({
                   </div>
                 )}
 
+                {/* 합계 브레이크다운 — 추가 청구 항목이 있을 때만 */}
+                {canManageAll(currentUser.role) && !isTeacher && extraSum > 0 && (
+                  <div style={{background:"var(--ink-5,#F8F8F8)",border:"1px solid var(--border)",borderRadius:10,padding:"10px 14px",marginBottom:8,fontSize:12.5}}>
+                    <div style={{display:"flex",justifyContent:"space-between",color:"var(--ink-60)",marginBottom:4}}>
+                      <span>기본 수강료</span><span>{fmtMoney(baseAmount)}</span>
+                    </div>
+                    <div style={{display:"flex",justifyContent:"space-between",color:"var(--gold-dk)",marginBottom:6}}>
+                      <span>추가 청구 합계</span><span>+ {fmtMoney(extraSum)}</span>
+                    </div>
+                    <div style={{borderTop:"1px dashed var(--border)",paddingTop:6,display:"flex",justifyContent:"space-between",fontWeight:700,color:"var(--ink)",fontSize:13.5}}>
+                      <span>청구 합계</span><span>{fmtMoney(editForm.amount)}</span>
+                    </div>
+                  </div>
+                )}
                 <div className="fg"><label className="fg-label">메모</label><input className="inp" value={editForm.note} onChange={e => setEditForm(f => ({...f, note: e.target.value}))} placeholder="비고" /></div>
                 {isTeacher && (
                   <div style={{borderTop:"1px dashed var(--border)",paddingTop:10,marginTop:4}}>
