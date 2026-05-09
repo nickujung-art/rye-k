@@ -111,6 +111,10 @@ export function StudentFormModal({ student, teachers, currentUser, categories, f
     finally { setSaving(false); }
   };
   const minor = isMinor(form.birthDate);
+  const isTeacherEdit = currentUser.role === "teacher" && isEdit;
+  const editorLessons = isTeacherEdit
+    ? (form.lessons || []).filter(l => l.teacherId === currentUser.id)
+    : (form.lessons || []);
   return (
     <div className="mb" onClick={e => e.target === e.currentTarget && onClose()}>
       <div className="modal">
@@ -240,7 +244,7 @@ export function StudentFormModal({ student, teachers, currentUser, categories, f
             </div>
           )}
           <div className="divider" />
-          <div className="fg"><LessonEditor lessons={form.lessons || []} onChange={v => set("lessons", v)} categories={categories} teachers={canManageAll(currentUser.role) ? teachers : []} /></div>
+          <div className="fg"><LessonEditor lessons={editorLessons} onChange={v => set("lessons", isTeacherEdit ? [...(form.lessons || []).filter(l => l.teacherId !== currentUser.id), ...v] : v)} categories={categories} teachers={canManageAll(currentUser.role) ? teachers : []} /></div>
           <div className="fg"><label className="fg-label">메모 / 특이사항</label><textarea className="inp" value={form.notes} onChange={e => set("notes", e.target.value)} placeholder="수업 참고사항, 특이사항 등" rows={3} /></div>
         </div>
         {confirming ? (
@@ -363,11 +367,14 @@ function AttHeatmap({ sAtt }) {
 
 // ── STUDENT DETAIL ────────────────────────────────────────────────────────────
 export function StudentDetailModal({ student: s, teachers, currentUser, categories, feePresets, attendance, payments, onClose, onEdit, onDelete, onPhotoUpdate, onSaveStudent }) {
-  const teacher = teachers.find(t => t.id === s.teacherId);
+  const lessonTeacherIds = [...new Set((s.lessons || []).map(l => l.teacherId).filter(Boolean))];
+  const lessonTeachers = lessonTeacherIds.map(tid => teachers.find(t => t.id === tid)).filter(Boolean);
   const minor = isMinor(s.birthDate); const age = calcAge(s.birthDate);
   const days = allLessonDays(s);
-  // Attendance history for this student
-  const sAtt = (attendance || []).filter(a => a.studentId === s.id).sort((a,b) => b.createdAt - a.createdAt);
+  // Attendance history — teacher role sees only their own records
+  const sAtt = (attendance || [])
+    .filter(a => a.studentId === s.id && (canManageAll(currentUser.role) || a.teacherId === currentUser.id))
+    .sort((a,b) => b.createdAt - a.createdAt);
   const { total: attTotal, present: attPresent, absent: attAbsent, late: attLate, excused: attExcused, rate: attRate } = computeMonthlyAttStats(sAtt);
   // Payment history
   const sPay = (payments || []).filter(p => p.studentId === s.id).sort((a,b) => (b.month||"").localeCompare(a.month||""));
@@ -428,7 +435,7 @@ export function StudentDetailModal({ student: s, teachers, currentUser, categori
             </>)}
             <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginBottom: 6 }}>
               <span className={`tag ${minor ? "tag-minor" : "tag-adult"}`}>{minor ? "미성년자" : "성인"}{age !== null ? ` · ${age}세` : ""}</span>
-              {teacher && <span className="tag tag-gold">{teacher.name} 강사</span>}
+              {lessonTeachers.map(t => <span key={t.id} className="tag tag-gold">{t.name} 강사</span>)}
             </div>
             {days.length > 0 && <div className="day-row">{DAYS.map(d => <div key={d} className={`day-chip ${days.includes(d) ? "on" : ""}`}>{d}</div>)}</div>}
           </div>
@@ -440,10 +447,12 @@ export function StudentDetailModal({ student: s, teachers, currentUser, categori
           {canManageAll(currentUser.role) && <div className="ii"><div className="ii-label">보호자 연락처</div><div className="ii-val">{s.guardianPhone || "-"}</div></div>}
           {canManageAll(currentUser.role) && <div className="ii"><div className="ii-label">월 수강료</div><div className="ii-val">{fmtMoney(s.monthlyFee)}</div></div>}
         </div>
-        {(s.lessons || []).length > 0 && (
+        {(s.lessons || []).length > 0 && (() => {
+          const visibleLessons = (s.lessons || []).filter(l => canManageAll(currentUser.role) || l.teacherId === currentUser.id);
+          return visibleLessons.length > 0 && (
           <div>
             <div style={{ padding: "10px 20px 2px", fontSize: 10, color: "var(--ink-30)", letterSpacing: .5, textTransform: "uppercase", fontWeight: 600 }}>수강 과목 · 레슨 일정</div>
-            {(s.lessons || []).map(l => (
+            {visibleLessons.map(l => (
               <div key={l.instrument} className="lesson-detail-row">
                 <div className="lesson-detail-inst">
                   <span style={{ width: 3, height: 12, background: "var(--blue)", display: "inline-block", flexShrink: 0, borderRadius: 2 }} />
@@ -457,7 +466,8 @@ export function StudentDetailModal({ student: s, teachers, currentUser, categori
               </div>
             ))}
           </div>
-        )}
+          );
+        })()}
         {s.notes && <div style={{ padding: "12px 20px" }}><div className="ii-label" style={{ marginBottom: 6 }}>메모</div><div className="notes-box">{s.notes}</div></div>}
 
         {/* Attendance History */}
@@ -763,7 +773,8 @@ export function BulkFeeModal({ allStudents, teachers, categories, onClose, onApp
 
 // ── STUDENT CARD & VIEW ───────────────────────────────────────────────────────
 function StudentCard({ student: s, teachers, onClick, payStatus }) {
-  const teacher = teachers.find(t => t.id === s.teacherId);
+  const lessonTeacherIds = [...new Set((s.lessons || []).map(l => l.teacherId).filter(Boolean))];
+  const lessonTeachers = lessonTeacherIds.map(tid => teachers.find(t => t.id === tid)).filter(Boolean);
   const minor = isMinor(s.birthDate); const age = calcAge(s.birthDate);
   const insts = allLessonInsts(s); const days = allLessonDays(s);
   return (
@@ -774,7 +785,7 @@ function StudentCard({ student: s, teachers, onClick, payStatus }) {
         <div className="s-inst">{insts.join(" · ") || "과목 미지정"}</div>
         <div className="s-meta">
           <span className={`tag ${minor ? "tag-minor" : "tag-adult"}`} style={{padding:"1px 6px",fontSize:10}}>{minor ? "미성년" : "성인"}{age !== null ? ` ${age}세` : ""}</span>
-          {teacher && <span style={{color:"var(--gold-dk)",fontSize:11,fontWeight:500}}>{teacher.name}</span>}
+          {lessonTeachers.map(t => <span key={t.id} style={{color:"var(--gold-dk)",fontSize:11,fontWeight:500}}>{t.name}</span>)}
           {s.status === "paused" && <span className="tag" style={{background:"var(--gold-lt)",color:"var(--gold-dk)",padding:"1px 6px",fontSize:10}}>휴원</span>}
           {s.status === "withdrawn" && <span className="tag" style={{background:"var(--ink-10)",color:"var(--ink-30)",padding:"1px 6px",fontSize:10}}>퇴원</span>}
           {payStatus === "unpaid" && <span style={{background:"var(--gold-lt)",color:"var(--gold-dk)",padding:"1px 6px",fontSize:10,borderRadius:4,fontWeight:700}}>미납</span>}
