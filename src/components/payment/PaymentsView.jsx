@@ -1,7 +1,7 @@
 ﻿import { useState, useEffect } from "react";
 import knotLineSvg from "../../assets/heritage/knot-line.svg";
 import { PAY_METHODS, IC, TODAY_STR, THIS_MONTH } from "../../constants.jsx";
-import { canManageAll, monthLabel, fmtMoney, fmtDateShort, fmtDate, calcAge, isMinor, instTypeLabel, uid, sendAligoMessage } from "../../utils.js";
+import { canManageAll, monthLabel, fmtMoney, fmtDateShort, fmtDate, calcAge, isMinor, instTypeLabel, uid, sendAligoMessage, calcTotalFee } from "../../utils.js";
 import { Av } from "../shared/CommonUI.jsx";
 import AlimtalkModal from "../shared/AlimtalkModal.jsx";
 import { ChargeRequestModal } from "../student/StudentManagement.jsx";
@@ -13,6 +13,7 @@ export default function PaymentsView({
   onSaveUnmatched,
   initFilterUnpaid = false,
   onMountFilterConsumed,
+  feePresets = {},
 }) {
   const [month, setMonth] = useState(THIS_MONTH);
   const [editingId, setEditingId] = useState(null);
@@ -36,8 +37,6 @@ export default function PaymentsView({
   const [bulkInstModal, setBulkInstModal] = useState(false);
   const [bulkInstData, setBulkInstData] = useState({});
   const [bulkInstSaving, setBulkInstSaving] = useState(false);
-  const [feeEdits, setFeeEdits] = useState({});
-  const [savingFeeId, setSavingFeeId] = useState(null);
   const [activeTab, setActiveTab] = useState("payments");
 
   const pendingRequestStudents = students.filter(s => (s.pendingOneTimeCharges||[]).length > 0);
@@ -56,7 +55,7 @@ export default function PaymentsView({
 
   function getPayment(studentId) { return payments.find(p => p.studentId === studentId && p.month === month); }
 
-  const autoFee = (s) => (s.monthlyFee || 0) + (s.instrumentRental ? (s.rentalFee || 0) : 0);
+  const autoFee = (s) => calcTotalFee(s, feePresets);
 
   const totalDue = visibleStudents.reduce((sum, s) => {
     const p = getPayment(s.id);
@@ -386,35 +385,6 @@ export default function PaymentsView({
                     title="ALM-07: Phase 4 AlimTalk 연동 후 활성화"
                   >💬</button>
                 )}
-                <div className="fee-inp-cell">
-                  <input
-                    className="inp"
-                    inputMode="numeric"
-                    value={feeEdits[s.id] !== undefined
-                      ? (feeEdits[s.id] === 0 ? "" : feeEdits[s.id].toLocaleString("ko-KR"))
-                      : (s.monthlyFee ? s.monthlyFee.toLocaleString("ko-KR") : "")}
-                    onChange={e => setFeeEdits(f => ({ ...f, [s.id]: parseInt(e.target.value.replace(/[^\d]/g, "")) || 0 }))}
-                    onBlur={async () => {
-                      if (feeEdits[s.id] === undefined || feeEdits[s.id] === s.monthlyFee) return;
-                      setSavingFeeId(s.id);
-                      await onSaveStudents([{ ...s, monthlyFee: feeEdits[s.id] }]);
-                      setFeeEdits(f => { const n = { ...f }; delete n[s.id]; return n; });
-                      setSavingFeeId(null);
-                    }}
-                    onKeyDown={e => {
-                      if (e.key === "Tab" || e.key === "Enter") {
-                        e.preventDefault();
-                        const idx = visibleStudents.findIndex(st => st.id === s.id);
-                        const nextId = visibleStudents[idx + 1]?.id;
-                        if (nextId) document.querySelector(`[data-fee-input="${nextId}"]`)?.focus();
-                      }
-                    }}
-                    data-fee-input={s.id}
-                    style={{width:80,height:28,padding:"3px 7px",fontSize:12,textAlign:"right",opacity:savingFeeId===s.id?0.5:1}}
-                  />
-                  <span style={{fontSize:11,color:"var(--ink-30)",flexShrink:0}}>원</span>
-                  {savingFeeId === s.id && <span style={{fontSize:10,color:"var(--ink-30)"}}>…</span>}
-                </div>
               </div>
             )}
             {/* 기관 학생: 입금 버튼만 (수강료 입력창 없음) */}
@@ -609,6 +579,24 @@ export default function PaymentsView({
                   </div>
                 )}
 
+                {/* 과목별 수강료 breakdown — lessons[].fee 있을 때만 표시 */}
+                {canManageAll(currentUser.role) && !isTeacher && s && (s.lessons || []).some(l => l.fee > 0) && (
+                  <div style={{ background: "var(--blue-lt)", border: "1px solid rgba(43,58,159,.15)", borderRadius: 8, padding: "8px 12px", marginBottom: 8, fontSize: 12 }}>
+                    <div style={{ fontWeight: 600, color: "var(--blue)", marginBottom: 4, fontSize: 11 }}>과목별 수강료</div>
+                    {(s.lessons || []).map(l => (
+                      <div key={l.instrument} style={{ display: "flex", justifyContent: "space-between", color: "var(--ink-60)", marginBottom: 2 }}>
+                        <span>{l.instrument}</span>
+                        <span>{l.fee > 0 ? fmtMoney(l.fee) : <span style={{ color: "var(--ink-30)" }}>미설정</span>}</span>
+                      </div>
+                    ))}
+                    {s.instrumentRental && (
+                      <div style={{ display: "flex", justifyContent: "space-between", color: "var(--ink-60)", marginBottom: 2 }}>
+                        <span>악기 대여료</span>
+                        <span>{fmtMoney(s.rentalFee || 0)}</span>
+                      </div>
+                    )}
+                  </div>
+                )}
                 {/* 합계 브레이크다운 — 추가 청구 항목이 있을 때만 */}
                 {canManageAll(currentUser.role) && !isTeacher && extraSum > 0 && (
                   <div style={{background:"var(--ink-5,#F8F8F8)",border:"1px solid var(--border)",borderRadius:10,padding:"10px 14px",marginBottom:8,fontSize:12.5}}>
