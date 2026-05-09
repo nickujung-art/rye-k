@@ -187,7 +187,7 @@ body:has(.mb) .bnav{display:none!important}
 .s-card:hover{transform:translateY(-1px);box-shadow:var(--shadow-lifted)}
 .s-card:active{background:var(--blue-lt);transform:scale(.99)}
 .s-card-info{flex:1;min-width:0}
-.s-name{font-size:16px;font-weight:600;color:var(--ink);font-family:'Noto Serif KR',serif}
+.s-name{font-size:16px;font-weight:600;color:var(--ink);font-family:'Noto Serif KR',serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .s-inst{font-size:11.5px;color:var(--blue);font-weight:500;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .s-meta{font-size:12px;color:var(--ink-60);margin-top:3px;display:flex;gap:8px;align-items:center}
 
@@ -331,7 +331,9 @@ input[type="date"]::-webkit-date-and-time-value{text-align:left}
 .att-stat{padding:6px 12px;border-radius:8px;font-size:12px;font-weight:600;display:flex;align-items:center;gap:4px}
 
 /* ── Payments ──────────────────────────────────────────── */
-.pay-row{display:flex;align-items:center;gap:10px;padding:12px 14px;background:var(--paper);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:8px;cursor:pointer;transition:background var(--dur-fast),transform var(--dur-base) var(--ease-out),box-shadow var(--dur-base) var(--ease-out)}
+.pay-row{display:flex;flex-direction:column;gap:0;padding:10px 14px;background:var(--paper);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:8px;cursor:pointer;transition:background var(--dur-fast),transform var(--dur-base) var(--ease-out),box-shadow var(--dur-base) var(--ease-out)}
+.pay-row-info{display:flex;align-items:center;gap:10px}
+.pay-row-actions{display:flex;align-items:center;gap:6px;padding-left:40px;margin-top:6px;flex-wrap:wrap}
 .pay-row:hover{transform:translateY(-1px);box-shadow:var(--shadow-lifted)}
 .pay-row:active{background:var(--ink-10)}
 .pay-amount{font-family:'Noto Serif KR',serif;font-size:15px;font-weight:700;color:var(--ink);margin-left:auto;text-align:right;flex-shrink:0;font-variant-numeric:tabular-nums}

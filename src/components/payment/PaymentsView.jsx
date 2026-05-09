@@ -344,87 +344,97 @@ export default function PaymentsView({
         const isInst = s.isInstitution;
         return (
           <div key={s.id} className="pay-row" onClick={() => openEdit(s)} style={isInst ? {background:"rgba(43,58,159,.02)"} : undefined}>
-            <Av photo={s.photo} name={s.name} size="av-sm" />
-            <div style={{flex:1,minWidth:0}}>
-              <div style={{fontSize:13.5,fontWeight:600,display:"flex",alignItems:"center",gap:4}}>
-                {isInst && <span style={{fontSize:9.5,padding:"1px 5px",background:"var(--blue-lt)",color:"var(--blue)",borderRadius:4,fontWeight:700}}>🏢</span>}
-                <span style={{whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{s.name}</span>
+            {/* 1줄: 아바타 · 이름/상태 · 금액 */}
+            <div className="pay-row-info">
+              <Av photo={s.photo} name={s.name} size="av-sm" />
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontSize:13.5,fontWeight:600,display:"flex",alignItems:"center",gap:4,overflow:"hidden"}}>
+                  {isInst && <span style={{fontSize:9.5,padding:"1px 5px",background:"var(--blue-lt)",color:"var(--blue)",borderRadius:4,fontWeight:700,flexShrink:0}}>🏢</span>}
+                  <span style={{whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{s.name}</span>
+                </div>
+                <div className={`pay-status ${isPaid ? "paid" : "unpaid"}`}>
+                  {isPaid ? `✓ ${fmtDateShort(p.paidDate)} 입금` : "미납"}
+                  {p?.method && isPaid ? ` · ${PAY_METHODS[p.method] || p.method}` : ""}
+                </div>
               </div>
-              <div className={`pay-status ${isPaid ? "paid" : "unpaid"}`}>
-                {isPaid ? `✓ ${fmtDateShort(p.paidDate)} 입금` : "미납"}
-                {p?.method && isPaid ? ` · ${PAY_METHODS[p.method] || p.method}` : ""}
-              </div>
+              {!isTeacher && <div className="pay-amount" style={{color: isPaid ? "var(--green)" : "var(--ink)"}}>{fmtMoney(amt)}</div>}
             </div>
-            {/* 강사: 금액 숨김 */}
-            {!isTeacher && <div className="pay-amount" style={{color: isPaid ? "var(--green)" : "var(--ink)"}}>{fmtMoney(amt)}</div>}
-            {canManageAll(currentUser.role) && !isPaid && (
-              <button
-                onClick={async (e) => {
-                  e.stopPropagation();
-                  if (quickPayingId) return;
-                  setQuickPayingId(s.id);
-                  const base = p?.amount ?? autoFee(s);
-                  const record = { ...(p||{}), id: p?.id||uid(), studentId: s.id, month, amount: base, paid: true, paidAmount: base, paidDate: TODAY_STR, method: "transfer", note: p?.note||"", extraCharges: p?.extraCharges||[], createdAt: p?.createdAt||Date.now(), updatedAt: Date.now() };
-                  const upd = p ? payments.map(pp => pp.id === p.id ? record : pp) : [...payments, record];
-                  try { await onSavePayments(upd); onLog(`${s.name} 회원 ${monthLabel(month)} 수강료 입금 확인`); } catch {}
-                  setQuickPayingId(null);
-                }}
-                style={{background:"var(--green)",color:"#fff",border:"none",borderRadius:8,padding:"6px 11px",fontSize:11,fontWeight:700,flexShrink:0,cursor:"pointer",fontFamily:"inherit",opacity:quickPayingId===s.id?0.5:1,transition:"opacity .1s",whiteSpace:"nowrap"}}
-              >
-                {quickPayingId === s.id ? "…" : "✓ 입금"}
-              </button>
-            )}
-            {canManageAll(currentUser.role) && !isPaid && !isInst && (
-              <button
-                onClick={e => {
-                  e.stopPropagation();
-                  setAlimtalkModal("unpaid_reminder");
-                }}
-                style={{
-                  background: "var(--blue-lt)", color: "var(--blue)",
-                  border: "1px solid var(--blue)", borderRadius: 8,
-                  padding: "5px 9px", fontSize: 11, fontWeight: 700,
-                  flexShrink: 0, cursor: "pointer", fontFamily: "inherit",
-                  whiteSpace: "nowrap",
-                }}
-                title="ALM-07: Phase 4 AlimTalk 연동 후 활성화"
-              >💬</button>
-            )}
+            {/* 2줄: 액션 버튼 + 수강료 입력 (관리자·매니저만) */}
             {canManageAll(currentUser.role) && !isInst && (
-              <div className="fee-inp-cell" onClick={e => e.stopPropagation()}>
-                <input
-                  className="inp"
-                  inputMode="numeric"
-                  value={feeEdits[s.id] !== undefined
-                    ? (feeEdits[s.id] === 0 ? "" : feeEdits[s.id].toLocaleString("ko-KR"))
-                    : (s.monthlyFee ? s.monthlyFee.toLocaleString("ko-KR") : "")}
-                  onChange={e => setFeeEdits(f => ({
-                    ...f,
-                    [s.id]: parseInt(e.target.value.replace(/[^\d]/g, "")) || 0,
-                  }))}
-                  onBlur={async () => {
-                    if (feeEdits[s.id] === undefined || feeEdits[s.id] === s.monthlyFee) return;
-                    setSavingFeeId(s.id);
-                    await onSaveStudents([{ ...s, monthlyFee: feeEdits[s.id] }]);
-                    setFeeEdits(f => { const n = { ...f }; delete n[s.id]; return n; });
-                    setSavingFeeId(null);
+              <div className="pay-row-actions" onClick={e => e.stopPropagation()}>
+                {!isPaid && (
+                  <button
+                    onClick={async (e) => {
+                      e.stopPropagation();
+                      if (quickPayingId) return;
+                      setQuickPayingId(s.id);
+                      const base = p?.amount ?? autoFee(s);
+                      const record = { ...(p||{}), id: p?.id||uid(), studentId: s.id, month, amount: base, paid: true, paidAmount: base, paidDate: TODAY_STR, method: "transfer", note: p?.note||"", extraCharges: p?.extraCharges||[], createdAt: p?.createdAt||Date.now(), updatedAt: Date.now() };
+                      const upd = p ? payments.map(pp => pp.id === p.id ? record : pp) : [...payments, record];
+                      try { await onSavePayments(upd); onLog(`${s.name} 회원 ${monthLabel(month)} 수강료 입금 확인`); } catch {}
+                      setQuickPayingId(null);
+                    }}
+                    style={{background:"var(--green)",color:"#fff",border:"none",borderRadius:8,padding:"5px 11px",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit",opacity:quickPayingId===s.id?0.5:1,transition:"opacity .1s",whiteSpace:"nowrap"}}
+                  >
+                    {quickPayingId === s.id ? "…" : "✓ 입금"}
+                  </button>
+                )}
+                {!isPaid && (
+                  <button
+                    onClick={e => { e.stopPropagation(); setAlimtalkModal("unpaid_reminder"); }}
+                    style={{background:"var(--blue-lt)",color:"var(--blue)",border:"1px solid var(--blue)",borderRadius:8,padding:"4px 9px",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}
+                    title="ALM-07: Phase 4 AlimTalk 연동 후 활성화"
+                  >💬</button>
+                )}
+                <div className="fee-inp-cell">
+                  <input
+                    className="inp"
+                    inputMode="numeric"
+                    value={feeEdits[s.id] !== undefined
+                      ? (feeEdits[s.id] === 0 ? "" : feeEdits[s.id].toLocaleString("ko-KR"))
+                      : (s.monthlyFee ? s.monthlyFee.toLocaleString("ko-KR") : "")}
+                    onChange={e => setFeeEdits(f => ({ ...f, [s.id]: parseInt(e.target.value.replace(/[^\d]/g, "")) || 0 }))}
+                    onBlur={async () => {
+                      if (feeEdits[s.id] === undefined || feeEdits[s.id] === s.monthlyFee) return;
+                      setSavingFeeId(s.id);
+                      await onSaveStudents([{ ...s, monthlyFee: feeEdits[s.id] }]);
+                      setFeeEdits(f => { const n = { ...f }; delete n[s.id]; return n; });
+                      setSavingFeeId(null);
+                    }}
+                    onKeyDown={e => {
+                      if (e.key === "Tab" || e.key === "Enter") {
+                        e.preventDefault();
+                        const idx = visibleStudents.findIndex(st => st.id === s.id);
+                        const nextId = visibleStudents[idx + 1]?.id;
+                        if (nextId) document.querySelector(`[data-fee-input="${nextId}"]`)?.focus();
+                      }
+                    }}
+                    data-fee-input={s.id}
+                    style={{width:80,height:28,padding:"3px 7px",fontSize:12,textAlign:"right",opacity:savingFeeId===s.id?0.5:1}}
+                  />
+                  <span style={{fontSize:11,color:"var(--ink-30)",flexShrink:0}}>원</span>
+                  {savingFeeId === s.id && <span style={{fontSize:10,color:"var(--ink-30)"}}>…</span>}
+                </div>
+              </div>
+            )}
+            {/* 기관 학생: 입금 버튼만 (수강료 입력창 없음) */}
+            {canManageAll(currentUser.role) && isInst && !isPaid && (
+              <div className="pay-row-actions" onClick={e => e.stopPropagation()}>
+                <button
+                  onClick={async (e) => {
+                    e.stopPropagation();
+                    if (quickPayingId) return;
+                    setQuickPayingId(s.id);
+                    const base = p?.amount ?? autoFee(s);
+                    const record = { ...(p||{}), id: p?.id||uid(), studentId: s.id, month, amount: base, paid: true, paidAmount: base, paidDate: TODAY_STR, method: "transfer", note: p?.note||"", extraCharges: p?.extraCharges||[], createdAt: p?.createdAt||Date.now(), updatedAt: Date.now() };
+                    const upd = p ? payments.map(pp => pp.id === p.id ? record : pp) : [...payments, record];
+                    try { await onSavePayments(upd); onLog(`${s.name} 회원 ${monthLabel(month)} 수강료 입금 확인`); } catch {}
+                    setQuickPayingId(null);
                   }}
-                  onKeyDown={e => {
-                    if (e.key === "Tab" || e.key === "Enter") {
-                      e.preventDefault();
-                      const idx = visibleStudents.findIndex(st => st.id === s.id);
-                      const nextId = visibleStudents[idx + 1]?.id;
-                      if (nextId) document.querySelector(`[data-fee-input="${nextId}"]`)?.focus();
-                    }
-                  }}
-                  data-fee-input={s.id}
-                  style={{
-                    width: 90, height: 28, padding: "3px 7px", fontSize: 12,
-                    textAlign: "right", opacity: savingFeeId === s.id ? 0.5 : 1,
-                  }}
-                />
-                <span style={{ fontSize: 11, color: "var(--ink-30)", flexShrink: 0 }}>원</span>
-                {savingFeeId === s.id && <span style={{ fontSize: 10, color: "var(--ink-30)" }}>…</span>}
+                  style={{background:"var(--green)",color:"#fff",border:"none",borderRadius:8,padding:"5px 11px",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit",opacity:quickPayingId===s.id?0.5:1,transition:"opacity .1s",whiteSpace:"nowrap"}}
+                >
+                  {quickPayingId === s.id ? "…" : "✓ 입금"}
+                </button>
               </div>
             )}
           </div>

@@ -772,16 +772,18 @@ export function BulkFeeModal({ allStudents, teachers, categories, onClose, onApp
 }
 
 // ── STUDENT CARD & VIEW ───────────────────────────────────────────────────────
-function StudentCard({ student: s, teachers, onClick, payStatus }) {
+function StudentCard({ student: s, teachers, categories, onClick, payStatus }) {
   const lessonTeacherIds = [...new Set((s.lessons || []).map(l => l.teacherId).filter(Boolean))];
   const lessonTeachers = lessonTeacherIds.map(tid => teachers.find(t => t.id === tid)).filter(Boolean);
   const minor = isMinor(s.birthDate); const age = calcAge(s.birthDate);
   const insts = allLessonInsts(s); const days = allLessonDays(s);
+  const allValidInsts = categories ? Object.values(categories).flat() : null;
+  const hasGhostLesson = allValidInsts ? (s.lessons || []).some(l => l.instrument && !allValidInsts.includes(l.instrument)) : false;
   return (
     <div className="s-card" onClick={onClick}>
       <Av photo={s.photo} name={s.name} />
       <div className="s-card-info">
-        <div className="s-name">{s.name}{s.studentCode && <span style={{fontSize:10,color:"var(--ink-30)",fontWeight:400,marginLeft:6,fontFamily:"monospace"}}>{s.studentCode}</span>}</div>
+        <div className="s-name">{s.name}{hasGhostLesson && <span title="삭제된 과목이 스케줄에 남아있습니다" style={{fontSize:10,color:"var(--gold-dk)",marginLeft:5,cursor:"default"}}>⚠</span>}{s.studentCode && <span style={{fontSize:10,color:"var(--ink-30)",fontWeight:400,marginLeft:6,fontFamily:"monospace"}}>{s.studentCode}</span>}</div>
         <div className="s-inst">{insts.join(" · ") || "과목 미지정"}</div>
         <div className="s-meta">
           <span className={`tag ${minor ? "tag-minor" : "tag-adult"}`} style={{padding:"1px 6px",fontSize:10}}>{minor ? "미성년" : "성인"}{age !== null ? ` ${age}세` : ""}</span>
@@ -858,11 +860,11 @@ export function StudentsView({ students, allStudents, teachers, categories, filt
         grouped.map(({ cat, items }) => (
           <div key={cat}>
             <div className="cat-hd"><div className="cat-hd-line" /><span className="cat-title">{cat}</span><span className="cat-count">{items.length}명</span></div>
-            <div className="s-grid">{items.map(s => <StudentCard key={s.id} student={s} teachers={teachers} onClick={() => onSelect(s)} payStatus={getPayStatus(s.id)} />)}</div>
+            <div className="s-grid">{items.map(s => <StudentCard key={s.id} student={s} teachers={teachers} categories={categories} onClick={() => onSelect(s)} payStatus={getPayStatus(s.id)} />)}</div>
           </div>
         ))
       ) : (
-        <div className="s-grid">{statusFiltered.map(s => <StudentCard key={s.id} student={s} teachers={teachers} onClick={() => onSelect(s)} payStatus={getPayStatus(s.id)} />)}</div>
+        <div className="s-grid">{statusFiltered.map(s => <StudentCard key={s.id} student={s} teachers={teachers} categories={categories} onClick={() => onSelect(s)} payStatus={getPayStatus(s.id)} />)}</div>
       )}
     </div>
   );

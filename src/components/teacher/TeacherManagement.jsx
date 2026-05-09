@@ -100,8 +100,9 @@ export function TeacherFormModal({ teacher, categories, onClose, onSave }) {
 }
 
 // ── TEACHER DETAIL ────────────────────────────────────────────────────────────
-export function TeacherDetailModal({ teacher: t, students, currentUser, onClose, onEdit, onDelete, onPhotoUpdate }) {
-  const insts = (t.instruments || []).filter(Boolean);
+export function TeacherDetailModal({ teacher: t, students, currentUser, categories, onClose, onEdit, onDelete, onPhotoUpdate }) {
+  const allInsts = categories ? Object.values(categories).flat() : null;
+  const insts = (t.instruments || []).filter(Boolean).filter(i => !allInsts || allInsts.includes(i));
   const [showPw, setShowPw] = useState(false);
   const [copyMsg, setCopyMsg] = useState("");
   const initialPw = getPhoneInitialPassword(t.phone);
@@ -161,7 +162,7 @@ export function TeacherDetailModal({ teacher: t, students, currentUser, onClose,
 }
 
 // ── TEACHERS VIEW ─────────────────────────────────────────────────────────────
-export function TeachersView({ teachers, students, onAdd, onSelect, attendance = [] }) {
+export function TeachersView({ teachers, students, categories, onAdd, onSelect, attendance = [] }) {
   const [search, setSearch] = useState("");
   const filtered = teachers.filter(t => { const q = search.toLowerCase(); return !q || t.name?.toLowerCase().includes(q) || ((t.instruments || []).join("")).toLowerCase().includes(q); });
   const todayDayName = ["일","월","화","수","목","금","토"][new Date(TODAY_STR + "T00:00:00").getDay()];
@@ -178,7 +179,8 @@ export function TeachersView({ teachers, students, onAdd, onSelect, attendance =
         <div className="s-grid">
           {filtered.map(t => {
             const cnt = students.filter(s => s.teacherId === t.id || (s.lessons||[]).some(l => l.teacherId === t.id)).length;
-            const insts = (t.instruments || []).filter(Boolean);
+            const allInsts = categories ? Object.values(categories).flat() : null;
+            const insts = (t.instruments || []).filter(Boolean).filter(i => !allInsts || allInsts.includes(i));
             const todayCount = students.filter(s =>
               (s.teacherId === t.id || (s.lessons||[]).some(l => l.teacherId === t.id)) &&
               (s.lessons||[]).some(l => (l.schedule||[]).some(sc => sc.day === todayDayName))
