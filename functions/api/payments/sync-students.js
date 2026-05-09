@@ -1,14 +1,16 @@
 // functions/api/payments/sync-students.js
-// PAY-05 gap fix: populate students_cache KV so webhook can fuzzy-match deposits.
-// POST /api/payments/sync-students — Firebase JWT auth required
-// Called by browser before draining the pending KV queue.
+// POST /api/payments/sync-students
+// 브라우저 앱 → Worker → KV students_cache 갱신
+// Auth: Firebase JWT Bearer + body.role ("admin"|"manager"만 허용)
 
 import { verifyToken } from "../ai/_utils/auth.js";
 
 export async function onRequest(context) {
   const { request, env } = context;
+  const method = request.method;
 
-  if (request.method === "OPTIONS") {
+  // CORS preflight
+  if (method === "OPTIONS") {
     return new Response(null, {
       status: 204,
       headers: {
@@ -19,34 +21,42 @@ export async function onRequest(context) {
     });
   }
 
-  if (request.method !== "POST") {
-    return new Response("Method Not Allowed", { status: 405 });
-  }
+  if (method !== "POST") return new Response("Method Not Allowed", { status: 405 });
 
+  // 1. Firebase JWT 인증
   const payload = await verifyToken(request);
   if (!payload) return json({ error: "Unauthorized" }, 401);
 
+  // 2. Body 파싱
   let body;
   try { body = await request.json(); }
   catch { return json({ error: "Bad Request" }, 400); }
 
-  const students = Array.isArray(body.students) ? body.students : [];
-  const safe = students
-    .filter(s => s && typeof s.name === "string" && s.name.length > 0)
-    .map(s => ({
-      id: String(s.id || ""),
-      name: String(s.name || ""),
-      status: String(s.status || "active"),
-      isInstitution: Boolean(s.isInstitution),
-    }));
-
-  try {
-    await env.RATE_LIMIT_KV.put("students_cache", JSON.stringify(safe), { expirationTtl: 7200 });
-  } catch (e) {
-    return json({ error: "KV write failed" }, 500);
+  // 3. 역할 체크 — admin/manager만 허용
+  const role = String(body.role || "").toLowerCase();
+  if (role !== "admin" && role !== "manager") {
+    return json({ error: "Forbidden" }, 403);
   }
 
-  return json({ ok: true, count: safe.length });
+  // 4. 학생 목록 수신 및 필터
+  const raw = Array.isArray(body.students) ? body.students : [];
+  const filtered = raw
+    .filter(s => s && typeof s.id === "string" && typeof s.name === "string")
+    .filter(s => !s.isInstitution && (s.status || "active") === "active")
+    .map(s => ({ id: s.id, name: s.name, status: s.status || "active" }));
+
+  // 5. KV 저장 — TTL 24h (webhook이 같은 TTL 사용)
+  try {
+    await env.RATE_LIMIT_KV.put(
+      "students_cache",
+      JSON.stringify(filtered),
+      { expirationTtl: 86400 }
+    );
+  } catch (e) {
+    return json({ error: "KV write failed", detail: e.message }, 500);
+  }
+
+  return json({ ok: true, count: filtered.length });
 }
 
 function json(data, status = 200) {
