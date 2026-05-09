@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-05-05)
 ## Current Position
 
 Phase: FS-fee-split (레슨별 수강료 분리)
-Plan: 1 of 4 in current phase
-Status: **IN PROGRESS** — FS-01 (utils 헬퍼 추가) 완료. FS-02~04 대기.
-Last activity: 2026-05-09 — FS-01 calcLessonFeeWithFallback + calcTotalFee 함수 추가 완료
+Plan: 2 of 4 in current phase
+Status: **IN PROGRESS** — FS-01, FS-02 완료. FS-03~04 대기.
+Last activity: 2026-05-09 — FS-02 LessonEditor fee 입력 UI + StudentFormModal 합계 표시 교체 완료
 
-Progress: [██░░░░░░░░] 25% (FS-01/4 완료)
+Progress: [████░░░░░░] 50% (FS-02/4 완료)
 
 ## Performance Metrics
 
@@ -45,6 +45,9 @@ Recent decisions affecting current work:
 - Gemini 2.5 Flash 사용 (anthropic.js 이름 정리 필요 — Phase 3)
 - [FS-01] lesson.fee 양수 체크 (0="미설정" 구분), monthlyFee/lessonCount 균등 분배 폴백 채택
 - [FS-01] isInstitution 가상회원 별도 분기 없이 기존 폴백으로 처리 (lessons[0].fee 없으면 monthlyFee 반환)
+- [FS-02] set() 함수에서 monthlyFee 자동계산 제거 — feePresets 기반 fee 적용은 toggleInst에서만 (신규 과목 추가 시)
+- [FS-02] handleConfirm에서 calcTotalFee 파생 계산 후 monthlyFee 덮어씀 — 기존 PaymentsView의 s.monthlyFee 참조 보호
+- [FS-02] 월 수강료 입력 필드 → 읽기 전용 합계 표시로 교체, 수강료 편집은 LessonEditor 내부에서
 
 ### Pending Todos
 
@@ -73,7 +76,7 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-05-09
-Stopped at: FS-fee-split FS-01 완료 (utils.js calcLessonFeeWithFallback + calcTotalFee 추가, 빌드 통과, 커밋 b047d93). FS-02~04 실행 대기.
+Stopped at: FS-fee-split FS-02 완료 (StudentManagement.jsx LessonEditor fee 입력 UI + StudentFormModal 합계 표시 교체, 커밋 0c238c4). FS-03~04 실행 대기.
 Resume file: None
 
 ## Plans Completed This Phase (FS-fee-split)
@@ -81,3 +84,4 @@ Resume file: None
 | Plan | Wave | Requirements | Files |
 |------|------|-------------|-------|
 | FS-01 | 1 | FS-FEE-01, FS-FEE-02 | src/utils.js |
+| FS-02 | 2 | FS-FEE-03 | src/components/student/StudentManagement.jsx |
