@@ -10,7 +10,7 @@
 - [ ] **Phase 2: 포털 완성 (Portal Completion)** - 학생·학부모 포털을 앱 수준으로 고도화 (시간표·레슨노트·수납·셀프 신청)
 - [ ] **Phase 3: AI 완성 (AI Completion)** - 월별 리포트·케어 메시지·자연어 쿼리 완성 및 AI 데이터 동의 강제
 - [ ] **Phase 4: 알림톡 통합 (KakaoTalk AlimTalk)** - Solapi 연동으로 결석·수납·일정 변경 자동 알림톡 발송
-- [ ] **Phase 5: 수납 자동화 (Payment Automation)** - 은행 입금 자동 매칭 + 미납 현황 대시보드 + 리마인더 자동 발송
+- [x] **Phase 5: 수납 자동화 (Payment Automation)** - 은행 입금 자동 매칭 + 미납 현황 대시보드 + 리마인더 자동 발송 ✓ 2026-05-09
 - [ ] **Phase 6: 분석 대시보드 고도화 (Analytics Enhancement)** - 관리자·강사·학부모용 데이터 인사이트 레이어
 
 ## Phase Details
@@ -92,10 +92,11 @@ Plans:
   5. 미납 리마인더 알림톡이 미납 학생 학부모에게 자동 발송됨
 **Plans**: 4 plans
 Plans:
-- [ ] 05-01-PLAN.md — App.jsx state 추가 (unmatchedPayments, paymentsInitFilter) + constants.jsx CSS (PAY-01, PAY-02, PAY-06)
-- [ ] 05-02-PLAN.md — PaymentsView 인라인 수강료 편집 + 미매칭 탭 + ALM-07 stub (PAY-01, PAY-03, PAY-06, ALM-07)
-- [ ] 05-03-PLAN.md — Dashboard 미납 현황 카드 클릭 가능 + 미납 금액 표시 (PAY-02)
-- [ ] 05-04-PLAN.md — KakaoBank Webhook Worker + fuzzy match + KV buffer + Tasker 설정 가이드 (PAY-04, PAY-05)
+- [x] 05-01-PLAN.md — App.jsx state 추가 (unmatchedPayments, paymentsInitFilter) + constants.jsx CSS (PAY-01, PAY-02, PAY-06)
+- [x] 05-02-PLAN.md — PaymentsView 미매칭 탭 + ALM-07 stub (PAY-01, PAY-03, PAY-06, ALM-07)
+- [x] 05-03-PLAN.md — Dashboard 미납 현황 카드 클릭 가능 + 미납 금액 표시 (PAY-02)
+- [x] 05-04-PLAN.md — KakaoBank Webhook Worker + fuzzy match + KV buffer + Tasker 설정 가이드 (PAY-04, PAY-05)
+- [x] 05-05-PLAN.md — students_cache KV sync 갭 해소 (PAY-04, PAY-05 gap closure)
 **Admin prerequisites**: `monthlyFee` 데이터 전체 입력 (Nick 선행) + RYE_WEBHOOK_SECRET Cloudflare secret 등록 + Tasker Android 설정
 
 ### Phase 6: 분석 대시보드 고도화 (Analytics Enhancement)

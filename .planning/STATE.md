@@ -5,14 +5,14 @@
 See: .planning/PROJECT.md (updated 2026-05-05)
 
 **Core value:** 강사와 학생이 레슨에 집중할 수 있도록, 행정 업무(수납·출결·소통)를 자동화하고 모든 역할이 하나의 앱에서 필요한 정보를 얻을 수 있게 한다
-**Current focus:** Phase 3 완료 → Phase 5 — 수납 자동화 (Phase 4 AlimTalk API 미수령, 나중에 처리)
+**Current focus:** Phase 5 완료 → Phase 6 — 분석 대시보드 고도화 (Phase 4 AlimTalk API 미수령, 나중에 처리)
 
 ## Current Position
 
-Phase: 05-payment-automation
-Plan: 05-05 완료
-Status: **COMPLETE** — 05-05 sync-students gap 해소 완료. PAY-04/05 자동 매칭 경로 활성화.
-Last activity: 2026-05-09 — 05-05 sync-students Worker + App.jsx drainPending role 필드 추가 완료
+Phase: 05-payment-automation ✓ COMPLETE
+Plan: 5/5 완료
+Status: **VERIFIED** — 전체 5개 플랜 완료. webhook 리플레이 보호 + GET role 체크 gap closure 포함.
+Last activity: 2026-05-09 — 갭 클로저(리플레이 보호, handleGet role 체크) 커밋 후 VERIFICATION passed
 
 Progress: [██████████] 100% (05-05 완료)
 
