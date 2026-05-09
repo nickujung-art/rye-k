@@ -59,8 +59,7 @@ async function handlePost(request, env) {
   const parsed = parseRawText(rawText);
 
   const rawName = String(body.name || parsed.name || "").trim();
-  // \p{Script=Hangul} covers all Hangul (syllables+jamo) — ASCII-only syntax, no encoding risk
-  const name = rawName.replace(/[^\p{Script=Hangul} a-zA-Z0-9]/gu, "").trim();
+  const name = rawName.replace(/[^가-힣ᄀ-ᇿ㄰-㆏ a-zA-Z0-9]/g, "").trim();
   const amount = parseInt(String(body.amount || "0").replace(/[^\d]/g, "")) || parsed.amount || 0;
 
   if (!name || name.length < 2 || name.length > 20) {
