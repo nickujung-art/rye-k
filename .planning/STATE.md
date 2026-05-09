@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-05-05)
 ## Current Position
 
 Phase: FS-fee-split (레슨별 수강료 분리)
-Plan: 3 of 4 in current phase
-Status: **IN PROGRESS** — FS-01, FS-02, FS-03 완료. FS-04 대기.
-Last activity: 2026-05-09 — FS-03 PaymentsView/Dashboard calcTotalFee 교체 + 상세 모달 breakdown 추가 완료
+Plan: 4 of 4 in current phase
+Status: **AWAITING HUMAN VERIFY** — FS-01~04 코드 완료. checkpoint:human-verify 대기.
+Last activity: 2026-05-09 — FS-04 CategoriesView 마이그레이션 버튼 + App.jsx 핸들러 완료
 
-Progress: [██████░░░░] 75% (FS-03/4 완료)
+Progress: [██████████] 100% (FS-04/4 완료, 브라우저 검증 대기)
 
 ## Performance Metrics
 
@@ -51,6 +51,7 @@ Recent decisions affecting current work:
 - [FS-03] PaymentsView autoFee를 calcTotalFee 기반으로 교체, 인라인 monthlyFee 편집창 제거
 - [FS-03] 수납 상세 모달에 lessons[].fee 기반 과목별 breakdown UI 추가
 - [FS-03] feePresets prop을 App.jsx에서 PaymentsView, Dashboard로 전달
+- [FS-04] 마이그레이션 결과 카드에 오류 메시지도 표시 (error 필드 처리 추가)
 
 ### Pending Todos
 
@@ -79,7 +80,7 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-05-09
-Stopped at: FS-fee-split FS-03 완료 (PaymentsView calcTotalFee 교체 + breakdown UI, Dashboard unpaidAmount 교체, App.jsx feePresets prop 연결, 커밋 1772ffb, 4008c59). FS-04 실행 대기.
+Stopped at: FS-fee-split FS-04 완료 (CategoriesView 마이그레이션 버튼 + App.jsx 핸들러, 커밋 c9945e4). checkpoint:human-verify 대기 — Nick이 브라우저에서 FS-01~04 기능 전체 검증 필요.
 Resume file: None
 
 ## Plans Completed This Phase (FS-fee-split)
@@ -89,3 +90,4 @@ Resume file: None
 | FS-01 | 1 | FS-FEE-01, FS-FEE-02 | src/utils.js |
 | FS-02 | 2 | FS-FEE-03 | src/components/student/StudentManagement.jsx |
 | FS-03 | 2 | FS-FEE-04, FS-FEE-05 | src/components/payment/PaymentsView.jsx, src/components/dashboard/Dashboard.jsx, src/App.jsx |
+| FS-04 | 3 | FS-FEE-06 | src/components/admin/AdminTools.jsx, src/App.jsx |
