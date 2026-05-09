@@ -496,6 +496,24 @@ function MainApp() {
         const currentUser = auth.currentUser;
         if (!currentUser) return;
         const token = await currentUser.getIdToken();
+
+        // Sync student list to KV so webhook can fuzzy-match incoming deposits
+        if (canManageAll(user?.role)) {
+          try {
+            await fetch("/api/payments/sync-students", {
+              method: "POST",
+              headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+              body: JSON.stringify({
+                students: students.map(s => ({
+                  id: s.id, name: s.name,
+                  status: s.status || "active",
+                  isInstitution: s.isInstitution || false,
+                })),
+              }),
+            });
+          } catch { /* silent */ }
+        }
+
         const res = await fetch("/api/payments/kakaobank-webhook", {
           method: "GET",
           headers: { Authorization: `Bearer ${token}` },
