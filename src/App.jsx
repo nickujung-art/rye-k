@@ -893,11 +893,12 @@ function MainApp() {
   const visibleInstMembers = isAdmin
     ? allInstMembers
     : allInstMembers.filter(m => m.teacherId === user?.id || (m.lessons||[]).some(l => l.teacherId === user?.id));
-  // 출석/수납/스케줄/레슨노트 뷰에 합쳐서 주입할 멤버 배열
-  const allMembers = [...visible, ...visibleInstMembers];
+  // 출석/수납/스케줄/레슨노트 뷰에 합쳐서 주입할 멤버 배열 (T1·T3: withdrawn 제외)
+  const allMembers = [...visible.filter(s => s.status !== "withdrawn"), ...visibleInstMembers];
 
   const monthPayments = payments.filter(p => p.month === THIS_MONTH);
-  const unpaidCount = visible.filter(s => !monthPayments.find(p => p.studentId === s.id && p.paid)).length;
+  // T2: unpaidCount는 active 학생만 카운트
+  const unpaidCount = visible.filter(s => (s.status || "active") === "active" && !monthPayments.find(p => p.studentId === s.id && p.paid)).length;
 
   // 새 댓글 배지: lastNotesReadAt 이후에 학생이 단 댓글만 미읽음으로 카운트
   const newCommentCount = (() => {

@@ -75,7 +75,7 @@ export function LessonEditor({ lessons, onChange, categories, teachers }) {
 // ── STUDENT FORM ──────────────────────────────────────────────────────────────
 export function StudentFormModal({ student, teachers, currentUser, categories, feePresets, onClose, onSave }) {
   const [form, setForm] = useState(student
-    ? { instrumentRental: false, rentalType: "", rentalFee: 0, pendingOneTimeCharges: [], ...student }
+    ? { ...student, instrumentRental: student.instrumentRental ?? false, rentalType: student.rentalType ?? "", rentalFee: student.rentalFee ?? 0, pendingOneTimeCharges: student.pendingOneTimeCharges ?? [] }
     : { name: "", birthDate: "", startDate: TODAY_STR, phone: "", guardianPhone: "", teacherId: currentUser.role === "teacher" ? currentUser.id : "", lessons: [], photo: "", notes: "", monthlyFee: 0, status: "active", instrumentRental: false, rentalType: "", rentalFee: 0, pendingOneTimeCharges: [] });
   const [err, setErr] = useState("");
   const [confirming, setConfirming] = useState(false);
@@ -857,12 +857,23 @@ export function StudentsView({ students, allStudents, teachers, categories, filt
       {statusFiltered.length === 0 ? (
         <div className="empty"><img src={knotLineSvg} style={{width:44,height:55,opacity:0.28,marginBottom:10}} alt="" /><div className="empty-txt">{search ? "검색 결과가 없습니다." : "해당 상태의 회원이 없습니다."}</div></div>
       ) : filter === "전체" ? (
-        grouped.map(({ cat, items }) => (
-          <div key={cat}>
-            <div className="cat-hd"><div className="cat-hd-line" /><span className="cat-title">{cat}</span><span className="cat-count">{items.length}명</span></div>
-            <div className="s-grid">{items.map(s => <StudentCard key={s.id} student={s} teachers={teachers} categories={categories} onClick={() => onSelect(s)} payStatus={getPayStatus(s.id)} />)}</div>
-          </div>
-        ))
+        <>
+          {grouped.map(({ cat, items }) => (
+            <div key={cat}>
+              <div className="cat-hd"><div className="cat-hd-line" /><span className="cat-title">{cat}</span><span className="cat-count">{items.length}명</span></div>
+              <div className="s-grid">{items.map(s => <StudentCard key={s.id} student={s} teachers={teachers} categories={categories} onClick={() => onSelect(s)} payStatus={getPayStatus(s.id)} />)}</div>
+            </div>
+          ))}
+          {(() => {
+            const unassigned = statusFiltered.filter(s => !(s.lessons || []).some(l => l.instrument));
+            return unassigned.length > 0 ? (
+              <div>
+                <div className="cat-hd"><div className="cat-hd-line" /><span className="cat-title" style={{color:"var(--ink-30)"}}>과목 미배정</span><span className="cat-count">{unassigned.length}명</span></div>
+                <div className="s-grid">{unassigned.map(s => <StudentCard key={s.id} student={s} teachers={teachers} categories={categories} onClick={() => onSelect(s)} payStatus={getPayStatus(s.id)} />)}</div>
+              </div>
+            ) : null;
+          })()}
+        </>
       ) : (
         <div className="s-grid">{statusFiltered.map(s => <StudentCard key={s.id} student={s} teachers={teachers} categories={categories} onClick={() => onSelect(s)} payStatus={getPayStatus(s.id)} />)}</div>
       )}
