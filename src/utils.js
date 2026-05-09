@@ -170,3 +170,30 @@ export function detectConsecutiveAbsences(attendance, sid, n = 2) {
   }
   return count >= n;
 }
+
+// ── FS-01: 레슨별 수강료 계산 헬퍼 ─────────────────────────────────────────────
+// lesson 하나에 대해 fee를 결정한다
+// 우선순위: lesson.fee(양수) > feePresets[instrument](양수) > fallbackPerLesson
+export function calcLessonFeeWithFallback(lesson, feePresets, fallbackPerLesson = 0) {
+  if (lesson.fee != null && lesson.fee > 0) return lesson.fee;
+  const preset = feePresets ? (feePresets[lesson.instrument] || 0) : 0;
+  if (preset > 0) return preset;
+  return fallbackPerLesson;
+}
+
+// student 전체 월 수강료 계산 (레슨별 fee 합산 + 대여료)
+// - lessons[].fee 있으면 해당 값 우선
+// - feePresets[instrument] 있으면 preset 사용
+// - 둘 다 없으면 monthlyFee를 lessons 수로 균등 분배
+// - lessons가 비어있으면 monthlyFee + rental 반환 (구 데이터 호환)
+export function calcTotalFee(student, feePresets) {
+  const lessons = student.lessons || [];
+  const rental = student.instrumentRental ? (student.rentalFee || 0) : 0;
+  if (lessons.length === 0) return (student.monthlyFee || 0) + rental;
+  const legacyPerLesson = Math.round((student.monthlyFee || 0) / lessons.length);
+  const lessonSum = lessons.reduce(
+    (sum, l) => sum + calcLessonFeeWithFallback(l, feePresets, legacyPerLesson),
+    0
+  );
+  return lessonSum + rental;
+}
