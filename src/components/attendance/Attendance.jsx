@@ -379,20 +379,39 @@ function AttendanceView({ students, teachers, currentUser, attendance, onSaveAtt
 
   const lessonGroups = detectLessonGroups(dayStudents, dayName, filterTeacher);
 
-  const getStatus = (studentId) => {
+  const getStatus = (studentId, teacherId) => {
+    // teacherId가 주어졌으면 정확 매칭 우선
+    if (teacherId) {
+      const exact = attendance.find(a => a.studentId === studentId && a.date === date && a.teacherId === teacherId);
+      if (exact) return exact.status || null;
+    }
+    // fallback: teacherId 없이 검색 (기존 레코드 하위 호환)
     const rec = attendance.find(a => a.studentId === studentId && a.date === date);
     return rec?.status || null;
   };
 
-  const getRecord = (studentId) => attendance.find(a => a.studentId === studentId && a.date === date);
+  const getRecord = (studentId, teacherId) => {
+    // teacherId가 주어졌으면 정확 매칭 우선
+    if (teacherId) {
+      const exact = attendance.find(a => a.studentId === studentId && a.date === date && a.teacherId === teacherId);
+      if (exact) return exact;
+    }
+    return attendance.find(a => a.studentId === studentId && a.date === date) || null;
+  };
 
   const saveLessonNote = async (studentId, noteData) => {
     const { practiceGuideText, sharePracticeGuide, ...cleanNote } = noteData;
-    const existing = attendance.find(a => a.studentId === studentId && a.date === date);
+    const s = students.find(x => x.id === studentId);
+    // 해당 학생의 lesson 중 filterTeacher 담당 teacherId 사용, fallback: s.teacherId → currentUser.id
+    const lessonTeacherId = filterTeacher !== "all"
+      ? ((s?.lessons || []).find(l => l.teacherId === filterTeacher)?.teacherId || filterTeacher)
+      : (s?.teacherId || currentUser.id);
+    const existing = attendance.find(a => a.studentId === studentId && a.date === date && a.teacherId === lessonTeacherId)
+      || attendance.find(a => a.studentId === studentId && a.date === date);
     if (existing) {
       await onSaveAttendance(attendance.map(a => a.id === existing.id ? { ...a, lessonNote: cleanNote, note: formatLessonNoteSummary(cleanNote), updatedAt: Date.now() } : a));
     } else {
-      await onSaveAttendance([...attendance, { id: uid(), studentId, teacherId: currentUser.id, date, status: "present", lessonNote: cleanNote, note: formatLessonNoteSummary(cleanNote), createdAt: Date.now() }]);
+      await onSaveAttendance([...attendance, { id: uid(), studentId, teacherId: lessonTeacherId, date, status: "present", lessonNote: cleanNote, note: formatLessonNoteSummary(cleanNote), createdAt: Date.now() }]);
     }
     if (sharePracticeGuide && practiceGuideText?.trim() && onUpdateStudent) {
       const theStudent = students.find(s => s.id === studentId);
@@ -405,41 +424,54 @@ function AttendanceView({ students, teachers, currentUser, attendance, onSaveAtt
   };
 
   const toggleStatus = async (studentId, status) => {
-    const existing = attendance.find(a => a.studentId === studentId && a.date === date);
+    const s = students.find(x => x.id === studentId);
+    // 해당 학생의 lesson 중 filterTeacher 담당 teacherId 사용, fallback: s.teacherId → currentUser.id
+    const lessonTeacherId = filterTeacher !== "all"
+      ? ((s?.lessons || []).find(l => l.teacherId === filterTeacher)?.teacherId || filterTeacher)
+      : (s?.teacherId || currentUser.id);
+    // teacherId 포함 정확 매칭 우선, fallback: teacherId 무시 (기존 레코드 호환)
+    const existing = attendance.find(a => a.studentId === studentId && a.date === date && a.teacherId === lessonTeacherId)
+      || attendance.find(a => a.studentId === studentId && a.date === date);
     if (existing?.status === status) {
       await onSaveAttendance(attendance.filter(a => a.id !== existing.id));
     } else if (existing) {
       await onSaveAttendance(attendance.map(a => a.id === existing.id ? { ...a, status, updatedAt: Date.now() } : a));
     } else {
-      await onSaveAttendance([...attendance, { id: uid(), studentId, teacherId: currentUser.id, date, status, createdAt: Date.now() }]);
+      await onSaveAttendance([...attendance, { id: uid(), studentId, teacherId: lessonTeacherId, date, status, createdAt: Date.now() }]);
     }
   };
 
   // 그룹 일괄 출석 처리
-  const toggleGroupStatus = async (studentIds, status) => {
+  const toggleGroupStatus = async (studentIds, status, groupTeacherId) => {
     let updated = [...attendance];
     for (const studentId of studentIds) {
-      const existing = updated.find(a => a.studentId === studentId && a.date === date);
+      const s = students.find(x => x.id === studentId);
+      const lessonTeacherId = groupTeacherId || (s?.teacherId || currentUser.id);
+      const existing = updated.find(a => a.studentId === studentId && a.date === date && a.teacherId === lessonTeacherId)
+        || updated.find(a => a.studentId === studentId && a.date === date);
       if (existing?.status === status) {
         updated = updated.filter(a => a.id !== existing.id);
       } else if (existing) {
         updated = updated.map(a => a.id === existing.id ? { ...a, status, updatedAt: Date.now() } : a);
       } else {
-        updated = [...updated, { id: uid(), studentId, teacherId: currentUser.id, date, status, createdAt: Date.now() }];
+        updated = [...updated, { id: uid(), studentId, teacherId: lessonTeacherId, date, status, createdAt: Date.now() }];
       }
     }
     await onSaveAttendance(updated);
   };
 
   // 그룹 레슨노트 일괄 저장 — 각 학생 record에 동일 내용 개별 저장
-  const saveGroupLessonNote = async (studentIds, noteData) => {
+  const saveGroupLessonNote = async (studentIds, noteData, groupTeacherId) => {
     let updated = [...attendance];
     for (const studentId of studentIds) {
-      const existing = updated.find(a => a.studentId === studentId && a.date === date);
+      const s = students.find(x => x.id === studentId);
+      const lessonTeacherId = groupTeacherId || (s?.teacherId || currentUser.id);
+      const existing = updated.find(a => a.studentId === studentId && a.date === date && a.teacherId === lessonTeacherId)
+        || updated.find(a => a.studentId === studentId && a.date === date);
       if (existing) {
         updated = updated.map(a => a.id === existing.id ? { ...a, lessonNote: noteData, note: formatLessonNoteSummary(noteData), updatedAt: Date.now() } : a);
       } else {
-        updated = [...updated, { id: uid(), studentId, teacherId: currentUser.id, date, status: "present", lessonNote: noteData, note: formatLessonNoteSummary(noteData), createdAt: Date.now() }];
+        updated = [...updated, { id: uid(), studentId, teacherId: lessonTeacherId, date, status: "present", lessonNote: noteData, note: formatLessonNoteSummary(noteData), createdAt: Date.now() }];
       }
     }
     await onSaveAttendance(updated);
@@ -451,14 +483,18 @@ function AttendanceView({ students, teachers, currentUser, attendance, onSaveAtt
   const markAllPresent = async () => {
     if (markingAll) return;
     setMarkingAll(true);
-    const unchecked = dayStudents.filter(s => !getStatus(s.id));
+    const unchecked = dayStudents.filter(s => !getStatus(s.id, filterTeacher !== "all" ? filterTeacher : s.teacherId));
     let updated = [...attendance];
     for (const s of unchecked) {
-      const existing = updated.find(a => a.studentId === s.id && a.date === date);
+      const lessonTeacherId = filterTeacher !== "all"
+        ? ((s.lessons || []).find(l => l.teacherId === filterTeacher)?.teacherId || filterTeacher)
+        : (s.teacherId || currentUser.id);
+      const existing = updated.find(a => a.studentId === s.id && a.date === date && a.teacherId === lessonTeacherId)
+        || updated.find(a => a.studentId === s.id && a.date === date);
       if (existing) {
         updated = updated.map(a => a.id === existing.id ? { ...a, status: "present", updatedAt: Date.now() } : a);
       } else {
-        updated = [...updated, { id: uid(), studentId: s.id, teacherId: currentUser.id, date, status: "present", createdAt: Date.now() }];
+        updated = [...updated, { id: uid(), studentId: s.id, teacherId: lessonTeacherId, date, status: "present", createdAt: Date.now() }];
       }
     }
     try { await onSaveAttendance(updated); } finally { setMarkingAll(false); }
@@ -466,26 +502,31 @@ function AttendanceView({ students, teachers, currentUser, attendance, onSaveAtt
 
   // ★ v12.1: 기관 가상회원 출석 레코드의 참석 인원 업데이트
   const updateParticipantCount = async (studentId, count) => {
-    const existing = attendance.find(a => a.studentId === studentId && a.date === date);
+    const s = students.find(x => x.id === studentId);
+    const lessonTeacherId = filterTeacher !== "all"
+      ? ((s?.lessons || []).find(l => l.teacherId === filterTeacher)?.teacherId || filterTeacher)
+      : (s?.teacherId || currentUser.id);
+    const existing = attendance.find(a => a.studentId === studentId && a.date === date && a.teacherId === lessonTeacherId)
+      || attendance.find(a => a.studentId === studentId && a.date === date);
     if (existing) {
       await onSaveAttendance(attendance.map(a => a.id === existing.id ? { ...a, participantCount: count, updatedAt: Date.now() } : a));
     } else {
       // 출석 상태 없이 참석 인원만 기록 — present로 자동 생성
-      await onSaveAttendance([...attendance, { id: uid(), studentId, teacherId: currentUser.id, date, status: "present", participantCount: count, createdAt: Date.now() }]);
+      await onSaveAttendance([...attendance, { id: uid(), studentId, teacherId: lessonTeacherId, date, status: "present", participantCount: count, createdAt: Date.now() }]);
     }
   };
 
   const daySummary = {
-    present: dayStudents.filter(s => getStatus(s.id) === "present").length,
-    absent: dayStudents.filter(s => getStatus(s.id) === "absent").length,
-    late: dayStudents.filter(s => getStatus(s.id) === "late").length,
-    excused: dayStudents.filter(s => getStatus(s.id) === "excused").length,
-    none: dayStudents.filter(s => !getStatus(s.id)).length,
+    present: dayStudents.filter(s => getStatus(s.id, filterTeacher !== "all" ? filterTeacher : s.teacherId) === "present").length,
+    absent: dayStudents.filter(s => getStatus(s.id, filterTeacher !== "all" ? filterTeacher : s.teacherId) === "absent").length,
+    late: dayStudents.filter(s => getStatus(s.id, filterTeacher !== "all" ? filterTeacher : s.teacherId) === "late").length,
+    excused: dayStudents.filter(s => getStatus(s.id, filterTeacher !== "all" ? filterTeacher : s.teacherId) === "excused").length,
+    none: dayStudents.filter(s => !getStatus(s.id, filterTeacher !== "all" ? filterTeacher : s.teacherId)).length,
   };
 
   const noteStudent = noteModal?.studentId ? students.find(s => s.id === noteModal.studentId) : null;
   const noteTeacher = noteStudent ? teachers.find(t => t.id === noteStudent.teacherId) : null;
-  const noteRecord = noteModal?.studentId ? getRecord(noteModal.studentId) : null;
+  const noteRecord = noteModal?.studentId ? getRecord(noteModal.studentId, filterTeacher !== "all" ? filterTeacher : noteStudent?.teacherId) : null;
 
   return (
     <div>
@@ -524,7 +565,7 @@ function AttendanceView({ students, teachers, currentUser, attendance, onSaveAtt
         lessonGroups.map(group => {
           const isCollapsed = collapsedGroups[group.key];
           const teacher = teachers.find(t => t.id === group.teacherId);
-          const groupStatuses = group.students.map(s => getStatus(s.id));
+          const groupStatuses = group.students.map(s => getStatus(s.id, group.teacherId));
           const allPresent = groupStatuses.every(st => st === "present");
           const allAbsent = groupStatuses.every(st => st === "absent");
 
@@ -543,19 +584,19 @@ function AttendanceView({ students, teachers, currentUser, attendance, onSaveAtt
               {group.isGroup && !isCollapsed && (
                 <div style={{display:"flex",gap:6,padding:"8px 14px",background:"var(--blue-lt)",border:"1px solid rgba(43,58,159,.12)",borderBottom:"none",flexWrap:"wrap"}}>
                   <span style={{fontSize:11,color:"var(--ink-60)",alignSelf:"center",marginRight:2}}>일괄:</span>
-                  <button className={`att-btn btn-xs ${allPresent?"present":""}`} style={{fontSize:11,padding:"4px 10px",height:"auto"}} onClick={() => toggleGroupStatus(group.students.map(s=>s.id), "present")}><span>✓</span> 출석</button>
-                  <button className={`att-btn btn-xs ${allAbsent?"absent":""}`} style={{fontSize:11,padding:"4px 10px",height:"auto"}} onClick={() => toggleGroupStatus(group.students.map(s=>s.id), "absent")}><span>✗</span> 결석</button>
-                  <button className="att-btn btn-xs" style={{fontSize:11,padding:"4px 10px",height:"auto"}} onClick={() => toggleGroupStatus(group.students.map(s=>s.id), "late")}><span>△</span> 지각</button>
-                  <button className="att-btn btn-xs" style={{fontSize:11,padding:"4px 10px",height:"auto"}} onClick={() => toggleGroupStatus(group.students.map(s=>s.id), "excused")}><span>○</span> 보강</button>
-                  <button className="btn btn-xs btn-green" style={{fontSize:11,marginLeft:"auto"}} onClick={() => setNoteModal({ groupKey: group.key, studentIds: group.students.map(s=>s.id), instrument: group.instrument })}>
+                  <button className={`att-btn btn-xs ${allPresent?"present":""}`} style={{fontSize:11,padding:"4px 10px",height:"auto"}} onClick={() => toggleGroupStatus(group.students.map(s=>s.id), "present", group.teacherId)}><span>✓</span> 출석</button>
+                  <button className={`att-btn btn-xs ${allAbsent?"absent":""}`} style={{fontSize:11,padding:"4px 10px",height:"auto"}} onClick={() => toggleGroupStatus(group.students.map(s=>s.id), "absent", group.teacherId)}><span>✗</span> 결석</button>
+                  <button className="att-btn btn-xs" style={{fontSize:11,padding:"4px 10px",height:"auto"}} onClick={() => toggleGroupStatus(group.students.map(s=>s.id), "late", group.teacherId)}><span>△</span> 지각</button>
+                  <button className="att-btn btn-xs" style={{fontSize:11,padding:"4px 10px",height:"auto"}} onClick={() => toggleGroupStatus(group.students.map(s=>s.id), "excused", group.teacherId)}><span>○</span> 보강</button>
+                  <button className="btn btn-xs btn-green" style={{fontSize:11,marginLeft:"auto"}} onClick={() => setNoteModal({ groupKey: group.key, studentIds: group.students.map(s=>s.id), instrument: group.instrument, groupTeacherId: group.teacherId })}>
                     📝 그룹 레슨노트
                   </button>
                 </div>
               )}
               {/* 개별 학생 행 */}
               {!isCollapsed && group.students.map(s => {
-                const st = getStatus(s.id);
-                const rec = getRecord(s.id);
+                const st = getStatus(s.id, group.teacherId);
+                const rec = getRecord(s.id, group.teacherId);
                 const todayLessons = (s.lessons || []).filter(l => (l.schedule || []).some(sc => sc.day === dayName));
                 const hasNote = rec?.lessonNote || rec?.note;
                 const isInst = s.isInstitution;
@@ -664,7 +705,7 @@ function AttendanceView({ students, teachers, currentUser, attendance, onSaveAtt
                 teacher={teachers.find(t => t.id === currentUser.id)}
                 date={date}
                 existingNote={null}
-                onSave={async (noteData) => { await saveGroupLessonNote(noteModal.studentIds, noteData); }}
+                onSave={async (noteData) => { await saveGroupLessonNote(noteModal.studentIds, noteData, noteModal.groupTeacherId); }}
                 onClose={() => setNoteModal(null)}
                 inlineMode
               />
