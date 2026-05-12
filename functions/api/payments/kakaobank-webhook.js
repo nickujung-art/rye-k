@@ -33,10 +33,16 @@ async function handlePost(request, env) {
   const allowed = await checkRateLimit(env.RATE_LIMIT_KV, `wh:${ip}`, 10);
   if (!allowed) return new Response("Too Many Requests", { status: 429 });
 
-  // 2. Parse body early (needed for timestamp check)
+  // 2. Parse body — accept JSON or plain text (Tasker sends plain text)
   let body;
-  try { body = await request.json(); }
-  catch { return new Response("Bad Request", { status: 400 }); }
+  try {
+    const ct = request.headers.get("content-type") || "";
+    if (ct.includes("application/json")) {
+      body = await request.json();
+    } else {
+      body = { rawText: await request.text() };
+    }
+  } catch { return new Response("Bad Request", { status: 400 }); }
 
   // 3. Secret header validation — timingSafeEqual (ASVS: timing attack prevention)
   const secret = request.headers.get("X-RYE-Secret") || "";
