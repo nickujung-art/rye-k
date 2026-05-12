@@ -108,15 +108,49 @@ async function handlePost(request, env) {
     await env.RATE_LIMIT_KV.put(
       `pending:matched:${id}`,
       JSON.stringify(record),
-      { expirationTtl: 86400 }  // 24h TTL
+      { expirationTtl: 604800 }  // 7d TTL
     );
     return json({ ok: true, matched: true, studentId: match.id, confidence });
   } else {
+    // Try split-name match for concatenated multi-child names (e.g. "홍길동김개똥")
+    if (confidence === "no_match" && name.length >= 4) {
+      const candidates = splitNameCandidates(name);
+      for (const [n1, n2] of candidates) {
+        const m1 = fuzzyMatchStudent(n1, students);
+        const m2 = fuzzyMatchStudent(n2, students);
+        const ok1 = m1.confidence === "exact" || m1.confidence === "fuzzy_1";
+        const ok2 = m2.confidence === "exact" || m2.confidence === "fuzzy_1";
+        if (ok1 && ok2) {
+          for (const [nm, mt] of [[n1, m1], [n2, m2]]) {
+            const rid = crypto.randomUUID();
+            const splitRec = {
+              id: rid,
+              senderName: nm,
+              amount: mt.match.monthlyFee || 0,
+              timestamp: ts,
+              source: "kakaobank",
+              rawText,
+              createdAt: now,
+              matchedAt: now,
+              matchedStudentId: mt.match.id,
+              confidence: "split_name",
+            };
+            await env.RATE_LIMIT_KV.put(
+              `pending:matched:${rid}`,
+              JSON.stringify(splitRec),
+              { expirationTtl: 604800 }
+            );
+          }
+          return json({ ok: true, matched: true, split: true, names: [n1, n2] });
+        }
+      }
+    }
+
     // Unmatched — store for manual review
     await env.RATE_LIMIT_KV.put(
       `pending:unmatched:${id}`,
       JSON.stringify(record),
-      { expirationTtl: 86400 }
+      { expirationTtl: 604800 }
     );
     return json({ ok: true, matched: false, confidence });
   }
@@ -215,6 +249,17 @@ function levenshtein(a, b) {
 
 // Fuzzy match student — returns { match, confidence }
 // confidence: "exact" | "fuzzy_1" | "duplicate_exact" | "duplicate_fuzzy" | "no_match"
+// Split a concatenated name "홍길동김개똥" into candidate pairs.
+// Korean names are 2-4 chars; try split positions 2 and 3.
+function splitNameCandidates(name) {
+  const pairs = new Set();
+  const n = name.length;
+  for (let i = 2; i <= Math.min(4, n - 2); i++) {
+    pairs.add(JSON.stringify([name.slice(0, i), name.slice(i)]));
+  }
+  return [...pairs].map(p => JSON.parse(p));
+}
+
 function fuzzyMatchStudent(inputName, students) {
   const active = students.filter(s => !s.isInstitution && (s.status || "active") === "active");
 

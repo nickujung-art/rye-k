@@ -234,6 +234,7 @@ function MainApp() {
   const [studentNotices, setStudentNotices] = useState([]);
   const [institutions, setInstitutions] = useState([]);
   const [unmatchedPayments, setUnmatchedPayments] = useState([]);
+  const [paymentLog, setPaymentLog] = useState([]);
   const [paymentsInitFilter, setPaymentsInitFilter] = useState(false);
   const [aiReports, setAiReports] = useState([]);
   const [ryeSettings, setRyeSettings] = useState({ aiEnabled: true, aiSafeMode: false });
@@ -336,6 +337,7 @@ function MainApp() {
       { key: "rye-student-notices", setter: setStudentNotices, default: [] },
       { key: "rye-institutions", setter: setInstitutions, default: [] },
       { key: "rye-unmatched-payments", setter: setUnmatchedPayments, default: [] },
+      { key: "rye-payment-log", setter: setPaymentLog, default: [] },
       { key: "rye-ai-reports", setter: setAiReports, default: [] },
       { key: "rye-settings", setter: setRyeSettings, default: { aiEnabled: true, aiSafeMode: false } },
     ];
@@ -484,6 +486,11 @@ function MainApp() {
     try { await sSet("rye-unmatched-payments", u); }
     catch (e) { showToast("저장에 실패했습니다. 네트워크를 확인해주세요.", true); throw e; }
   };
+  const savePaymentLog = async u => {
+    setPaymentLog(u);
+    try { await sSet("rye-payment-log", u); }
+    catch (e) { showToast("저장에 실패했습니다. 네트워크를 확인해주세요.", true); throw e; }
+  };
 
   // PAY-05: Drain Worker KV buffer → rye-payments when PaymentsView opens
   // Fires once on each navigation to payments view.
@@ -528,8 +535,10 @@ function MainApp() {
         const { matched = [], unmatched = [] } = await res.json();
 
         // Process matched records → create rye-payments entries
+        const autoUnmatched = [];
         if (matched.length > 0) {
-          const month = new Date().toISOString().slice(0, 7); // "YYYY-MM"
+          const kstNow = new Date(Date.now() + 9 * 60 * 60 * 1000); // UTC+9 KST
+          const month = kstNow.toISOString().slice(0, 7); // "YYYY-MM"
           const newPayments = matched.map(record => ({
             id: record.id,
             studentId: record.matchedStudentId,
@@ -537,31 +546,91 @@ function MainApp() {
             paid: true,
             amount: record.amount,
             paidAmount: record.amount,
+            senderName: record.senderName,
             paidDate: new Date(record.matchedAt || record.createdAt).toISOString().slice(0, 10),
             method: "transfer",
             note: `카카오뱅크 자동매칭 (${record.senderName})`,
             source: "kakaobank",
             createdAt: record.createdAt,
           }));
-          // Merge with existing payments — matched records may duplicate existing ones,
-          // so deduplicate by studentId+month (keep newest).
           const merged = [...payments];
           for (const np of newPayments) {
             const idx = merged.findIndex(p => p.studentId === np.studentId && p.month === np.month);
             if (idx >= 0) {
-              merged[idx] = { ...merged[idx], ...np };
+              if (merged[idx].paid) {
+                autoUnmatched.push({
+                  id: np.id,
+                  senderName: np.senderName || "알 수 없음",
+                  amount: np.amount,
+                  timestamp: np.createdAt,
+                  source: "kakaobank",
+                  rawText: np.note || "",
+                  createdAt: np.createdAt,
+                  confidence: "duplicate_paid",
+                  matchedAt: null,
+                  matchedStudentId: null,
+                });
+              } else {
+                const expectedAmount = merged[idx].amount || np.amount;
+                merged[idx] = {
+                  ...merged[idx],
+                  ...np,
+                  amount: expectedAmount,
+                  paidAmount: np.paidAmount,
+                };
+              }
             } else {
               merged.push(np);
             }
           }
           await savePayments(merged);
-          showToast(`카카오뱅크 입금 ${matched.length}건 자동 처리되었습니다.`);
+
+          const shortfalls = merged.filter(p =>
+            p.source === "kakaobank" && p.paidAmount > 0 && p.paidAmount < p.amount
+          );
+          if (shortfalls.length > 0) {
+            const names = shortfalls.map(p => {
+              const st = students.find(s => s.id === p.studentId);
+              return `${st?.name || "알 수 없음"} (${(p.paidAmount||0).toLocaleString()}원 / ${(p.amount||0).toLocaleString()}원)`;
+            }).join(", ");
+            showToast(`⚠ 금액 부족 입금 — ${names}`, true);
+          } else {
+            showToast(`카카오뱅크 입금 ${matched.length}건 자동 처리되었습니다.`);
+          }
         }
 
         // Process unmatched records → add to rye-unmatched-payments
-        if (unmatched.length > 0) {
-          const merged = [...unmatchedPayments, ...unmatched];
-          await saveUnmatchedPayments(merged);
+        const allNew = [...autoUnmatched, ...unmatched];
+        if (allNew.length > 0) {
+          const mergedUnmatched = [...unmatchedPayments, ...allNew];
+          await saveUnmatchedPayments(mergedUnmatched);
+        }
+
+        // Append all processed transfers to payment log
+        const logEntries = [
+          ...matched.map(r => ({
+            id: r.id,
+            senderName: r.senderName || "",
+            amount: r.amount || 0,
+            timestamp: r.matchedAt || r.createdAt,
+            matched: true,
+            studentId: r.matchedStudentId || null,
+            source: "kakaobank",
+            createdAt: r.createdAt,
+          })),
+          ...unmatched.map(r => ({
+            id: r.id,
+            senderName: r.senderName || "",
+            amount: r.amount || 0,
+            timestamp: r.createdAt,
+            matched: false,
+            studentId: null,
+            source: "kakaobank",
+            createdAt: r.createdAt,
+          })),
+        ];
+        if (logEntries.length > 0) {
+          await savePaymentLog([...paymentLog, ...logEntries]);
         }
       } catch {
         // Silent fail — drain is best-effort, never block the UI
@@ -969,6 +1038,8 @@ function MainApp() {
               }} onLog={addLog}
               unmatchedPayments={unmatchedPayments}
               onSaveUnmatched={saveUnmatchedPayments}
+              paymentLog={paymentLog}
+              onSavePaymentLog={savePaymentLog}
               initFilterUnpaid={paymentsInitFilter}
               onMountFilterConsumed={() => setPaymentsInitFilter(false)}
               feePresets={feePresets}

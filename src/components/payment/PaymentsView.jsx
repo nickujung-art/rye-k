@@ -11,6 +11,8 @@ export default function PaymentsView({
   attendance = [], onSaveStudents,
   unmatchedPayments = [],
   onSaveUnmatched,
+  paymentLog = [],
+  onSavePaymentLog,
   initFilterUnpaid = false,
   onMountFilterConsumed,
   feePresets = {},
@@ -295,6 +297,15 @@ export default function PaymentsView({
               </span>
             )}
           </button>
+          <button className={`ftab${activeTab==="log"?" active":""}`}
+            onClick={() => setActiveTab("log")}>
+            입금 내역
+            {paymentLog.length > 0 && (
+              <span className="unmatched-badge" style={{background:"var(--ink-30)"}}>
+                {paymentLog.length}
+              </span>
+            )}
+          </button>
         </div>
       )}
       {activeTab === "payments" && <>
@@ -424,6 +435,9 @@ export default function PaymentsView({
           TODAY_STR={TODAY_STR}
           autoFee={autoFee}
         />
+      )}
+      {activeTab === "log" && canManageAll(currentUser.role) && (
+        <PaymentLogTab paymentLog={paymentLog} students={students} />
       )}
 
       {editingId && (() => {
@@ -901,6 +915,13 @@ function UnmatchedPaymentsTab({
     );
   }
 
+  const handleDismiss = async (id) => {
+    const target = unmatchedPayments.find(u => u.id === id);
+    const upd = unmatchedPayments.filter(u => u.id !== id);
+    await onSaveUnmatched(upd);
+    onLog(`미처리 입금 삭제 — ${target?.senderName || "알 수 없음"} ${(target?.amount || 0).toLocaleString()}원`);
+  };
+
   const handleMatch = async (unmatched) => {
     const sid = selectedStudentId[unmatched.id];
     if (!sid) return;
@@ -957,7 +978,15 @@ function UnmatchedPaymentsTab({
           {pending.map(u => (
             <div key={u.id} className="unmatched-card">
               <div style={{flex:1,minWidth:0}}>
-                <div style={{fontSize:13.5,fontWeight:700}}>{u.senderName || "알 수 없음"}</div>
+                <div style={{display:"flex",alignItems:"center",gap:4,flexWrap:"wrap"}}>
+                  <span style={{fontSize:13.5,fontWeight:700}}>{u.senderName || "알 수 없음"}</span>
+                  {(u.confidence === "duplicate_exact" || u.confidence === "duplicate_fuzzy") && (
+                    <span className="unmatched-badge" style={{background:"var(--orange,#f57c00)"}}>동명이인</span>
+                  )}
+                  {u.confidence === "duplicate_paid" && (
+                    <span className="unmatched-badge">이중입금</span>
+                  )}
+                </div>
                 <div style={{fontSize:12,color:"var(--green)",fontWeight:600}}>
                   {(u.amount || 0).toLocaleString()}원
                 </div>
@@ -994,6 +1023,14 @@ function UnmatchedPaymentsTab({
                 >
                   {matchingId === u.id ? "처리 중…" : "✓ 수납 처리"}
                 </button>
+                <button
+                  className="btn btn-sm"
+                  style={{background:"var(--ink-10)",color:"var(--red)",border:"none",fontSize:11,marginTop:2}}
+                  disabled={!!matchingId}
+                  onClick={() => handleDismiss(u.id)}
+                >
+                  × 삭제
+                </button>
               </div>
             </div>
           ))}
@@ -1021,6 +1058,54 @@ function UnmatchedPaymentsTab({
           })}
         </>
       )}
+    </div>
+  );
+}
+
+function PaymentLogTab({ paymentLog, students }) {
+  const sorted = [...paymentLog].sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+  if (sorted.length === 0) {
+    return (
+      <div className="empty" style={{paddingTop:40}}>
+        <div className="empty-txt">입금 내역이 없습니다.</div>
+        <div style={{fontSize:12,color:"var(--ink-30)",marginTop:6}}>
+          카카오뱅크 자동수납 처리 시 여기에 기록됩니다.
+        </div>
+      </div>
+    );
+  }
+  return (
+    <div>
+      <div style={{fontSize:12,color:"var(--ink-60)",marginBottom:8,fontWeight:600}}>
+        입금 이력 {sorted.length}건
+      </div>
+      {sorted.map(entry => {
+        const s = entry.studentId ? students.find(st => st.id === entry.studentId) : null;
+        return (
+          <div key={entry.id} className="unmatched-card">
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{display:"flex",alignItems:"center",gap:6}}>
+                <span style={{fontSize:13.5,fontWeight:700}}>{entry.senderName || "알 수 없음"}</span>
+                <span style={{
+                  fontSize:10,fontWeight:700,padding:"1px 5px",borderRadius:8,
+                  background: entry.matched ? "var(--green)" : "var(--ink-20)",
+                  color: entry.matched ? "#fff" : "var(--ink-60)",
+                }}>
+                  {entry.matched ? (s ? `→ ${s.name}` : "자동매칭") : "미매칭"}
+                </span>
+              </div>
+              <div style={{fontSize:12,color:"var(--green)",fontWeight:600}}>
+                {(entry.amount || 0).toLocaleString()}원
+              </div>
+              <div style={{fontSize:11,color:"var(--ink-30)"}}>
+                {entry.timestamp
+                  ? new Date(entry.timestamp).toLocaleString("ko-KR", {month:"numeric",day:"numeric",hour:"2-digit",minute:"2-digit"})
+                  : ""}
+              </div>
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }

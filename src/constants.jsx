@@ -352,7 +352,7 @@ input[type="date"]::-webkit-date-and-time-value{text-align:left}
 .fee-inp-cell{display:flex;align-items:center;gap:4px}
 .fee-inp-cell .inp{width:90px;height:28px;padding:3px 7px;font-size:12px;text-align:right;font-variant-numeric:tabular-nums}
 /* ── Unmatched payments tab / card (PAY-06) ── */
-.unmatched-card{background:var(--paper);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;margin-bottom:8px;display:flex;align-items:center;gap:10px}
+.unmatched-card{background:var(--paper);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;margin-bottom:8px;display:flex;align-items:flex-start;gap:10px}
 .unmatched-badge{background:var(--red);color:#fff;font-size:10px;font-weight:700;padding:2px 6px;border-radius:10px;margin-left:4px}
 
 /* ── Activity log ──────────────────────────────────────── */
