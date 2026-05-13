@@ -141,11 +141,12 @@ service cloud.firestore {
       allow read, write: if isManagerOrAbove();
     }
 
-    // 즉시 청구 (독립 컬렉션) — 인증된 모든 사용자 읽기·생성, 관리자 이상 수정, 관리자 삭제
+    // 즉시 청구 (독립 컬렉션) — 인증된 모든 사용자 읽기·생성·수정, 관리자 삭제
+    // NOTE: update를 isAuthenticated()로 허용 — 앱 레벨에서 승인 UI는 관리자만 접근
     match /rye-instant-charges/{docId} {
       allow read:   if isAuthenticated();
       allow create: if isAuthenticated();
-      allow update: if isManagerOrAbove();
+      allow update: if isAuthenticated();
       allow delete: if isAdmin();
     }
 

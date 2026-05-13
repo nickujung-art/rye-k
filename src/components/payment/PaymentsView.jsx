@@ -1027,6 +1027,18 @@ export default function PaymentsView({
                     <div style={{marginBottom:12,padding:"10px 14px",background:"rgba(59,130,246,0.08)",borderRadius:8,fontSize:13}}>
                       <div style={{fontWeight:600,marginBottom:2}}>{student?.name || "알 수 없음"}</div>
                       <div style={{color:"var(--ink-60)"}}>{approveInstantModal.itemCategory} — {approveInstantModal.itemName}</div>
+                      <div style={{marginTop:6}}>
+                        <span style={{
+                          display:"inline-block",padding:"1px 9px",borderRadius:99,fontSize:11,fontWeight:600,
+                          background: approveInstantModal.stockAvailable ? "rgba(34,197,94,0.15)" : "rgba(239,68,68,0.12)",
+                          color: approveInstantModal.stockAvailable ? "#15803d" : "#dc2626"
+                        }}>
+                          재고 {approveInstantModal.stockAvailable ? "있음" : "없음"}
+                        </span>
+                        {!approveInstantModal.stockAvailable && (
+                          <span style={{marginLeft:8,fontSize:11,color:"var(--red)"}}>→ 매니저에게 재고 신청 필요</span>
+                        )}
+                      </div>
                       {approveInstantModal.note && <div style={{fontSize:12,color:"var(--ink-30)",marginTop:4}}>{approveInstantModal.note}</div>}
                     </div>
                     <div className="fg">
@@ -1034,9 +1046,9 @@ export default function PaymentsView({
                         승인 금액 (원)
                         {approveInstantModal.amountPending && <span style={{marginLeft:6,fontSize:11,color:"var(--red)"}}>* 금액 미정 — 필수 입력</span>}
                       </label>
-                      <input className="inp" type="number" min="1"
-                        value={approveInstantAmount}
-                        onChange={e => setApproveInstantAmount(e.target.value)}
+                      <input className="inp" type="text" inputMode="numeric"
+                        value={approveInstantAmount ? parseInt(approveInstantAmount || "0", 10).toLocaleString("ko-KR") : ""}
+                        onChange={e => setApproveInstantAmount(e.target.value.replace(/[^\d]/g, ""))}
                         placeholder="금액 입력" />
                     </div>
                     {approveInstantMsg && (
@@ -1074,6 +1086,9 @@ export default function PaymentsView({
                     const student = students.find(s => s.id === approveInstantModal.studentId);
                     const msg = `[RYE-K K-Culture Center]\n${student?.name || "회원"} 회원님, 추가 청구 안내드립니다.\n\n· ${approveInstantModal.itemCategory} — ${approveInstantModal.itemName}: ${fmtMoney(finalAmount)}\n\n· 카카오뱅크 3333-34-5220544\n  (예금주: 예케이케이컬처센터)\n입금 부탁드립니다. 감사합니다.`;
                     setApproveInstantMsg(msg);
+                  } catch (err) {
+                    setApproveInstantErr(err?.message || "승인 처리에 실패했습니다. 다시 시도해주세요.");
+                    setTimeout(() => setApproveInstantErr(""), 4000);
                   } finally {
                     setApproveInstantSaving(false);
                   }
