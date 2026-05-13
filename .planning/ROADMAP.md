@@ -111,6 +111,24 @@ Plans:
 **Plans**: TBD
 **UI hint**: yes
 
+### Phase SHOP-01: 즉시 청구 & 상품 관리 시스템 (Instant Charge & Shop)
+**Goal**: 강사가 한복·악세사리·악기가방 등을 판매 시 즉시 청구를 요청하고, 관리자가 승인 후 알림 메시지를 클립보드 복사로 발송하며, 입금 확인 후 수납 레코드가 자동 생성된다. 상품 카탈로그는 AdminTools에서 관리한다.
+**Depends on**: Nothing (standalone feature)
+**Requirements**: SHOP-01, SHOP-02, SHOP-03, SHOP-04, SHOP-05, SHOP-06, SHOP-07
+**Success Criteria** (what must be TRUE):
+  1. 강사가 수납 관리 탭에서 학생 카드의 "즉시 청구 요청" 버튼으로 상품을 선택·금액 입력·재고여부 선택 후 요청을 전송할 수 있다
+  2. 관리자가 즉시청구 승인 모달에서 금액을 수정하고 승인 시 알림 메시지가 자동 생성되어 클립보드 복사 버튼이 나타난다
+  3. 관리자가 "입금 완료" 처리 시 `rye-instant-charges` 문서의 `status`가 `"paid"`로 변경되고 `rye-payments`에 독립 레코드가 생성된다
+  4. AdminTools "상품관리" 탭에서 카테고리(의상/공연복, 악세사리, 악기 가방, 기타)와 상품(이름·기본가격)을 추가·수정·삭제할 수 있다
+  5. 대시보드에 즉시청구 대기 건수 배지가 표시되어 관리자/매니저가 수납 관리 탭으로 이동할 수 있다
+**Plans**: 5 plans
+Plans:
+- [ ] SHOP-01-01-PLAN.md — Firebase CRUD 함수 + App.jsx 상태·리스너 (SHOP-01, SHOP-02)
+- [ ] SHOP-01-02-PLAN.md — AdminTools 상품관리 탭 (ShopView) (SHOP-06)
+- [ ] SHOP-01-03-PLAN.md — 강사 즉시청구 요청 모달 + PaymentsView 버튼 (SHOP-03)
+- [ ] SHOP-01-04-PLAN.md — 관리자 승인/거절 모달 + 알림 메시지 복사 (SHOP-04)
+- [ ] SHOP-01-05-PLAN.md — 입금 확인 → payment 레코드 + 대시보드 배지 (SHOP-05, SHOP-07)
+
 ## Progress
 
 | Phase | Plans Complete | Status | Completed |
@@ -121,6 +139,7 @@ Plans:
 | 4. 알림톡 통합 | 0/TBD | Not started | - |
 | 5. 수납 자동화 | 0/4 | Planned | - |
 | 6. 분석 대시보드 고도화 | 0/TBD | Not started | - |
+| SHOP-01. 즉시 청구 & 상품 관리 | 0/5 | Planned | - |
 
 ---
 
@@ -166,5 +185,12 @@ Plans:
 | ANL-02 | Phase 6 | Pending |
 | ANL-03 | Phase 6 | Pending |
 | ANL-04 | Phase 6 | Pending |
+| SHOP-01 | SHOP-01 | Planned |
+| SHOP-02 | SHOP-01 | Planned |
+| SHOP-03 | SHOP-01 | Planned |
+| SHOP-04 | SHOP-01 | Planned |
+| SHOP-05 | SHOP-01 | Planned |
+| SHOP-06 | SHOP-01 | Planned |
+| SHOP-07 | SHOP-01 | Planned |
 
-**Total: 38/38 requirements mapped.**
+**Total: 45/45 requirements mapped.**
