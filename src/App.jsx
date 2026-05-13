@@ -1,5 +1,5 @@
 import { useState, useEffect, lazy, Suspense } from "react";
-import { db, auth, doc, setDoc, onSnapshot, runTransaction, collection, addInstantCharge, updateInstantCharge, firebaseSignIn, firebaseSignInAnon, firebaseLogout, onAuthStateChanged } from "./firebase.js";
+import { db, auth, doc, setDoc, onSnapshot, runTransaction, collection, getDoc, addInstantCharge, updateInstantCharge, firebaseSignIn, firebaseSignInAnon, firebaseLogout, onAuthStateChanged } from "./firebase.js";
 import { DEFAULT_CATEGORIES, DAYS, ADMIN, TODAY_STR, THIS_MONTH, TODAY_DAY, ATT_STATUS, PAY_METHODS, INST_TYPES, IC, CSS } from "./constants.jsx";
 import { calcAge, isMinor, getCat, fmtDate, fmtDateShort, fmtDateTime, uid, fmtPhone, fmtMoney, allLessonInsts, allLessonDays, canManageAll, monthLabel, generateStudentCode, getBirthPassword, getPhoneInitialPassword, instTypeLabel, expandInstitutionsToMembers, getContractDaysLeft, formatLessonNoteSummary, calcLessonFeeWithFallback } from "./utils.js";
 import { InstitutionFormModal, InstitutionDetailModal, InstitutionsView } from "./components/institution/Institutions.jsx";
@@ -242,6 +242,7 @@ function MainApp() {
   const [shopItems, setShopItems] = useState({ categories: ["의상/공연복", "악세사리", "악기 가방", "기타"], items: [] });
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
+  const [listenersKey, setListenersKey] = useState(0);
   const [modal, setModal] = useState(null);
   const [selected, setSelected] = useState(null);
   const [filter, setFilter] = useState("전체");
@@ -318,7 +319,10 @@ function MainApp() {
   }, [user?.id, loading, teachers.length]);
 
   // ── Initial load + real-time sync from Firestore (onSnapshot only) ──
+  // listenersKey가 바뀌면 (로그인 성공 후) 리스너를 이메일 인증 상태로 재시작
   useEffect(() => {
+    setLoading(true);
+    setLoadError(null);
     const unsubscribes = [];
     const received = {};
     let seeded = false;
@@ -469,7 +473,7 @@ function MainApp() {
       clearTimeout(setupFallback);
       unsubscribes.forEach(unsub => unsub());
     };
-  }, []);
+  }, [listenersKey]);
 
   const showToast = (msg, isError = false) => { setToast({msg, isError}); setTimeout(() => setToast(null), 2400); };
   const saveTeachers = async u => { setTeachers(u); try { await sSet("rye-teachers", u); } catch { showToast("저장에 실패했습니다. 네트워크를 확인해주세요.", true); } };
@@ -968,24 +972,35 @@ function MainApp() {
   };
 
   const login = async (username, password) => {
-    // Step 1: Verify credentials against local data
-    let appUser = null;
+    // Admin 계정: Firebase Auth 먼저, 리스너 재시작
     if (username === ADMIN.username && password === ADMIN.password) {
-      appUser = ADMIN;
-    } else {
-      if (!teachers.length) return "loading";
-      const t = teachers.find(t => t.username === username && t.password === password);
-      if (t) appUser = { ...t, role: t.role || "teacher" };
+      await firebaseSignIn(username, password).catch(() => {});
+      setUserPersist(ADMIN);
+      setListenersKey(k => k + 1);
+      return true;
     }
-    if (!appUser) return false;
 
-    // Step 2: Sign in with Firebase Auth (creates account on first login)
+    // 강사 계정: Firebase Auth 먼저 (teachers 상태와 무관)
+    // 이렇게 해야 anonymous→email 전환 후 리스너가 올바른 권한으로 재시작됨
     const fbUser = await firebaseSignIn(username, password);
-    if (!fbUser) {
-      console.warn("Firebase Auth failed, proceeding with local auth only");
+    if (!fbUser) return false;
+
+    // 이메일 인증 완료 후 teachers 직접 조회 (state가 아직 [] 일 수 있음)
+    let teachersArr = teachers;
+    if (!teachersArr.length) {
+      try {
+        const snap = await getDoc(doc(db, COLLECTION, "rye-teachers"));
+        teachersArr = snap.exists() ? (snap.data().value || []) : [];
+      } catch {
+        return false;
+      }
     }
 
-    setUserPersist(appUser);
+    const t = teachersArr.find(t => t.username === username && t.password === password);
+    if (!t) return false;
+
+    setUserPersist({ ...t, role: t.role || "teacher" });
+    setListenersKey(k => k + 1);
     return true;
   };
 

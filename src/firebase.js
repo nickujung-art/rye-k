@@ -1,5 +1,5 @@
 import { initializeApp } from "firebase/app";
-import { getFirestore, doc, setDoc, onSnapshot, runTransaction, collection, addDoc, updateDoc } from "firebase/firestore";
+import { getFirestore, doc, setDoc, onSnapshot, runTransaction, collection, addDoc, updateDoc, getDoc } from "firebase/firestore";
 import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signInAnonymously, signOut, onAuthStateChanged, updatePassword } from "firebase/auth";
 
 const firebaseConfig = {
@@ -98,4 +98,4 @@ export async function getPortalIdToken() {
   }
 }
 
-export { db, auth, doc, setDoc, onSnapshot, runTransaction, collection, firebaseSignIn, firebaseSignInAnon, firebaseLogout, onAuthStateChanged };
+export { db, auth, doc, setDoc, onSnapshot, runTransaction, collection, getDoc, firebaseSignIn, firebaseSignInAnon, firebaseLogout, onAuthStateChanged };
