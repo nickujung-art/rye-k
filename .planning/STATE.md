@@ -57,6 +57,9 @@ Recent decisions affecting current work:
 - [05-05] PII 최소화: id/name/status 3개 필드만 KV 저장
 - [SHOP-01-02] ShopView 상품 삭제 즉시 처리 (window.confirm 미사용) — dirty 플래그로 저장 전 되돌리기 가능
 - [SHOP-01-02] 카테고리별 인라인 추가 폼 — newItem.category 포커스 시 해당 카테고리로 설정
+- [SHOP-01-04] 즉시청구 탭 canManageAll 조건 적용 (관리자/매니저 전용)
+- [SHOP-01-04] 알림 메시지는 승인 모달 내 + approved 카드에서 재복사 가능 (이중 진입점)
+- [SHOP-01-04] 거절 확인은 인라인 UI (별도 모달 없음), approveInstantCopied에 charge.id/'modal' 구분
 
 ### Pending Todos
 
@@ -85,7 +88,7 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-05-14
-Stopped at: SHOP-01-instant-charge-shop SHOP-01-03 완료 (PaymentsView 즉시청구 요청 모달 + App.jsx props 연결, 커밋 a95b00b). 강사 즉시청구 요청 UI 완성.
+Stopped at: SHOP-01-instant-charge-shop SHOP-01-04 완료 (PaymentsView 즉시청구 탭 + 관리자 승인/거절 모달 + 알림 메시지 복사, 커밋 8eb806f, 656eeb3). 관리자 즉시청구 승인 UI 완성.
 Resume file: None
 
 ## Plans Completed This Phase (SHOP-01-instant-charge-shop)
@@ -95,6 +98,7 @@ Resume file: None
 | SHOP-01-01 | 1 | SHOP-01, SHOP-02 | src/firebase.js, src/App.jsx |
 | SHOP-01-02 | 1 | SHOP-06 | src/constants.jsx, src/components/admin/AdminTools.jsx, src/App.jsx, src/components/layout/NavLayout.jsx |
 | SHOP-01-03 | 2 | SHOP-03 | src/components/payment/PaymentsView.jsx, src/App.jsx |
+| SHOP-01-04 | 3 | SHOP-04 | src/components/payment/PaymentsView.jsx, src/App.jsx |
 
 ## Plans Completed Previous Phase (FS-fee-split)
 
