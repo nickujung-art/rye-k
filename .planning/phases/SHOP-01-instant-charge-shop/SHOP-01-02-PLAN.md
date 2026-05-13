@@ -7,6 +7,7 @@ depends_on: []
 files_modified:
   - src/components/admin/AdminTools.jsx
   - src/App.jsx
+  - src/components/layout/NavLayout.jsx
 autonomous: true
 requirements:
   - SHOP-06
@@ -328,6 +329,69 @@ shop 관련 CSS 클래스:
   <done>ShopView 컴포넌트가 AdminTools.jsx에 구현되고, App.jsx에서 view === "shop" 시 렌더되며, 상품 CRUD(카테고리 추가/삭제, 상품 추가/삭제/활성화토글)가 동작하고 저장 시 rye-shop-items에 저장된다</done>
 </task>
 
+
+<task type="auto">
+  <name>Task 3: NavLayout.jsx에 shop 네비게이션 항목 추가 (admin only)</name>
+  <read_first>
+    - src/components/layout/NavLayout.jsx lines 71–91 (Sidebar nav 배열 — aiSettings 항목 위치 확인)
+    - src/components/layout/NavLayout.jsx lines 150–165 (MoreMenu items 배열 — aiSettings 항목 위치 확인)
+    - src/components/layout/NavLayout.jsx lines 17–26 (BottomNav more-active view 목록)
+  </read_first>
+  <files>src/components/layout/NavLayout.jsx</files>
+  <action>
+    **1. Sidebar nav 배열 수정** (lines 85–87): aiSettings 항목 바로 다음에 shop 항목을 추가한다:
+
+    기존:
+    ```js
+    ...(user.role === "admin" ? [{ id: "aiSettings", label: "AI 설정", icon: "🤖" }] : []),
+    ```
+
+    변경 후 (줄 바로 다음에 삽입):
+    ```js
+    ...(user.role === "admin" ? [{ id: "aiSettings", label: "AI 설정", icon: "🤖" }] : []),
+    ...(user.role === "admin" ? [{ id: "shop", label: "상품 관리", icon: "🛍" }] : []),
+    ```
+
+    **2. MoreMenu items 배열 수정** (lines 159–162): aiSettings 항목 바로 다음에 shop 항목을 추가한다:
+
+    기존:
+    ```js
+    ...(user.role === "admin" ? [{ id: "aiSettings", label: "AI 설정", desc: "AI 기능 켜기·끄기 · 안전 모드", icon: "🤖" }] : []),
+    ```
+
+    변경 후:
+    ```js
+    ...(user.role === "admin" ? [{ id: "aiSettings", label: "AI 설정", desc: "AI 기능 켜기·끄기 · 안전 모드", icon: "🤖" }] : []),
+    ...(user.role === "admin" ? [{ id: "shop", label: "상품 관리", desc: "즉시청구 상품 카탈로그", icon: "🛍" }] : []),
+    ```
+
+    **3. BottomNav more-active view 목록 수정** (line 18): "aiSettings" 다음에 "shop"을 추가한다.
+
+    기존 배열 끝 부분:
+    ```js
+    "aiSettings"].includes(view)
+    ```
+
+    변경 후:
+    ```js
+    "aiSettings","shop"].includes(view)
+    ```
+
+    주의:
+    - Sidebar, MoreMenu 모두 user.role === "admin" 조건 사용 (CategoriesView, aiSettings와 동일 패턴).
+    - BottomNav more-active 목록에 shop 추가 — 관리자가 shop 뷰에 있을 때 "더보기" 탭이 활성화됨.
+    - 아이콘은 "🛍" 사용.
+  </action>
+  <verify>
+    <automated>cd C:\Users\GIGABYTE\Coding\rye-k && npm run build 2>&1 | tail -20</automated>
+  </verify>
+  <acceptance_criteria>
+    - Sidebar에 shop 항목: grep -c "id: .shop." src/components/layout/NavLayout.jsx → 최소 2 (Sidebar + MoreMenu)
+    - NavLayout.jsx에 "shop" 문자열: grep -c "shop" src/components/layout/NavLayout.jsx → 최소 3
+    - npm run build 오류 없이 통과
+  </acceptance_criteria>
+  <done>관리자가 Sidebar(데스크톱) 또는 MoreMenu(모바일)에서 "상품 관리" 항목을 클릭하여 ShopView로 이동할 수 있고, shop 뷰에 있을 때 BottomNav "더보기" 탭이 활성화된다</done>
+</task>
 </tasks>
 
 <threat_model>
@@ -355,6 +419,8 @@ grep -c "ShopView" src/App.jsx
 # → 2 이상
 grep -c "shop-chips" src/constants.jsx
 # → 1
+grep -c "shop" src/components/layout/NavLayout.jsx
+# → 3 이상 (Sidebar, MoreMenu, BottomNav)
 ```
 </verification>
 
@@ -362,6 +428,7 @@ grep -c "shop-chips" src/constants.jsx
 - ShopView가 AdminTools.jsx에 export됨
 - App.jsx: ShopView import, topTitle에 shop 항목, view === "shop" 렌더 블록
 - constants.jsx: shop 관련 CSS 클래스 6개 추가
+- NavLayout.jsx: Sidebar + MoreMenu에 admin-only "shop" 항목, BottomNav more-active 배열에 "shop" 추가
 - npm run build 오류 없이 통과
 </success_criteria>
 

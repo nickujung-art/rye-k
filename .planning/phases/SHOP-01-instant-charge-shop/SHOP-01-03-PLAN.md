@@ -171,6 +171,14 @@ Data model (CONTEXT.md 확정):
   </read_first>
   <files>src/components/payment/PaymentsView.jsx</files>
   <action>
+    **0. fmtMoney import 추가:**
+
+    파일 상단 import 영역에 `fmtMoney`를 추가한다:
+    ```js
+    import { ..., fmtMoney } from "../../utils.js";
+    ```
+    (기존 utils.js import 줄에 fmtMoney를 추가하거나, import 줄이 없으면 새 줄로 추가)
+
     **1. props에 신규 파라미터 추가:**
     
     기존 `feePresets = {}` 뒤에 추가:
@@ -271,7 +279,7 @@ Data model (CONTEXT.md 확정):
                           amountPending: item.defaultPrice <= 0,
                         }))}>
                         <div style={{fontWeight:600,marginBottom:2}}>{item.name}</div>
-                        <div style={{color:"var(--ink-60)",fontSize:11}}>{item.defaultPrice > 0 ? `${item.defaultPrice.toLocaleString()}원` : "가격 미정"}</div>
+                        <div style={{color:"var(--ink-60)",fontSize:11}}>{item.defaultPrice > 0 ? fmtMoney(item.defaultPrice) : "가격 미정"}</div>
                       </button>
                     ))}
                   </div>
@@ -394,8 +402,10 @@ Data model (CONTEXT.md 확정):
   <action>
     1. **firebase.js import 수정** (line 2): `addInstantCharge`를 named import로 추가한다:
        ```js
-       import { db, auth, doc, setDoc, onSnapshot, runTransaction, collection, addInstantCharge, firebaseSignIn, firebaseSignInAnon, firebaseLogout, onAuthStateChanged } from "./firebase.js";
+       import { db, auth, doc, setDoc, onSnapshot, runTransaction, collection, addInstantCharge, updateInstantCharge, firebaseSignIn, firebaseSignInAnon, firebaseLogout, onAuthStateChanged } from "./firebase.js";
        ```
+
+       주의: SHOP-01-04도 updateInstantCharge를 사용하므로 이 import가 최종 완성본이다. SHOP-01-04의 Task 2는 import 줄을 건드리지 않는다.
 
     2. **PaymentsView 렌더 블록 수정** — `feePresets={feePresets}` 다음에 세 props를 추가한다:
        ```jsx

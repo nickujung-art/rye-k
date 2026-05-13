@@ -68,7 +68,7 @@ From src/components/payment/PaymentsView.jsx (approved 카드 영역 — SHOP-01
 {isApproved && (
   <div style={{marginTop:8,padding:"8px 10px",background:"var(--blue-lt,...)",borderRadius:8,fontSize:12}}>
     <div style={{marginBottom:6,color:"var(--ink-60)"}}>
-      승인 금액: <strong>{(charge.amount||0).toLocaleString()}원</strong>
+      승인 금액: <strong>{fmtMoney(charge.amount||0)}</strong>
     </div>
     <button className="btn btn-sm btn-secondary" style={{width:"100%"}} onClick={...}>
       알림 메시지 복사
@@ -217,6 +217,8 @@ D-09 결정: status: "paid" 변경과 동시에 rye-payments에 type: "instant" 
        }
        ```
 
+    **0. fmtMoney import 확인:** PaymentsView.jsx에 fmtMoney import가 SHOP-01-03에서 이미 추가되어 있어야 한다. App.jsx의 경우 addLog에서 사용하므로 별도 import 불필요.
+
     **App.jsx 수정:**
 
     1. **Dashboard 렌더 블록** — `instantCharges={instantCharges}` prop은 SHOP-01-01에서 이미 추가됨. 확인 후 없으면 추가.
@@ -251,7 +253,7 @@ D-09 결정: status: "paid" 변경과 동시에 rye-payments에 type: "instant" 
          const updatedPayments = [...payments, payRecord];
          await savePayments(updatedPayments);
 
-         addLog(`즉시청구 입금 확인 — ${student?.name || "알 수 없음"} ${(charge.amount||0).toLocaleString()}원`);
+         addLog(`즉시청구 입금 확인 — ${student?.name || "알 수 없음"} ${fmtMoney(charge.amount||0)}`);
          showToast("입금 확인 완료. 수납 레코드가 생성되었습니다.");
        }}
        ```
