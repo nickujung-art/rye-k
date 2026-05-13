@@ -1,5 +1,5 @@
 import { useState, useEffect, lazy, Suspense } from "react";
-import { db, auth, doc, setDoc, onSnapshot, runTransaction, collection, firebaseSignIn, firebaseSignInAnon, firebaseLogout, onAuthStateChanged } from "./firebase.js";
+import { db, auth, doc, setDoc, onSnapshot, runTransaction, collection, addInstantCharge, updateInstantCharge, firebaseSignIn, firebaseSignInAnon, firebaseLogout, onAuthStateChanged } from "./firebase.js";
 import { DEFAULT_CATEGORIES, DAYS, ADMIN, TODAY_STR, THIS_MONTH, TODAY_DAY, ATT_STATUS, PAY_METHODS, INST_TYPES, IC, CSS } from "./constants.jsx";
 import { calcAge, isMinor, getCat, fmtDate, fmtDateShort, fmtDateTime, uid, fmtPhone, fmtMoney, allLessonInsts, allLessonDays, canManageAll, monthLabel, generateStudentCode, getBirthPassword, getPhoneInitialPassword, instTypeLabel, expandInstitutionsToMembers, getContractDaysLeft, formatLessonNoteSummary, calcLessonFeeWithFallback } from "./utils.js";
 import { InstitutionFormModal, InstitutionDetailModal, InstitutionsView } from "./components/institution/Institutions.jsx";
@@ -1064,6 +1064,13 @@ function MainApp() {
               initFilterUnpaid={paymentsInitFilter}
               onMountFilterConsumed={() => setPaymentsInitFilter(false)}
               feePresets={feePresets}
+              instantCharges={instantCharges}
+              shopItems={shopItems}
+              onAddInstantCharge={async (data) => {
+                await addInstantCharge(data);
+                addLog(`${data.itemCategory} — ${data.itemName} 즉시청구 요청`);
+                showToast("즉시 청구 요청이 전송되었습니다.");
+              }}
             />}
             {view === "teachers" && canManageAll(user.role) && <TeachersView teachers={teachers} students={students} categories={categories} onAdd={() => { setSelected(null); setModal("tForm"); }} onSelect={t => { setSelected(t); setModal("tDetail"); }} attendance={attendance} />}
             {view === "institutions" && <InstitutionsView institutions={institutions} teachers={teachers} currentUser={user} onAdd={() => { setSelected(null); setModal("instForm"); }} onSelect={i => { setSelected(i); setModal("instDetail"); }} />}
