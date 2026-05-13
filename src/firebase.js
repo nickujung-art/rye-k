@@ -1,5 +1,5 @@
 import { initializeApp } from "firebase/app";
-import { getFirestore, doc, setDoc, onSnapshot, runTransaction } from "firebase/firestore";
+import { getFirestore, doc, setDoc, onSnapshot, runTransaction, collection, addDoc, updateDoc } from "firebase/firestore";
 import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signInAnonymously, signOut, onAuthStateChanged, updatePassword } from "firebase/auth";
 
 const firebaseConfig = {
@@ -76,6 +76,18 @@ async function firebaseLogout() {
   try { await signOut(auth); } catch (e) { console.error("Sign out error:", e); }
 }
 
+// ── rye-instant-charges 독립 컬렉션 CRUD ─────────────────────────────────
+export async function addInstantCharge(data) {
+  return addDoc(collection(db, "rye-instant-charges"), {
+    ...data,
+    createdAt: Date.now(),
+  });
+}
+export async function updateInstantCharge(id, data) {
+  if (!id) throw new Error("updateInstantCharge: id 없음");
+  return updateDoc(doc(db, "rye-instant-charges", id), { ...data, updatedAt: Date.now() });
+}
+
 export async function getPortalIdToken() {
   try {
     const user = auth.currentUser;
@@ -86,4 +98,4 @@ export async function getPortalIdToken() {
   }
 }
 
-export { db, auth, doc, setDoc, onSnapshot, runTransaction, firebaseSignIn, firebaseSignInAnon, firebaseLogout, onAuthStateChanged };
+export { db, auth, doc, setDoc, onSnapshot, runTransaction, collection, firebaseSignIn, firebaseSignInAnon, firebaseLogout, onAuthStateChanged };
