@@ -55,6 +55,8 @@ Recent decisions affecting current work:
 - [05-05] sync-students 역할 체크는 body.role로 클라이언트가 전달 (verifyToken에 role 클레임 없음)
 - [05-05] KV TTL 86400s (24h) — kakaobank-webhook pending 레코드 TTL과 동일
 - [05-05] PII 최소화: id/name/status 3개 필드만 KV 저장
+- [SHOP-01-02] ShopView 상품 삭제 즉시 처리 (window.confirm 미사용) — dirty 플래그로 저장 전 되돌리기 가능
+- [SHOP-01-02] 카테고리별 인라인 추가 폼 — newItem.category 포커스 시 해당 카테고리로 설정
 
 ### Pending Todos
 
@@ -83,7 +85,7 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-05-14
-Stopped at: SHOP-01-instant-charge-shop SHOP-01-01 완료 (firebase.js CRUD + App.jsx 상태·리스너, 커밋 058387a). Wave 2 UI 플랜(SHOP-01-02~05) 의존 데이터 레이어 구축 완료.
+Stopped at: SHOP-01-instant-charge-shop SHOP-01-02 완료 (ShopView + NavLayout 연결, 커밋 dc05bf1). 상품 카탈로그 관리 UI 완성.
 Resume file: None
 
 ## Plans Completed This Phase (SHOP-01-instant-charge-shop)
@@ -91,6 +93,7 @@ Resume file: None
 | Plan | Wave | Requirements | Files |
 |------|------|-------------|-------|
 | SHOP-01-01 | 1 | SHOP-01, SHOP-02 | src/firebase.js, src/App.jsx |
+| SHOP-01-02 | 1 | SHOP-06 | src/constants.jsx, src/components/admin/AdminTools.jsx, src/App.jsx, src/components/layout/NavLayout.jsx |
 
 ## Plans Completed Previous Phase (FS-fee-split)
 

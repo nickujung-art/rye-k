@@ -124,7 +124,7 @@ Plans:
 **Plans**: 5 plans
 Plans:
 - [x] SHOP-01-01-PLAN.md — Firebase CRUD 함수 + App.jsx 상태·리스너 (SHOP-01, SHOP-02) ✓ 2026-05-14
-- [ ] SHOP-01-02-PLAN.md — AdminTools 상품관리 탭 (ShopView) (SHOP-06)
+- [x] SHOP-01-02-PLAN.md — AdminTools 상품관리 탭 (ShopView) (SHOP-06) ✓ 2026-05-14
 - [ ] SHOP-01-03-PLAN.md — 강사 즉시청구 요청 모달 + PaymentsView 버튼 (SHOP-03)
 - [ ] SHOP-01-04-PLAN.md — 관리자 승인/거절 모달 + 알림 메시지 복사 (SHOP-04)
 - [ ] SHOP-01-05-PLAN.md — 입금 확인 → payment 레코드 + 대시보드 배지 (SHOP-05, SHOP-07)
@@ -139,7 +139,7 @@ Plans:
 | 4. 알림톡 통합 | 0/TBD | Not started | - |
 | 5. 수납 자동화 | 0/4 | Planned | - |
 | 6. 분석 대시보드 고도화 | 0/TBD | Not started | - |
-| SHOP-01. 즉시 청구 & 상품 관리 | 1/5 | In Progress | - |
+| SHOP-01. 즉시 청구 & 상품 관리 | 2/5 | In Progress | - |
 
 ---
 
