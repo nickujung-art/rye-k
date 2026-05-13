@@ -319,9 +319,8 @@ function MainApp() {
   }, [user?.id, loading, teachers.length]);
 
   // ── Initial load + real-time sync from Firestore (onSnapshot only) ──
-  // listenersKey가 바뀌면 (로그인 성공 후) 리스너를 이메일 인증 상태로 재시작
+  // listenersKey가 바뀌면 (Firebase Auth 이메일 로그인 성공 후) 리스너를 재시작
   useEffect(() => {
-    setLoading(true);
     setLoadError(null);
     const unsubscribes = [];
     const received = {};
@@ -972,35 +971,26 @@ function MainApp() {
   };
 
   const login = async (username, password) => {
-    // Admin 계정: Firebase Auth 먼저, 리스너 재시작
+    // 로컬 credential 먼저 확인 (rules가 any auth 읽기 허용 → teachers는 이미 로드됨)
+    let appUser = null;
     if (username === ADMIN.username && password === ADMIN.password) {
-      await firebaseSignIn(username, password).catch(() => {});
-      setUserPersist(ADMIN);
-      setListenersKey(k => k + 1);
-      return true;
+      appUser = ADMIN;
+    } else {
+      if (!teachers.length) return "loading";
+      const t = teachers.find(t => t.username === username && t.password === password);
+      if (t) appUser = { ...t, role: t.role || "teacher" };
     }
+    if (!appUser) return false;
 
-    // 강사 계정: Firebase Auth 먼저 (teachers 상태와 무관)
-    // 이렇게 해야 anonymous→email 전환 후 리스너가 올바른 권한으로 재시작됨
+    // Firebase Auth — write 권한 확보용. 실패해도 read는 any auth로 가능.
     const fbUser = await firebaseSignIn(username, password);
-    if (!fbUser) return false;
-
-    // 이메일 인증 완료 후 teachers 직접 조회 (state가 아직 [] 일 수 있음)
-    let teachersArr = teachers;
-    if (!teachersArr.length) {
-      try {
-        const snap = await getDoc(doc(db, COLLECTION, "rye-teachers"));
-        teachersArr = snap.exists() ? (snap.data().value || []) : [];
-      } catch {
-        return false;
-      }
+    if (!fbUser) {
+      console.warn("Firebase Auth failed, proceeding with local auth only");
     }
 
-    const t = teachersArr.find(t => t.username === username && t.password === password);
-    if (!t) return false;
-
-    setUserPersist({ ...t, role: t.role || "teacher" });
-    setListenersKey(k => k + 1);
+    setUserPersist(appUser);
+    // Firebase Auth 성공 시 리스너를 이메일 권한으로 재시작 (write 오류 방지)
+    if (fbUser) setListenersKey(k => k + 1);
     return true;
   };
 

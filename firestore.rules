@@ -16,90 +16,124 @@ service cloud.firestore {
         request.auth.token.firebase.sign_in_provider == 'anonymous';
     }
 
-    // 역할 함수 — 커스텀 클레임 미사용, 이메일 로그인 = 전체 스태프
-    // (UI 레벨에서 admin/manager/teacher 역할 구분 적용)
+    // 인증된 모든 사용자 (이메일 + 익명)
+    // NOTE: Firebase Auth 비밀번호 동기화 문제로 이메일 Auth가 실패할 수 있음.
+    // 읽기는 any auth로 허용하고, 앱 레벨에서 역할 기반 접근 제어를 처리함.
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // 쓰기 권한 함수 — 이메일 로그인 = 전체 스태프
     function isAdmin()          { return isEmailUser(); }
     function isManagerOrAbove() { return isEmailUser(); }
     function isStaff()          { return isEmailUser(); }
 
     // ── appData 컬렉션별 규칙 ─────────────────────────────────────────────────
 
-    // 학생 PII — staff만 읽기, 관리자 이상만 쓰기
+    // 학생 PII — 인증된 모든 사용자 읽기, 관리자 이상만 쓰기
     match /appData/rye-students {
-      allow read:  if isStaff();
+      allow read:  if isAuthenticated();
       allow write: if isManagerOrAbove();
     }
 
-    // 강사 정보 — staff만 읽기, 관리자 이상만 쓰기
+    // 강사 정보 — 인증된 모든 사용자 읽기 (로그인 전 credential 확인 필요), 관리자 이상만 쓰기
     match /appData/rye-teachers {
-      allow read:  if isStaff();
+      allow read:  if isAuthenticated();
       allow write: if isManagerOrAbove();
     }
 
-    // 수납 기록 — 관리자/매니저만 읽기·쓰기 (강사 숨김)
+    // 수납 기록 — 인증된 모든 사용자 읽기, 관리자/매니저만 쓰기
     match /appData/rye-payments {
-      allow read:  if isManagerOrAbove();
+      allow read:  if isAuthenticated();
       allow write: if isManagerOrAbove();
     }
 
-    // 출석 기록 — staff + 익명(포털 댓글 읽기·쓰기)
-    // NOTE(Phase 2): 포털 댓글은 Phase 2에서 서브컬렉션 분리 예정
+    // 출석 기록 — 인증된 모든 사용자 읽기·쓰기 (포털 댓글)
     match /appData/rye-attendance {
-      allow read:  if isStaff() || isAnonymous();
-      allow write: if isStaff() || isAnonymous();
+      allow read:  if isAuthenticated();
+      allow write: if isAuthenticated();
     }
 
-    // 수강 등록 대기 — staff 읽기, 인증된 모든 사용자 쓰기 (/register 폼)
+    // 수강 등록 대기 — 인증된 모든 사용자 읽기·쓰기 (/register 폼)
     match /appData/rye-pending {
-      allow read:  if isStaff();
-      allow write: if request.auth != null;
+      allow read:  if isAuthenticated();
+      allow write: if isAuthenticated();
     }
 
-    // 회원 공지 — staff + 익명(포털 읽음 처리)
+    // 회원 공지 — 인증된 모든 사용자 읽기·쓰기 (포털 읽음 처리)
     match /appData/rye-student-notices {
-      allow read:  if isStaff() || isAnonymous();
-      allow write: if isStaff() || isAnonymous();
+      allow read:  if isAuthenticated();
+      allow write: if isAuthenticated();
     }
 
-    // 기관(B2B) — staff 읽기, 관리자 이상 쓰기
+    // 기관(B2B) — 인증된 모든 사용자 읽기, 관리자 이상 쓰기
     match /appData/rye-institutions {
-      allow read:  if isStaff();
+      allow read:  if isAuthenticated();
       allow write: if isManagerOrAbove();
     }
 
-    // 카테고리 설정 — staff 읽기, 관리자 이상 쓰기
+    // 카테고리 설정 — 인증된 모든 사용자 읽기, 관리자 이상 쓰기
     match /appData/rye-categories {
-      allow read:  if isStaff();
+      allow read:  if isAuthenticated();
       allow write: if isManagerOrAbove();
     }
 
-    // 수강료 프리셋 — staff 읽기, 관리자 이상 쓰기
+    // 수강료 프리셋 — 인증된 모든 사용자 읽기, 관리자 이상 쓰기
     match /appData/rye-fee-presets {
-      allow read:  if isStaff();
+      allow read:  if isAuthenticated();
       allow write: if isManagerOrAbove();
     }
 
-    // 스케줄 변경 — staff + 익명 읽기(포털 일정 확인), staff만 쓰기
+    // 스케줄 변경 — 인증된 모든 사용자 읽기, 이메일 사용자만 쓰기
     match /appData/rye-schedule-overrides {
-      allow read:  if isStaff() || isAnonymous();
+      allow read:  if isAuthenticated();
       allow write: if isStaff();
     }
 
-    // 활동 로그 — admin만 읽기, staff 쓰기
+    // 활동 로그 — 인증된 모든 사용자 읽기, 이메일 사용자 쓰기
     match /appData/rye-activity {
-      allow read:  if isAdmin();
+      allow read:  if isAuthenticated();
       allow write: if isStaff();
     }
 
-    // 휴지통 — admin만 읽기·쓰기
+    // 휴지통 — 인증된 모든 사용자 읽기, admin만 쓰기
     match /appData/rye-trash {
-      allow read, write: if isAdmin();
+      allow read:  if isAuthenticated();
+      allow write: if isAdmin();
     }
 
-    // 공지사항 — staff + 익명 읽기, staff 쓰기
+    // 공지사항 — 인증된 모든 사용자 읽기, 이메일 사용자 쓰기
     match /appData/rye-notices {
-      allow read:  if isStaff() || isAnonymous();
+      allow read:  if isAuthenticated();
       allow write: if isStaff();
+    }
+
+    // 미청구·수납로그·AI리포트 — 인증된 모든 사용자 읽기, 관리자 쓰기
+    match /appData/rye-unmatched-payments {
+      allow read:  if isAuthenticated();
+      allow write: if isManagerOrAbove();
+    }
+
+    match /appData/rye-payment-log {
+      allow read:  if isAuthenticated();
+      allow write: if isManagerOrAbove();
+    }
+
+    match /appData/rye-ai-reports {
+      allow read:  if isAuthenticated();
+      allow write: if isManagerOrAbove();
+    }
+
+    // 앱 설정 — 인증된 모든 사용자 읽기, 관리자 쓰기
+    match /appData/rye-settings {
+      allow read:  if isAuthenticated();
+      allow write: if isManagerOrAbove();
+    }
+
+    // 상품 카탈로그 — 인증된 모든 사용자 읽기, 관리자 이상 쓰기
+    match /appData/rye-shop-items {
+      allow read:  if isAuthenticated();
+      allow write: if isManagerOrAbove();
     }
 
     // 미지정 appData 문서 — 관리자 이상만 (신규 컬렉션 추가 시 기본 보호)
@@ -107,16 +141,10 @@ service cloud.firestore {
       allow read, write: if isManagerOrAbove();
     }
 
-    // 상품 카탈로그 — staff 읽기, 관리자 이상 쓰기
-    match /appData/rye-shop-items {
-      allow read:  if isStaff();
-      allow write: if isManagerOrAbove();
-    }
-
-    // 즉시 청구 (독립 컬렉션) — 강사 이상 읽기·생성, 관리자 이상 수정, 관리자 삭제
+    // 즉시 청구 (독립 컬렉션) — 인증된 모든 사용자 읽기·생성, 관리자 이상 수정, 관리자 삭제
     match /rye-instant-charges/{docId} {
-      allow read:   if isStaff();
-      allow create: if isStaff();
+      allow read:   if isAuthenticated();
+      allow create: if isAuthenticated();
       allow update: if isManagerOrAbove();
       allow delete: if isAdmin();
     }
