@@ -16,6 +16,9 @@ export default function PaymentsView({
   initFilterUnpaid = false,
   onMountFilterConsumed,
   feePresets = {},
+  instantCharges = [],
+  shopItems = { categories: ["의상/공연복","악세사리","악기 가방","기타"], items: [] },
+  onAddInstantCharge,
 }) {
   const [month, setMonth] = useState(THIS_MONTH);
   const [editingId, setEditingId] = useState(null);
@@ -33,6 +36,17 @@ export default function PaymentsView({
   const [alimtalkModal, setAlimtalkModal] = useState(null); // null | "monthly_fee" | "unpaid_reminder"
   const [payChargeStudent, setPayChargeStudent] = useState(null);
   const [quickPayingId, setQuickPayingId] = useState(null);
+  const [instantReqModal, setInstantReqModal] = useState(null); // null | studentObj
+  const [instantReqForm, setInstantReqForm] = useState({
+    category: "",
+    itemName: "",
+    amount: "",
+    amountPending: false,
+    stockAvailable: true,
+    note: "",
+  });
+  const [instantReqSaving, setInstantReqSaving] = useState(false);
+  const [instantReqErr, setInstantReqErr] = useState("");
   const [bulkPrepModal, setBulkPrepModal] = useState(false);
   const [bulkPrepData, setBulkPrepData] = useState({});
   const [bulkSaving, setBulkSaving] = useState(false);
@@ -42,6 +56,7 @@ export default function PaymentsView({
   const [activeTab, setActiveTab] = useState("payments");
 
   const pendingRequestStudents = students.filter(s => (s.pendingOneTimeCharges||[]).length > 0);
+  const pendingInstantCount = instantCharges.filter(c => c.status === "pending").length;
 
   const ACCT_MSG = "[RYE-K K-Culture Center]\n수강생 여러분의 깊은 관심에 항상 감사드립니다.\n원활한 수업 진행을 위해 수강료 납부 계좌를 안내드리오니 확인 부탁드립니다.\n\n- 카카오뱅크 3333-34-5220544 (예금주: 예케이케이컬처센터)\n\n늘 정성을 다하는 교육으로 보답하겠습니다.";
   const copyAcct = async () => {
@@ -265,6 +280,14 @@ export default function PaymentsView({
           <button className="btn btn-sm" style={{background:"var(--gold-lt)",border:"1.5px solid var(--gold-dk)",color:"var(--gold-dk)",fontWeight:700,position:"relative"}} onClick={() => setRequestsModal(true)}>
             강사 청구 요청
             <span style={{marginLeft:6,background:"var(--gold-dk)",color:"#fff",borderRadius:99,padding:"1px 7px",fontSize:11,fontWeight:700}}>{pendingRequestStudents.reduce((n,s)=>n+(s.pendingOneTimeCharges||[]).length,0)}</span>
+          </button>
+        )}
+        {canManageAll(currentUser.role) && pendingInstantCount > 0 && (
+          <button className="btn btn-sm"
+            style={{background:"var(--blue-lt)",border:"1.5px solid var(--blue)",color:"var(--blue)",fontWeight:700}}
+            onClick={() => setActiveTab("instantCharges")}>
+            즉시 청구
+            <span style={{marginLeft:6,background:"var(--blue)",color:"#fff",borderRadius:99,padding:"1px 7px",fontSize:11,fontWeight:700}}>{pendingInstantCount}</span>
           </button>
         )}
         {canManageAll(currentUser.role) && <button className="btn btn-secondary btn-sm" onClick={openBulkPrep} title="전체 수강료 일괄 확인 및 확정">📋 수강료 확정</button>}
@@ -634,6 +657,14 @@ export default function PaymentsView({
                         승인 대기: {(s.pendingOneTimeCharges||[]).map(c=>`${c.title||c.type} ${(c.amount||0).toLocaleString()}원`).join(" · ")}
                       </div>
                     )}
+                    <button className="btn btn-sm" style={{width:"100%",marginTop:4,background:"var(--blue-lt)",color:"var(--blue)",border:"1px solid var(--blue)"}}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setInstantReqForm({ category: shopItems?.categories?.[0] || "기타", itemName: "", amount: "", amountPending: false, stockAvailable: true, note: "" });
+                        setInstantReqModal(s);
+                      }}>
+                      즉시 청구 요청
+                    </button>
                   </div>
                 )}
               </div>
@@ -891,6 +922,139 @@ export default function PaymentsView({
           </div>
         </div>
       )}
+
+      {/* ── 즉시 청구 요청 모달 (강사용) ── */}
+      {instantReqModal && (
+        <div className="mb" onClick={e => e.target === e.currentTarget && setInstantReqModal(null)}>
+          <div className="modal" style={{maxWidth:480}}>
+            <div className="modal-h">
+              <h2>{instantReqModal.name} — 즉시 청구 요청</h2>
+              <button className="modal-close" onClick={() => setInstantReqModal(null)}>{IC.x}</button>
+            </div>
+            <div className="modal-b">
+              {instantReqErr && <div style={{marginBottom:10,padding:"10px 14px",background:"var(--red-lt)",border:"1px solid rgba(232,40,28,.2)",borderRadius:8,fontSize:13,color:"var(--red)",fontWeight:500}}>⚠ {instantReqErr}</div>}
+
+              {/* 카테고리 칩 */}
+              <div className="fg-label" style={{marginBottom:6}}>상품 유형</div>
+              <div className="shop-chips">
+                {(shopItems?.categories || ["의상/공연복","악세사리","악기 가방","기타"]).map(cat => (
+                  <button key={cat} className={`shop-chip${instantReqForm.category === cat ? " active" : ""}`}
+                    onClick={() => setInstantReqForm(f => ({ ...f, category: cat, itemName: "" }))}>
+                    {cat}
+                  </button>
+                ))}
+              </div>
+
+              {/* 카탈로그 상품 선택 (해당 카테고리 활성 상품) */}
+              {(() => {
+                const catItems = (shopItems?.items || []).filter(i => i.category === instantReqForm.category && i.active !== false);
+                if (catItems.length === 0) return null;
+                return (
+                  <>
+                    <div className="fg-label" style={{marginBottom:6}}>카탈로그 선택 (선택사항)</div>
+                    <div className="shop-item-grid" style={{marginBottom:12}}>
+                      {catItems.map(item => (
+                        <button key={item.id}
+                          className={`shop-item-card${instantReqForm.itemName === item.name ? " selected" : ""}`}
+                          onClick={() => setInstantReqForm(f => ({
+                            ...f,
+                            itemName: item.name,
+                            amount: item.defaultPrice > 0 ? String(item.defaultPrice) : f.amount,
+                            amountPending: item.defaultPrice <= 0,
+                          }))}>
+                          <div style={{fontWeight:600,marginBottom:2}}>{item.name}</div>
+                          <div style={{color:"var(--ink-60)",fontSize:11}}>{item.defaultPrice > 0 ? fmtMoney(item.defaultPrice) : "가격 미정"}</div>
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                );
+              })()}
+
+              {/* 상품명 직접 입력 */}
+              <div className="fg">
+                <label className="fg-label">상품명</label>
+                <input className="inp" value={instantReqForm.itemName}
+                  onChange={e => setInstantReqForm(f => ({ ...f, itemName: e.target.value }))}
+                  placeholder="상품명 입력 또는 위에서 선택" />
+              </div>
+
+              {/* 금액 */}
+              <div className="fg">
+                <label className="fg-label">금액 (원)</label>
+                <input className="inp" type="number" min="0"
+                  value={instantReqForm.amountPending ? "" : instantReqForm.amount}
+                  disabled={instantReqForm.amountPending}
+                  onChange={e => setInstantReqForm(f => ({ ...f, amount: e.target.value }))}
+                  placeholder={instantReqForm.amountPending ? "금액 미정" : "금액 입력"} />
+                <label style={{display:"flex",alignItems:"center",gap:6,marginTop:6,fontSize:12,color:"var(--ink-60)",cursor:"pointer"}}>
+                  <input type="checkbox" checked={instantReqForm.amountPending}
+                    onChange={e => setInstantReqForm(f => ({ ...f, amountPending: e.target.checked, amount: e.target.checked ? "" : f.amount }))} />
+                  금액 미정 (관리자가 승인 시 입력)
+                </label>
+              </div>
+
+              {/* 재고 여부 */}
+              <div className="fg">
+                <label className="fg-label">재고 여부</label>
+                <div style={{display:"flex",gap:8}}>
+                  <button className={`btn btn-sm${instantReqForm.stockAvailable ? " btn-primary" : " btn-secondary"}`}
+                    onClick={() => setInstantReqForm(f => ({ ...f, stockAvailable: true }))}>
+                    재고 있음
+                  </button>
+                  <button className={`btn btn-sm${!instantReqForm.stockAvailable ? " btn-danger" : " btn-secondary"}`}
+                    onClick={() => setInstantReqForm(f => ({ ...f, stockAvailable: false }))}>
+                    재고 없음
+                  </button>
+                </div>
+              </div>
+
+              {/* 메모 */}
+              <div className="fg">
+                <label className="fg-label">메모 (선택)</label>
+                <input className="inp" value={instantReqForm.note}
+                  onChange={e => setInstantReqForm(f => ({ ...f, note: e.target.value }))}
+                  placeholder="추가 메모" />
+              </div>
+            </div>
+            <div className="modal-f">
+              <button className="btn btn-secondary" onClick={() => setInstantReqModal(null)} disabled={instantReqSaving}>취소</button>
+              <button className="btn btn-primary" disabled={instantReqSaving}
+                onClick={async () => {
+                  const { category, itemName, amount, amountPending, stockAvailable, note } = instantReqForm;
+                  if (!itemName.trim()) { setInstantReqErr("상품명을 입력하세요."); setTimeout(() => setInstantReqErr(""), 2500); return; }
+                  if (!amountPending && (!amount || parseInt(amount) <= 0)) { setInstantReqErr("금액을 입력하거나 '금액 미정'을 선택하세요."); setTimeout(() => setInstantReqErr(""), 2500); return; }
+                  if (!onAddInstantCharge) { setInstantReqErr("즉시 청구 기능을 사용할 수 없습니다."); setTimeout(() => setInstantReqErr(""), 2500); return; }
+                  setInstantReqSaving(true);
+                  try {
+                    await onAddInstantCharge({
+                      studentId: instantReqModal.id,
+                      teacherId: currentUser.id,
+                      itemCategory: category,
+                      itemName: itemName.trim(),
+                      amount: amountPending ? 0 : parseInt(amount),
+                      amountPending,
+                      stockAvailable,
+                      status: "pending",
+                      note: note.trim(),
+                      approvedAt: null, approvedBy: null,
+                      rejectedAt: null, rejectedReason: null,
+                      paidAt: null, paymentId: null,
+                    });
+                    setInstantReqModal(null);
+                  } catch {
+                    setInstantReqErr("요청 전송에 실패했습니다. 다시 시도해주세요.");
+                    setTimeout(() => setInstantReqErr(""), 3000);
+                  } finally {
+                    setInstantReqSaving(false);
+                  }
+                }}>
+                {instantReqSaving ? "전송 중..." : "요청 전송"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -995,10 +1159,10 @@ function UnmatchedPaymentsTab({
                   {u.rawText ? ` · ${u.rawText.slice(0, 30)}` : ""}
                 </div>
               </div>
-              <div style={{display:"flex",flexDirection:"column",gap:6,alignItems:"flex-end"}}>
+              <div style={{display:"flex",flexDirection:"column",gap:6,width:148,flexShrink:0}}>
                 <select
                   className="sel"
-                  style={{fontSize:12,height:30,minWidth:120}}
+                  style={{fontSize:12}}
                   value={selectedStudentId[u.id] || ""}
                   onChange={e => setSelectedStudentId(prev => ({ ...prev, [u.id]: e.target.value }))}
                 >
