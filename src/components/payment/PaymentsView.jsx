@@ -21,6 +21,7 @@ export default function PaymentsView({
   onAddInstantCharge,
   onApproveInstantCharge,
   onRejectInstantCharge,
+  onConfirmInstantPayment,
 }) {
   const [month, setMonth] = useState(THIS_MONTH);
   const [editingId, setEditingId] = useState(null);
@@ -58,6 +59,7 @@ export default function PaymentsView({
   const [rejectInstantId, setRejectInstantId] = useState(null); // 인라인 거절 확인 중인 charge id
   const [rejectReason, setRejectReason] = useState("");
   const [rejectSaving, setRejectSaving] = useState(false);
+  const [confirmingPaymentId, setConfirmingPaymentId] = useState(null);
   const [bulkPrepModal, setBulkPrepModal] = useState(false);
   const [bulkPrepData, setBulkPrepData] = useState({});
   const [bulkSaving, setBulkSaving] = useState(false);
@@ -534,6 +536,18 @@ export default function PaymentsView({
                           setTimeout(() => setApproveInstantCopied(null), 2500);
                         }}>
                         {approveInstantCopied === charge.id ? "✓ 복사됨" : "알림 메시지 복사"}
+                      </button>
+                      <button className="btn btn-sm btn-primary" style={{width:"100%",marginTop:6}}
+                        disabled={confirmingPaymentId === charge.id}
+                        onClick={async () => {
+                          setConfirmingPaymentId(charge.id);
+                          try {
+                            await onConfirmInstantPayment(charge, student);
+                          } finally {
+                            setConfirmingPaymentId(null);
+                          }
+                        }}>
+                        {confirmingPaymentId === charge.id ? "처리 중.." : "입금 확인"}
                       </button>
                     </div>
                   )}
