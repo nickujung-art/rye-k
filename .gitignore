@@ -11,3 +11,4 @@ phases/**/step*-output.json
 # DB backups (real PII — never commit)
 rye-k-backup*.json
 *-backup-*.json
+backups/
