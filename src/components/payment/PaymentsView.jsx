@@ -19,6 +19,8 @@ export default function PaymentsView({
   instantCharges = [],
   shopItems = { categories: ["의상/공연복","악세사리","악기 가방","기타"], items: [] },
   onAddInstantCharge,
+  onApproveInstantCharge,
+  onRejectInstantCharge,
 }) {
   const [month, setMonth] = useState(THIS_MONTH);
   const [editingId, setEditingId] = useState(null);
@@ -47,6 +49,15 @@ export default function PaymentsView({
   });
   const [instantReqSaving, setInstantReqSaving] = useState(false);
   const [instantReqErr, setInstantReqErr] = useState("");
+  const [approveInstantModal, setApproveInstantModal] = useState(null); // null | chargeObj
+  const [approveInstantAmount, setApproveInstantAmount] = useState("");
+  const [approveInstantSaving, setApproveInstantSaving] = useState(false);
+  const [approveInstantCopied, setApproveInstantCopied] = useState(null);
+  const [approveInstantMsg, setApproveInstantMsg] = useState("");
+  const [approveInstantErr, setApproveInstantErr] = useState("");
+  const [rejectInstantId, setRejectInstantId] = useState(null); // 인라인 거절 확인 중인 charge id
+  const [rejectReason, setRejectReason] = useState("");
+  const [rejectSaving, setRejectSaving] = useState(false);
   const [bulkPrepModal, setBulkPrepModal] = useState(false);
   const [bulkPrepData, setBulkPrepData] = useState({});
   const [bulkSaving, setBulkSaving] = useState(false);
@@ -329,6 +340,11 @@ export default function PaymentsView({
               </span>
             )}
           </button>
+          <button className={`ftab${activeTab==="instantCharges"?" active":""}`}
+            onClick={() => setActiveTab("instantCharges")}>
+            즉시청구
+            {pendingInstantCount > 0 && <span style={{marginLeft:4,background:"var(--blue)",color:"#fff",borderRadius:99,padding:"0 5px",fontSize:10,fontWeight:700}}>{pendingInstantCount}</span>}
+          </button>
         </div>
       )}
       {activeTab === "payments" && <>
@@ -461,6 +477,113 @@ export default function PaymentsView({
       )}
       {activeTab === "log" && canManageAll(currentUser.role) && (
         <PaymentLogTab paymentLog={paymentLog} students={students} />
+      )}
+
+      {activeTab === "instantCharges" && canManageAll(currentUser.role) && (
+        <div>
+          {(() => {
+            const pending = instantCharges.filter(c => c.status === "pending");
+            const approved = instantCharges.filter(c => c.status === "approved");
+            const all = [...pending, ...approved];
+            if (all.length === 0) return (
+              <div className="empty" style={{paddingTop:40}}>
+                <div className="empty-txt">처리 대기 중인 즉시 청구가 없습니다.</div>
+              </div>
+            );
+            return all.map(charge => {
+              const student = students.find(s => s.id === charge.studentId);
+              const teacher = teachers.find(t => t.id === charge.teacherId);
+              const isPending = charge.status === "pending";
+              const isApproved = charge.status === "approved";
+              return (
+                <div key={charge.id} className="card" style={{marginBottom:10,padding:14}}>
+                  <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:8}}>
+                    <div style={{flex:1}}>
+                      <div style={{fontWeight:700,fontSize:13,marginBottom:2}}>
+                        {student?.name || "알 수 없음"}
+                        <span style={{marginLeft:6,fontSize:11,color:"var(--ink-60)",fontWeight:400}}>
+                          {charge.itemCategory} — {charge.itemName}
+                        </span>
+                      </div>
+                      <div style={{fontSize:12,color:"var(--ink-60)",marginBottom:4}}>
+                        요청: {teacher?.name || "알 수 없음"} ·
+                        {charge.amountPending ? " 금액 미정" : ` ${fmtMoney(charge.amount||0)}`} ·
+                        재고 {charge.stockAvailable ? "있음" : "없음"}
+                      </div>
+                      {charge.note && <div style={{fontSize:11,color:"var(--ink-30)"}}>{charge.note}</div>}
+                    </div>
+                    <span style={{
+                      fontSize:11,fontWeight:600,padding:"2px 8px",borderRadius:99,
+                      background: isPending ? "var(--gold-lt)" : "rgba(34,197,94,0.1)",
+                      color: isPending ? "var(--gold-dk)" : "var(--green)"
+                    }}>
+                      {isPending ? "승인 대기" : "승인됨"}
+                    </span>
+                  </div>
+                  {isApproved && (
+                    <div style={{marginTop:8,padding:"8px 10px",background:"rgba(59,130,246,0.08)",borderRadius:8,fontSize:12}}>
+                      <div style={{marginBottom:6,color:"var(--ink-60)"}}>
+                        승인 금액: <strong>{fmtMoney(charge.amount||0)}</strong>
+                      </div>
+                      <button className="btn btn-sm btn-secondary" style={{width:"100%"}}
+                        onClick={async () => {
+                          const studentName = student?.name || "회원";
+                          const msg = `[RYE-K K-Culture Center]\n${studentName} 회원님, 추가 청구 안내드립니다.\n\n· ${charge.itemCategory} — ${charge.itemName}: ${fmtMoney(charge.amount||0)}\n\n· 카카오뱅크 3333-34-5220544\n  (예금주: 예케이케이컬처센터)\n입금 부탁드립니다. 감사합니다.`;
+                          try { await navigator.clipboard.writeText(msg); } catch { const ta = document.createElement("textarea"); ta.value = msg; document.body.appendChild(ta); ta.select(); document.execCommand("copy"); document.body.removeChild(ta); }
+                          setApproveInstantCopied(charge.id);
+                          setTimeout(() => setApproveInstantCopied(null), 2500);
+                        }}>
+                        {approveInstantCopied === charge.id ? "✓ 복사됨" : "알림 메시지 복사"}
+                      </button>
+                    </div>
+                  )}
+                  {isPending && (
+                    <div style={{marginTop:8}}>
+                      {rejectInstantId === charge.id ? (
+                        <div>
+                          <input className="inp" style={{marginBottom:6}} value={rejectReason}
+                            onChange={e => setRejectReason(e.target.value)} placeholder="거절 사유 입력" />
+                          <div style={{display:"flex",gap:6}}>
+                            <button className="btn btn-danger btn-sm" disabled={rejectSaving}
+                              onClick={async () => {
+                                setRejectSaving(true);
+                                try {
+                                  await onRejectInstantCharge(charge.id, rejectReason.trim() || "사유 없음");
+                                } finally {
+                                  setRejectSaving(false);
+                                  setRejectInstantId(null);
+                                  setRejectReason("");
+                                }
+                              }}>
+                              {rejectSaving ? "처리 중..." : "거절 확인"}
+                            </button>
+                            <button className="btn btn-secondary btn-sm" onClick={() => { setRejectInstantId(null); setRejectReason(""); }}>취소</button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div style={{display:"flex",gap:6}}>
+                          <button className="btn btn-sm" style={{flex:1,background:"rgba(34,197,94,0.1)",border:"1px solid var(--green)",color:"var(--green)",fontWeight:700}}
+                            onClick={() => {
+                              setApproveInstantModal(charge);
+                              setApproveInstantAmount(charge.amountPending ? "" : String(charge.amount || ""));
+                              setApproveInstantMsg("");
+                              setApproveInstantErr("");
+                            }}>
+                            승인
+                          </button>
+                          <button className="btn btn-danger btn-sm" style={{flex:1}}
+                            onClick={() => { setRejectInstantId(charge.id); setRejectReason(""); }}>
+                            거절
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            });
+          })()}
+        </div>
       )}
 
       {editingId && (() => {
@@ -873,6 +996,85 @@ export default function PaymentsView({
           </div>
         );
       })()}
+
+      {/* ── 즉시청구 승인 모달 (관리자용) ── */}
+      {approveInstantModal && (
+        <div className="mb" onClick={e => e.target === e.currentTarget && !approveInstantSaving && setApproveInstantModal(null)}>
+          <div className="modal" style={{maxWidth:480}}>
+            <div className="modal-h">
+              <h2>즉시 청구 승인</h2>
+              <button className="modal-close" onClick={() => !approveInstantSaving && setApproveInstantModal(null)}>{IC.x}</button>
+            </div>
+            <div className="modal-b">
+              {(() => {
+                const student = students.find(s => s.id === approveInstantModal.studentId);
+                return (
+                  <>
+                    <div style={{marginBottom:12,padding:"10px 14px",background:"rgba(59,130,246,0.08)",borderRadius:8,fontSize:13}}>
+                      <div style={{fontWeight:600,marginBottom:2}}>{student?.name || "알 수 없음"}</div>
+                      <div style={{color:"var(--ink-60)"}}>{approveInstantModal.itemCategory} — {approveInstantModal.itemName}</div>
+                      {approveInstantModal.note && <div style={{fontSize:12,color:"var(--ink-30)",marginTop:4}}>{approveInstantModal.note}</div>}
+                    </div>
+                    <div className="fg">
+                      <label className="fg-label">
+                        승인 금액 (원)
+                        {approveInstantModal.amountPending && <span style={{marginLeft:6,fontSize:11,color:"var(--red)"}}>* 금액 미정 — 필수 입력</span>}
+                      </label>
+                      <input className="inp" type="number" min="1"
+                        value={approveInstantAmount}
+                        onChange={e => setApproveInstantAmount(e.target.value)}
+                        placeholder="금액 입력" />
+                    </div>
+                    {approveInstantMsg && (
+                      <div style={{marginTop:12,padding:"12px 14px",background:"var(--ink-5,#F8F8F8)",borderRadius:8,fontSize:12,lineHeight:1.7,whiteSpace:"pre-wrap",color:"var(--ink)"}}>
+                        {approveInstantMsg}
+                      </div>
+                    )}
+                    {approveInstantMsg && (
+                      <button className="btn btn-secondary btn-sm" style={{marginTop:8,width:"100%"}}
+                        onClick={async () => {
+                          try { await navigator.clipboard.writeText(approveInstantMsg); } catch { const ta = document.createElement("textarea"); ta.value = approveInstantMsg; document.body.appendChild(ta); ta.select(); document.execCommand("copy"); document.body.removeChild(ta); }
+                          setApproveInstantCopied("modal");
+                          setTimeout(() => setApproveInstantCopied(null), 2500);
+                        }}>
+                        {approveInstantCopied === "modal" ? "✓ 복사됨" : "알림 메시지 복사"}
+                      </button>
+                    )}
+                  </>
+                );
+              })()}
+            </div>
+            <div className="modal-f">
+              <button className="btn btn-secondary" onClick={() => setApproveInstantModal(null)} disabled={approveInstantSaving}>닫기</button>
+              <button className="btn btn-primary" disabled={approveInstantSaving}
+                onClick={async () => {
+                  const finalAmount = parseInt(approveInstantAmount);
+                  if (!finalAmount || finalAmount <= 0) {
+                    setApproveInstantErr("금액을 입력하세요 (0원 불가)");
+                    setTimeout(() => setApproveInstantErr(""), 2500);
+                    return;
+                  }
+                  setApproveInstantSaving(true);
+                  try {
+                    await onApproveInstantCharge(approveInstantModal.id, finalAmount, currentUser.name || currentUser.id);
+                    const student = students.find(s => s.id === approveInstantModal.studentId);
+                    const msg = `[RYE-K K-Culture Center]\n${student?.name || "회원"} 회원님, 추가 청구 안내드립니다.\n\n· ${approveInstantModal.itemCategory} — ${approveInstantModal.itemName}: ${fmtMoney(finalAmount)}\n\n· 카카오뱅크 3333-34-5220544\n  (예금주: 예케이케이컬처센터)\n입금 부탁드립니다. 감사합니다.`;
+                    setApproveInstantMsg(msg);
+                  } finally {
+                    setApproveInstantSaving(false);
+                  }
+                }}>
+                {approveInstantSaving ? "처리 중..." : "승인"}
+              </button>
+            </div>
+            {approveInstantErr && (
+              <div style={{padding:"0 20px 12px"}}>
+                <span style={{fontSize:12,color:"var(--red)",fontWeight:500}}>⚠ {approveInstantErr}</span>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* ── 강사 청구 요청 승인 모달 ── */}
       {requestsModal && (
