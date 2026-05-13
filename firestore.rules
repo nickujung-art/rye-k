@@ -16,14 +16,11 @@ service cloud.firestore {
         request.auth.token.firebase.sign_in_provider == 'anonymous';
     }
 
-    // Custom Claims 기반 역할 확인
-    function hasRole(r) {
-      return isEmailUser() && request.auth.token.role == r;
-    }
-
-    function isAdmin()          { return hasRole('admin'); }
-    function isManagerOrAbove() { return isEmailUser() && request.auth.token.role in ['admin', 'manager']; }
-    function isStaff()          { return isEmailUser() && request.auth.token.role in ['admin', 'manager', 'teacher']; }
+    // 역할 함수 — 커스텀 클레임 미사용, 이메일 로그인 = 전체 스태프
+    // (UI 레벨에서 admin/manager/teacher 역할 구분 적용)
+    function isAdmin()          { return isEmailUser(); }
+    function isManagerOrAbove() { return isEmailUser(); }
+    function isStaff()          { return isEmailUser(); }
 
     // ── appData 컬렉션별 규칙 ─────────────────────────────────────────────────
 
