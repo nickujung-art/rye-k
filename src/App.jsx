@@ -427,12 +427,15 @@ function MainApp() {
       unsubscribes.push(chargesUnsub);
     };
 
-    // ★ 핵심: 익명 인증 먼저 → 그 후 Firestore 리스너 시작
-    firebaseSignInAnon().then(() => {
-      setupListeners();
-    }).catch(() => {
-      // Auth 실패해도 리스너는 시도 (기존 호환)
-      setupListeners();
+    // ★ 핵심: Firebase Auth 세션 복원 대기 → 이미 로그인된 경우 즉시 리스너 시작,
+    //         미로그인(포털) 경우에만 익명 로그인 후 시작
+    const unsubAuth = onAuthStateChanged(auth, (firebaseUser) => {
+      unsubAuth(); // 최초 1회만 처리
+      if (firebaseUser) {
+        setupListeners();
+      } else {
+        firebaseSignInAnon().then(() => setupListeners()).catch(() => setupListeners());
+      }
     });
 
     const timeout = setTimeout(() => {
