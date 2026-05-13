@@ -1198,10 +1198,10 @@ export default function PaymentsView({
               {/* 금액 */}
               <div className="fg">
                 <label className="fg-label">금액 (원)</label>
-                <input className="inp" type="number" min="0"
-                  value={instantReqForm.amountPending ? "" : instantReqForm.amount}
+                <input className="inp" inputMode="numeric"
+                  value={instantReqForm.amountPending ? "" : (instantReqForm.amount ? Number(instantReqForm.amount).toLocaleString("ko-KR") : "")}
                   disabled={instantReqForm.amountPending}
-                  onChange={e => setInstantReqForm(f => ({ ...f, amount: e.target.value }))}
+                  onChange={e => setInstantReqForm(f => ({ ...f, amount: e.target.value.replace(/[^\d]/g, "") }))}
                   placeholder={instantReqForm.amountPending ? "금액 미정" : "금액 입력"} />
                 <label style={{display:"flex",alignItems:"center",gap:6,marginTop:6,fontSize:12,color:"var(--ink-60)",cursor:"pointer"}}>
                   <input type="checkbox" checked={instantReqForm.amountPending}
