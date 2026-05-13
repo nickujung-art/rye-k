@@ -1,5 +1,5 @@
 import { useState, useEffect, lazy, Suspense } from "react";
-import { db, auth, doc, setDoc, onSnapshot, runTransaction, firebaseSignIn, firebaseSignInAnon, firebaseLogout, onAuthStateChanged } from "./firebase.js";
+import { db, auth, doc, setDoc, onSnapshot, runTransaction, collection, firebaseSignIn, firebaseSignInAnon, firebaseLogout, onAuthStateChanged } from "./firebase.js";
 import { DEFAULT_CATEGORIES, DAYS, ADMIN, TODAY_STR, THIS_MONTH, TODAY_DAY, ATT_STATUS, PAY_METHODS, INST_TYPES, IC, CSS } from "./constants.jsx";
 import { calcAge, isMinor, getCat, fmtDate, fmtDateShort, fmtDateTime, uid, fmtPhone, fmtMoney, allLessonInsts, allLessonDays, canManageAll, monthLabel, generateStudentCode, getBirthPassword, getPhoneInitialPassword, instTypeLabel, expandInstitutionsToMembers, getContractDaysLeft, formatLessonNoteSummary, calcLessonFeeWithFallback } from "./utils.js";
 import { InstitutionFormModal, InstitutionDetailModal, InstitutionsView } from "./components/institution/Institutions.jsx";
@@ -238,6 +238,8 @@ function MainApp() {
   const [paymentsInitFilter, setPaymentsInitFilter] = useState(false);
   const [aiReports, setAiReports] = useState([]);
   const [ryeSettings, setRyeSettings] = useState({ aiEnabled: true, aiSafeMode: false });
+  const [instantCharges, setInstantCharges] = useState([]);
+  const [shopItems, setShopItems] = useState({ categories: ["의상/공연복", "악세사리", "악기 가방", "기타"], items: [] });
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
   const [modal, setModal] = useState(null);
@@ -340,6 +342,7 @@ function MainApp() {
       { key: "rye-payment-log", setter: setPaymentLog, default: [] },
       { key: "rye-ai-reports", setter: setAiReports, default: [] },
       { key: "rye-settings", setter: setRyeSettings, default: { aiEnabled: true, aiSafeMode: false } },
+      { key: "rye-shop-items", setter: setShopItems, default: { categories: ["의상/공연복", "악세사리", "악기 가방", "기타"], items: [] } },
     ];
 
     const checkAllLoaded = async () => {
@@ -410,6 +413,18 @@ function MainApp() {
         });
         unsubscribes.push(unsub);
       });
+      // rye-instant-charges — 독립 컬렉션 (appData 아님)
+      const chargesUnsub = onSnapshot(
+        collection(db, "rye-instant-charges"),
+        (snap) => {
+          setInstantCharges(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+        },
+        (err) => {
+          console.error("Firestore listener error: rye-instant-charges", err);
+          setInstantCharges([]);
+        }
+      );
+      unsubscribes.push(chargesUnsub);
     };
 
     // ★ 핵심: 익명 인증 먼저 → 그 후 Firestore 리스너 시작
@@ -479,6 +494,11 @@ function MainApp() {
   };
   const saveNotices = async u => { setNotices(u); try { await sSet("rye-notices", u); } catch { showToast("저장에 실패했습니다. 네트워크를 확인해주세요.", true); } };
   const saveCategories = async u => { setCategories(u); try { await sSet("rye-categories", u); } catch { showToast("저장에 실패했습니다. 네트워크를 확인해주세요.", true); } };
+  const saveShopItems = async u => {
+    setShopItems(u);
+    try { await sSet("rye-shop-items", u); showToast("저장되었습니다."); }
+    catch { showToast("저장에 실패했습니다. 네트워크를 확인해주세요.", true); }
+  };
   const saveAttendance = async u => { setAttendance(u); try { await sSet("rye-attendance", u); } catch { showToast("저장에 실패했습니다. 네트워크를 확인해주세요.", true); } };
   const savePayments = async u => { setPayments(u); try { await sSet("rye-payments", u); } catch (e) { showToast("저장에 실패했습니다. 네트워크를 확인해주세요.", true); throw e; } };
   const saveUnmatchedPayments = async u => {
@@ -1028,6 +1048,7 @@ function MainApp() {
               nav={navigate}
               onUnpaidCardClick={() => { setPaymentsInitFilter(true); navigate("payments"); }}
               feePresets={feePresets}
+              instantCharges={instantCharges}
             />}
             {view === "students" && <StudentsView students={filtered} allStudents={visible} teachers={teachers} categories={categories} filter={filter} setFilter={setFilter} search={search} setSearch={setSearch} onAdd={() => { setSelected(null); setModal("sForm"); }} onSelect={s => { setSelected(s); setModal("sDetail"); }} currentUser={user} onBulkFeeUpdate={async (updatedStudents) => { await batchStudentDocs(updatedStudents); addLog("수강료 일괄 설정"); showToast("수강료가 일괄 변경되었습니다."); }} payments={payments} />}
             {view === "attendance" && <AttendanceView students={allMembers} teachers={teachers} currentUser={user} attendance={attendance} onSaveAttendance={async (upd) => { await saveAttendance(upd); }} categories={categories} scheduleOverrides={scheduleOverrides} onSaveScheduleOverride={saveScheduleOverrides} onUpdateStudent={async (s) => { await updateStudentDoc(s); }} />}
