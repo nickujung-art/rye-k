@@ -82,11 +82,17 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-09
-Stopped at: 05-payment-automation 05-05 완료 (sync-students Worker + App.jsx role 필드, 커밋 fedfb82). students_cache gap 해소 — kakaobank-webhook 자동 매칭 경로 활성화.
+Last session: 2026-05-14
+Stopped at: SHOP-01-instant-charge-shop SHOP-01-01 완료 (firebase.js CRUD + App.jsx 상태·리스너, 커밋 058387a). Wave 2 UI 플랜(SHOP-01-02~05) 의존 데이터 레이어 구축 완료.
 Resume file: None
 
-## Plans Completed This Phase (FS-fee-split)
+## Plans Completed This Phase (SHOP-01-instant-charge-shop)
+
+| Plan | Wave | Requirements | Files |
+|------|------|-------------|-------|
+| SHOP-01-01 | 1 | SHOP-01, SHOP-02 | src/firebase.js, src/App.jsx |
+
+## Plans Completed Previous Phase (FS-fee-split)
 
 | Plan | Wave | Requirements | Files |
 |------|------|-------------|-------|
