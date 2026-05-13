@@ -60,6 +60,9 @@ Recent decisions affecting current work:
 - [SHOP-01-04] 즉시청구 탭 canManageAll 조건 적용 (관리자/매니저 전용)
 - [SHOP-01-04] 알림 메시지는 승인 모달 내 + approved 카드에서 재복사 가능 (이중 진입점)
 - [SHOP-01-04] 거절 확인은 인라인 UI (별도 모달 없음), approveInstantCopied에 charge.id/'modal' 구분
+- [SHOP-01-05] 입금 확인 시 payment id = charge.id + "_pay" 패턴으로 즉시청구 역참조 추적
+- [SHOP-01-05] KST month/paidDate: Date.now() + 9h 오프셋 → ISO 슬라이싱
+- [SHOP-01-05] Dashboard 4.6 배지 type:blue, key:instant-charge (강사 비용 청구 4.5와 구분)
 
 ### Pending Todos
 
@@ -88,7 +91,7 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-05-14
-Stopped at: SHOP-01-instant-charge-shop SHOP-01-04 완료 (PaymentsView 즉시청구 탭 + 관리자 승인/거절 모달 + 알림 메시지 복사, 커밋 8eb806f, 656eeb3). 관리자 즉시청구 승인 UI 완성.
+Stopped at: SHOP-01-instant-charge-shop SHOP-01-05 완료 (입금 확인 버튼 + Dashboard 배지 + App.jsx 콜백, 커밋 217e748, 43c8542). SHOP-01 Phase 전체 5개 플랜 완료.
 Resume file: None
 
 ## Plans Completed This Phase (SHOP-01-instant-charge-shop)
@@ -99,6 +102,7 @@ Resume file: None
 | SHOP-01-02 | 1 | SHOP-06 | src/constants.jsx, src/components/admin/AdminTools.jsx, src/App.jsx, src/components/layout/NavLayout.jsx |
 | SHOP-01-03 | 2 | SHOP-03 | src/components/payment/PaymentsView.jsx, src/App.jsx |
 | SHOP-01-04 | 3 | SHOP-04 | src/components/payment/PaymentsView.jsx, src/App.jsx |
+| SHOP-01-05 | 4 | SHOP-05, SHOP-07 | src/components/payment/PaymentsView.jsx, src/components/dashboard/Dashboard.jsx, src/App.jsx |
 
 ## Plans Completed Previous Phase (FS-fee-split)
 

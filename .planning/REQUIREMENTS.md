@@ -16,6 +16,7 @@
 | ALM | AlimTalk Notifications |
 | PAY | Payment Automation |
 | ANL | Analytics & Dashboard |
+| SHOP | Instant Charge & Shop Catalog |
 
 ---
 
@@ -99,6 +100,20 @@
 
 ---
 
+## SHOP — Instant Charge & Shop Catalog
+
+| ID | Requirement | Priority | Phase |
+|----|-------------|----------|-------|
+| SHOP-01 | `rye-instant-charges` Firestore 컬렉션 CRUD 함수 + App.jsx 상태·리스너 추가 | P0 | SHOP-01 |
+| SHOP-02 | `rye-shop-items` appData 키 — 카탈로그 로드/저장 함수 + shopItems 상태 | P0 | SHOP-01 |
+| SHOP-03 | 강사: 즉시 청구 요청 모달 — 카탈로그 선택·직접입력, 재고여부, 금액미정 옵션 | P0 | SHOP-01 |
+| SHOP-04 | 관리자: 즉시청구 승인 모달 — 금액 수정, 승인/거절, 알림 메시지 자동생성+클립보드 복사 | P0 | SHOP-01 |
+| SHOP-05 | 관리자: 입금 확인 → `status:"paid"` + payment 레코드 자동 생성 | P0 | SHOP-01 |
+| SHOP-06 | AdminTools "상품관리" 탭 — 카테고리(의상/공연복, 악세사리, 악기 가방, 기타) + 상품 CRUD | P1 | SHOP-01 |
+| SHOP-07 | 대시보드: 즉시청구 대기 알림 배지 — 관리자/매니저에게 pending 건수 표시 | P1 | SHOP-01 |
+
+---
+
 ## Priority Legend
 
 | Level | Meaning |
@@ -125,6 +140,13 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
+| SHOP-01 | SHOP-01 | ✓ Complete |
+| SHOP-02 | SHOP-01 | ✓ Complete |
+| SHOP-03 | SHOP-01 | ✓ Complete |
+| SHOP-04 | SHOP-01 | ✓ Complete |
+| SHOP-05 | SHOP-01 | ✓ Complete |
+| SHOP-06 | SHOP-01 | ✓ Complete |
+| SHOP-07 | SHOP-01 | ✓ Complete |
 | SEC-01 | Phase 1 | Pending |
 | SEC-02 | Phase 1 | Pending |
 | SEC-03 | Phase 1 | Pending |
