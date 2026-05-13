@@ -85,7 +85,7 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-05-14
-Stopped at: SHOP-01-instant-charge-shop SHOP-01-02 완료 (ShopView + NavLayout 연결, 커밋 dc05bf1). 상품 카탈로그 관리 UI 완성.
+Stopped at: SHOP-01-instant-charge-shop SHOP-01-03 완료 (PaymentsView 즉시청구 요청 모달 + App.jsx props 연결, 커밋 a95b00b). 강사 즉시청구 요청 UI 완성.
 Resume file: None
 
 ## Plans Completed This Phase (SHOP-01-instant-charge-shop)
@@ -94,6 +94,7 @@ Resume file: None
 |------|------|-------------|-------|
 | SHOP-01-01 | 1 | SHOP-01, SHOP-02 | src/firebase.js, src/App.jsx |
 | SHOP-01-02 | 1 | SHOP-06 | src/constants.jsx, src/components/admin/AdminTools.jsx, src/App.jsx, src/components/layout/NavLayout.jsx |
+| SHOP-01-03 | 2 | SHOP-03 | src/components/payment/PaymentsView.jsx, src/App.jsx |
 
 ## Plans Completed Previous Phase (FS-fee-split)
 
