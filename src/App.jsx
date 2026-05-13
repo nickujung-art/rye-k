@@ -1091,6 +1091,37 @@ function MainApp() {
                 addLog(`즉시청구 거절 — ${reason}`);
                 showToast("즉시 청구가 거절되었습니다.");
               }}
+              onConfirmInstantPayment={async (charge, student) => {
+                // 1. rye-instant-charges status → "paid"
+                await updateInstantCharge(charge.id, {
+                  status: "paid",
+                  paidAt: Date.now(),
+                  paymentId: charge.id + "_pay",
+                });
+
+                // 2. rye-payments에 type:"instant" 입립 레코드 추가
+                const kstNow = new Date(Date.now() + 9 * 60 * 60 * 1000);
+                const payMonth = kstNow.toISOString().slice(0, 7); // "YYYY-MM"
+                const payRecord = {
+                  id: charge.id + "_pay",
+                  studentId: charge.studentId,
+                  month: payMonth,
+                  amount: charge.amount,
+                  paid: true,
+                  paidAmount: charge.amount,
+                  paidDate: kstNow.toISOString().slice(0, 10),
+                  method: "transfer",
+                  note: `즉시청구 — ${charge.itemCategory} ${charge.itemName}`,
+                  type: "instant",
+                  instantChargeId: charge.id,
+                  createdAt: Date.now(),
+                };
+                const updatedPayments = [...payments, payRecord];
+                await savePayments(updatedPayments);
+
+                addLog(`즉시청구 입금 확인 — ${student?.name || "미확인"} ${fmtMoney(charge.amount||0)}`);
+                showToast("입금 확인 완료. 수납 레코드가 생성되었습니다.");
+              }}
             />}
             {view === "teachers" && canManageAll(user.role) && <TeachersView teachers={teachers} students={students} categories={categories} onAdd={() => { setSelected(null); setModal("tForm"); }} onSelect={t => { setSelected(t); setModal("tDetail"); }} attendance={attendance} />}
             {view === "institutions" && <InstitutionsView institutions={institutions} teachers={teachers} currentUser={user} onAdd={() => { setSelected(null); setModal("instForm"); }} onSelect={i => { setSelected(i); setModal("instDetail"); }} />}

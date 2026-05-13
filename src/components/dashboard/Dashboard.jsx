@@ -41,7 +41,7 @@ function Sparkline({ data }) {
   );
 }
 
-export default function Dashboard({ students, teachers, currentUser, notices, categories, attendance, payments, pending, institutions, nav, onUnpaidCardClick, feePresets = {} }) {
+export default function Dashboard({ students, teachers, currentUser, notices, categories, attendance, payments, pending, institutions, nav, onUnpaidCardClick, feePresets = {}, instantCharges = [] }) {
   const [todayListModal, setTodayListModal] = useState(false);
   const [expandedNotices, setExpandedNotices] = useState(new Set());
   const toggleNotice = (id) => setExpandedNotices(prev => { const next = new Set(prev); if (next.has(id)) next.delete(id); else next.add(id); return next; });
@@ -124,6 +124,18 @@ export default function Dashboard({ students, teachers, currentUser, notices, ca
     const pendingChargeCount = students.reduce((n, s) => n + (s.pendingOneTimeCharges||[]).length, 0);
     if (pendingChargeCount > 0) {
       notifications.push({ type: "gold", text: <><strong>💡 강사 비용 청구 요청 {pendingChargeCount}건</strong> — 수납 관리에서 확인 후 승인하세요</>, key: "charge-req", onClick: () => nav("payments") });
+    }
+  }
+  // 4.6. 즉시청구 pending 배지 (SHOP-07)
+  if (canManageAll(currentUser.role)) {
+    const pendingInstantCount = instantCharges.filter(c => c.status === "pending").length;
+    if (pendingInstantCount > 0) {
+      notifications.push({
+        type: "blue",
+        text: <><strong>📦 즉시 청구 요청 {pendingInstantCount}건</strong> — 수납 관리에서 확인하세요</>,
+        key: "instant-charge",
+        onClick: () => nav("payments")
+      });
     }
   }
   // 5. 강사 기념일 (임용 기념일)
