@@ -15,7 +15,7 @@ export function BottomNav({ view, setView, unpaidCount, pendingCount, newComment
   return (
     <nav className="bnav">
       {tabs.map(t => (
-        <div key={t.id} className={`bnav-item ${view === t.id || (t.id === "more" && ["teachers","notices","categories","profile","activity","pending","trash","studentNotices","analytics","lessonNotes","schedule","institutions","systemNews","monthlyReports","aiSettings"].includes(view)) ? "active" : ""}`} onClick={() => setView(t.id)}>
+        <div key={t.id} className={`bnav-item ${view === t.id || (t.id === "more" && ["teachers","notices","categories","profile","activity","pending","trash","studentNotices","analytics","lessonNotes","schedule","institutions","systemNews","monthlyReports","aiSettings","shop"].includes(view)) ? "active" : ""}`} onClick={() => setView(t.id)}>
           <span className="bnav-dot" />
           {t.badge > 0 && <span className="bnav-badge">{t.badge > 99 ? "99+" : t.badge}</span>}
           {t.icon}
@@ -85,6 +85,7 @@ export function Sidebar({ view, setView, user, onLogout, counts, pendingCount, d
     ...(user.role === "admin" ? [{ id: "categories", label: "과목 관리", icon: "≡" }] : []),
     ...(user.role === "admin" ? [{ id: "analytics", label: "현황 분석", icon: "◈" }] : []),
     ...(user.role === "admin" ? [{ id: "aiSettings", label: "AI 설정", icon: "🤖" }] : []),
+    ...(user.role === "admin" ? [{ id: "shop", label: "상품 관리", icon: "🛍" }] : []),
     ...(canManageAll(user.role) ? [{ id: "activity", label: "활동 기록", icon: "◷" }] : []),
     ...(canManageAll(user.role) ? [{ id: "trash", label: "휴지통", icon: "🗑" }] : []),
     { id: "systemNews", label: "시스템 소식", icon: "🔔" },
@@ -159,6 +160,7 @@ export function MoreMenu({ user, setView, onLogout, onResetSeed, counts, pending
     ...(user.role === "admin" ? [{ id: "categories", label: "과목 관리", icon: IC.settings }] : []),
     ...(user.role === "admin" ? [{ id: "analytics", label: "현황 분석", desc: "마케팅 · 보고 · 통계", icon: IC.search }] : []),
     ...(user.role === "admin" ? [{ id: "aiSettings", label: "AI 설정", desc: "AI 기능 켜기·끄기 · 안전 모드", icon: "🤖" }] : []),
+    ...(user.role === "admin" ? [{ id: "shop", label: "상품 관리", desc: "즉시청구 상품 카탈로그", icon: "🛍" }] : []),
     ...(canManageAll(user.role) ? [{ id: "activity", label: "활동 기록", icon: IC.cal }] : []),
     ...(canManageAll(user.role) ? [{ id: "trash", label: "휴지통", desc: trash.length > 0 ? `${trash.length}건` : "", icon: IC.x }] : []),
     { id: "systemNews", label: "시스템 소식", desc: "업데이트 이력 확인", icon: IC.bell },
