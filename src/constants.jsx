@@ -811,4 +811,14 @@ body:has(.ai-backdrop) .ai-fab{display:none}
 .shop-item-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;margin-bottom:12px}
 .shop-item-card{border:1.5px solid var(--border);background:var(--paper);border-radius:10px;padding:10px 8px;text-align:center;cursor:pointer;transition:all .12s;font-size:12px}
 .shop-item-card.selected{border-color:var(--gold);background:var(--gold-lt,rgba(255,179,0,0.08))}
+/* ── Payment Log Table ────────────────────────────────── */
+.log-table-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:var(--radius);margin-bottom:8px}
+.log-table{width:100%;border-collapse:collapse}
+.log-table th{background:var(--ink-5,#f8f8f8);padding:9px 12px;text-align:left;font-size:10.5px;font-weight:600;color:var(--ink-30);letter-spacing:.5px;text-transform:uppercase;border-bottom:1.5px solid var(--border);white-space:nowrap}
+.log-table td{padding:9px 12px;font-size:12.5px;border-bottom:1px solid var(--ink-10);vertical-align:middle}
+.log-table tbody tr:last-child td{border-bottom:none}
+.log-table tfoot td{background:var(--ink-5,#f8f8f8);border-top:2px solid var(--border);font-weight:700;font-size:13px}
+.log-table tr.log-unmatched td{background:rgba(232,40,28,.03)}
+.log-mobile-cards{display:none}
+@media(max-width:640px){.log-table-wrap{display:none}.log-mobile-cards{display:block}}
 `;

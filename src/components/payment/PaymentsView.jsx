@@ -1443,49 +1443,165 @@ function UnmatchedPaymentsTab({
 }
 
 function PaymentLogTab({ paymentLog, students }) {
-  const sorted = [...paymentLog].sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
-  if (sorted.length === 0) {
-    return (
-      <div className="empty" style={{paddingTop:40}}>
-        <div className="empty-txt">입금 내역이 없습니다.</div>
-        <div style={{fontSize:12,color:"var(--ink-30)",marginTop:6}}>
-          카카오뱅크 자동수납 처리 시 여기에 기록됩니다.
-        </div>
-      </div>
-    );
-  }
+  const now = new Date();
+  const [viewMonth, setViewMonth] = useState(`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}`);
+  const [copied, setCopied] = useState(false);
+
+  const changeMonth = (delta) => {
+    const [y, m] = viewMonth.split("-").map(Number);
+    const d = new Date(y, m - 1 + delta, 1);
+    setViewMonth(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`);
+  };
+
+  const filtered = paymentLog.filter(e => {
+    if (!e.timestamp) return false;
+    const d = new Date(e.timestamp);
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}` === viewMonth;
+  });
+  const sorted = [...filtered].sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+  const totalAmount = sorted.reduce((s, e) => s + (e.amount || 0), 0);
+  const matchedCount = sorted.filter(e => e.matched).length;
+
+  const copyTSV = async () => {
+    const header = "날짜\t시간\t입금인\t금액\t매칭\t학생명";
+    const rows = sorted.map(e => {
+      const s = e.studentId ? students.find(st => st.id === e.studentId) : null;
+      const d = e.timestamp ? new Date(e.timestamp) : null;
+      return [
+        d ? `${d.getMonth()+1}/${d.getDate()}` : "",
+        d ? d.toLocaleTimeString("ko-KR", {hour:"2-digit", minute:"2-digit"}) : "",
+        e.senderName || "알 수 없음",
+        e.amount || 0,
+        e.matched ? "매칭" : "미매칭",
+        s ? s.name : "—",
+      ].join("\t");
+    });
+    const tsv = [header, ...rows].join("\n");
+    try { await navigator.clipboard.writeText(tsv); }
+    catch { const ta = document.createElement("textarea"); ta.value = tsv; document.body.appendChild(ta); ta.select(); document.execCommand("copy"); document.body.removeChild(ta); }
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const [y, m] = viewMonth.split("-");
+  const monthLabel = `${y}년 ${m}월`;
+
   return (
     <div>
-      <div style={{fontSize:12,color:"var(--ink-60)",marginBottom:8,fontWeight:600}}>
-        입금 이력 {sorted.length}건
+      {/* 월 탐색 + 요약 + 복사 */}
+      <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:12,flexWrap:"wrap"}}>
+        <button className="btn btn-secondary btn-xs" onClick={() => changeMonth(-1)}>←</button>
+        <span style={{fontWeight:700,fontSize:14,minWidth:88,textAlign:"center"}}>{monthLabel}</span>
+        <button className="btn btn-secondary btn-xs" onClick={() => changeMonth(1)}>→</button>
+        <span style={{flex:1}} />
+        {sorted.length > 0 && (
+          <span style={{fontSize:12,color:"var(--ink-60)"}}>
+            {sorted.length}건 · <strong style={{color:"var(--green)"}}>{totalAmount.toLocaleString()}원</strong>
+          </span>
+        )}
+        {sorted.length > 0 && (
+          <button className="btn btn-secondary btn-xs" onClick={copyTSV} title="스프레드시트용 TSV 복사">
+            {copied ? "✓ 복사됨" : "표 복사"}
+          </button>
+        )}
       </div>
-      {sorted.map(entry => {
-        const s = entry.studentId ? students.find(st => st.id === entry.studentId) : null;
-        return (
-          <div key={entry.id} className="unmatched-card">
-            <div style={{flex:1,minWidth:0}}>
-              <div style={{display:"flex",alignItems:"center",gap:6}}>
-                <span style={{fontSize:13.5,fontWeight:700}}>{entry.senderName || "알 수 없음"}</span>
-                <span style={{
-                  fontSize:10,fontWeight:700,padding:"1px 5px",borderRadius:8,
-                  background: entry.matched ? "var(--green)" : "var(--ink-20)",
-                  color: entry.matched ? "#fff" : "var(--ink-60)",
-                }}>
-                  {entry.matched ? (s ? `→ ${s.name}` : "자동매칭") : "미매칭"}
-                </span>
-              </div>
-              <div style={{fontSize:12,color:"var(--green)",fontWeight:600}}>
-                {(entry.amount || 0).toLocaleString()}원
-              </div>
-              <div style={{fontSize:11,color:"var(--ink-30)"}}>
-                {entry.timestamp
-                  ? new Date(entry.timestamp).toLocaleString("ko-KR", {month:"numeric",day:"numeric",hour:"2-digit",minute:"2-digit"})
-                  : ""}
-              </div>
+
+      {sorted.length === 0 ? (
+        <div className="empty" style={{paddingTop:40}}>
+          <div className="empty-txt">{monthLabel} 입금 내역이 없습니다.</div>
+          <div style={{fontSize:12,color:"var(--ink-30)",marginTop:6}}>
+            카카오뱅크 자동수납 처리 시 여기에 기록됩니다.
+          </div>
+        </div>
+      ) : (
+        <>
+          {/* 데스크톱: 테이블 */}
+          <div className="log-table-wrap">
+            <table className="log-table">
+              <thead>
+                <tr>
+                  <th>날짜</th>
+                  <th>시간</th>
+                  <th>입금인</th>
+                  <th style={{textAlign:"right"}}>금액</th>
+                  <th>매칭</th>
+                  <th>학생</th>
+                </tr>
+              </thead>
+              <tbody>
+                {sorted.map(e => {
+                  const s = e.studentId ? students.find(st => st.id === e.studentId) : null;
+                  const d = e.timestamp ? new Date(e.timestamp) : null;
+                  return (
+                    <tr key={e.id} className={e.matched ? "" : "log-unmatched"}>
+                      <td style={{color:"var(--ink-60)",whiteSpace:"nowrap"}}>
+                        {d ? `${d.getMonth()+1}/${d.getDate()}` : "—"}
+                      </td>
+                      <td style={{color:"var(--ink-60)",whiteSpace:"nowrap"}}>
+                        {d ? d.toLocaleTimeString("ko-KR",{hour:"2-digit",minute:"2-digit"}) : "—"}
+                      </td>
+                      <td style={{fontWeight:600}}>{e.senderName || "알 수 없음"}</td>
+                      <td style={{textAlign:"right",fontWeight:700,color:"var(--green)",whiteSpace:"nowrap"}}>
+                        {(e.amount||0).toLocaleString()}원
+                      </td>
+                      <td>
+                        <span style={{
+                          fontSize:10,fontWeight:700,padding:"2px 6px",borderRadius:8,
+                          background: e.matched ? "var(--green)" : "rgba(232,40,28,.12)",
+                          color: e.matched ? "#fff" : "var(--red)",
+                        }}>
+                          {e.matched ? "매칭" : "미매칭"}
+                        </span>
+                      </td>
+                      <td style={{color:"var(--ink-60)"}}>{s ? s.name : "—"}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+              <tfoot>
+                <tr>
+                  <td colSpan={3}>합계 {sorted.length}건 (매칭 {matchedCount} · 미매칭 {sorted.length - matchedCount})</td>
+                  <td style={{textAlign:"right",color:"var(--green)"}}>{totalAmount.toLocaleString()}원</td>
+                  <td colSpan={2} />
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+
+          {/* 모바일: 카드 */}
+          <div className="log-mobile-cards">
+            {sorted.map(e => {
+              const s = e.studentId ? students.find(st => st.id === e.studentId) : null;
+              const d = e.timestamp ? new Date(e.timestamp) : null;
+              return (
+                <div key={e.id} className="unmatched-card">
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{display:"flex",alignItems:"center",gap:6}}>
+                      <span style={{fontSize:13.5,fontWeight:700}}>{e.senderName || "알 수 없음"}</span>
+                      <span style={{
+                        fontSize:10,fontWeight:700,padding:"1px 5px",borderRadius:8,
+                        background: e.matched ? "var(--green)" : "rgba(232,40,28,.12)",
+                        color: e.matched ? "#fff" : "var(--red)",
+                      }}>
+                        {e.matched ? (s ? `→ ${s.name}` : "자동매칭") : "미매칭"}
+                      </span>
+                    </div>
+                    <div style={{fontSize:12,color:"var(--green)",fontWeight:600}}>
+                      {(e.amount||0).toLocaleString()}원
+                    </div>
+                    <div style={{fontSize:11,color:"var(--ink-30)"}}>
+                      {d ? `${d.getMonth()+1}/${d.getDate()} ${d.toLocaleTimeString("ko-KR",{hour:"2-digit",minute:"2-digit"})}` : ""}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+            <div style={{textAlign:"right",fontSize:12,color:"var(--ink-60)",padding:"10px 0",borderTop:"1px solid var(--border)"}}>
+              합계 {sorted.length}건 · <strong style={{color:"var(--green)"}}>{totalAmount.toLocaleString()}원</strong>
             </div>
           </div>
-        );
-      })}
+        </>
+      )}
     </div>
   );
 }
