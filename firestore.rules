@@ -110,6 +110,12 @@ service cloud.firestore {
       allow read, write: if isManagerOrAbove();
     }
 
+    // 상품 카탈로그 — staff 읽기, 관리자 이상 쓰기
+    match /appData/rye-shop-items {
+      allow read:  if isStaff();
+      allow write: if isManagerOrAbove();
+    }
+
     // 즉시 청구 (독립 컬렉션) — 강사 이상 읽기·생성, 관리자 이상 수정, 관리자 삭제
     match /rye-instant-charges/{docId} {
       allow read:   if isStaff();

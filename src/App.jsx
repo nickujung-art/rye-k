@@ -409,7 +409,7 @@ function MainApp() {
             received[key] = null;
             checkAllLoaded();
           }
-          setLoadError(err.message);
+          if (err.code !== "permission-denied") setLoadError(err.message);
         });
         unsubscribes.push(unsub);
       });
