@@ -9,7 +9,7 @@ import PaymentsView from "./components/payment/PaymentsView.jsx";
 import { LessonEditor, StudentFormModal, StudentDetailModal, StudentsView } from "./components/student/StudentManagement.jsx";
 import { TeacherFormModal, TeacherDetailModal, TeachersView } from "./components/teacher/TeacherManagement.jsx";
 import { NoticeFormModal, NoticesView, StudentNoticeManager } from "./components/notice/NoticeManagement.jsx";
-import { ActivityView, PendingView, TrashView, CategoriesView, AiSettingsView } from "./components/admin/AdminTools.jsx";
+import { ActivityView, PendingView, TrashView, CategoriesView, AiSettingsView, ShopView } from "./components/admin/AdminTools.jsx";
 import { CURRENT_VERSION } from "./constants/releases.js";
 import Dashboard from "./components/dashboard/Dashboard.jsx";
 import { PublicParentView, PublicRegisterForm } from "./components/portal/PublicPortal.jsx";
@@ -1024,7 +1024,7 @@ function MainApp() {
   if (!user) return <><style>{CSS}</style><LoginScreen onLogin={login} /></>;
 
   const pendingCount = isAdmin ? pending.length : 0;
-  const topTitle = { dashboard: "RYE-K", students: "회원 관리", attendance: "출석 체크", payments: "수납 관리", teachers: "강사 관리", notices: "공지사항", categories: "과목 관리", analytics: "현황 분석", profile: "내 정보", more: "더보기", activity: "활동 기록", pending: "등록 대기", schedule: "강사 스케줄", trash: "휴지통", studentNotices: "수강생 공지", lessonNotes: "레슨노트", institutions: "기관 관리", systemNews: "시스템 소식", monthlyReports: "월간 리포트", aiSettings: "AI 설정" }[view] || "RYE-K";
+  const topTitle = { dashboard: "RYE-K", students: "회원 관리", attendance: "출석 체크", payments: "수납 관리", teachers: "강사 관리", notices: "공지사항", categories: "과목 관리", analytics: "현황 분석", profile: "내 정보", more: "더보기", activity: "활동 기록", pending: "등록 대기", schedule: "강사 스케줄", trash: "휴지통", studentNotices: "수강생 공지", lessonNotes: "레슨노트", institutions: "기관 관리", systemNews: "시스템 소식", monthlyReports: "월간 리포트", aiSettings: "AI 설정", shop: "상품 관리" }[view] || "RYE-K";
 
   return (
     <>
@@ -1116,6 +1116,10 @@ function MainApp() {
             {view === "systemNews" && <SystemNewsView user={user} navigate={navigate} />}
             {view === "monthlyReports" && (canManageAll(user.role) || user.role === "teacher") && <MonthlyReportsView students={students} teachers={teachers} attendance={attendance} currentUser={user} aiReports={aiReports} onSaveAiReports={saveAiReports} />}
             {view === "aiSettings" && user.role === "admin" && <AiSettingsView settings={ryeSettings} onSave={saveRyeSettings} />}
+            {view === "shop" && user.role === "admin" && <ShopView
+              shopItems={shopItems}
+              onSave={async u => { await saveShopItems(u); addLog("상품 카탈로그 수정"); }}
+            />}
             {view === "more" && <MoreMenu user={user} setView={navigate} onLogout={handleLogout} onResetSeed={resetSeed} counts={{ teachers: teachers.length }} pendingCount={pendingCount} darkMode={darkMode} setDarkMode={setDarkMode} trash={trash} newCommentCount={newCommentCount} />}
           </div>
           </Suspense>

@@ -619,6 +619,120 @@ export function AiSettingsView({ settings, onSave }) {
   );
 }
 
+// ── SHOP VIEW ─────────────────────────────────────────────────────────────────
+export function ShopView({ shopItems, onSave }) {
+  const [shopCats, setShopCats] = useState([...(shopItems?.categories || ["의상/공연복","악세사리","악기 가방","기타"])]);
+  const [items, setItems] = useState([...(shopItems?.items || [])]);
+  const [newCat, setNewCat] = useState("");
+  const [newItem, setNewItem] = useState({ category: "", name: "", defaultPrice: "" });
+  const [dirty, setDirty] = useState(false);
+  const [savedFlash, setSavedFlash] = useState("");
+  const [errMsg, setErrMsg] = useState("");
+  const showErr = (msg) => { setErrMsg(msg); setTimeout(() => setErrMsg(""), 2500); };
+  const flashSaved = (msg = "저장됨 ✓") => { setSavedFlash(msg); setTimeout(() => setSavedFlash(""), 1800); };
+
+  const addCat = () => {
+    const v = newCat.trim();
+    if (!v) return;
+    if (shopCats.includes(v)) { showErr("이미 존재하는 카테고리입니다."); return; }
+    setShopCats(c => [...c, v]); setNewCat(""); setDirty(true);
+  };
+  const rmCat = (cat) => {
+    setShopCats(c => c.filter(x => x !== cat));
+    setItems(prev => prev.filter(i => i.category !== cat));
+    setDirty(true);
+  };
+  const addItem = () => {
+    const name = newItem.name.trim();
+    const category = newItem.category || shopCats[0] || "";
+    if (!name) { showErr("상품명을 입력하세요."); return; }
+    if (!category) { showErr("카테고리를 선택하세요."); return; }
+    const price = parseInt(newItem.defaultPrice) || 0;
+    const id = `item_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+    setItems(prev => [...prev, { id, category, name, defaultPrice: price, active: true }]);
+    setNewItem({ category, name: "", defaultPrice: "" });
+    setDirty(true);
+  };
+  const toggleActive = (id) => {
+    setItems(prev => prev.map(i => i.id === id ? { ...i, active: !i.active } : i));
+    setDirty(true);
+  };
+  const rmItem = (id) => { setItems(prev => prev.filter(i => i.id !== id)); setDirty(true); };
+  const handleSave = async () => {
+    const updated = { categories: shopCats, items };
+    await onSave(updated);
+    setDirty(false);
+    flashSaved();
+  };
+
+  return (
+    <div>
+      <div className="ph">
+        <div><h1>상품 관리</h1><div className="ph-sub">관리자 전용</div></div>
+        <div style={{display:"flex",alignItems:"center",gap:10}}>
+          {savedFlash && <span style={{fontSize:12,color:"var(--green)",fontWeight:600}}>{savedFlash}</span>}
+          {dirty && <button className="btn btn-primary btn-sm" onClick={handleSave}>저장</button>}
+        </div>
+      </div>
+      {errMsg && <div style={{margin:"0 0 10px",padding:"10px 14px",background:"var(--red-lt)",border:"1px solid rgba(232,40,28,.2)",borderRadius:8,fontSize:13,color:"var(--red)",fontWeight:500}}>⚠ {errMsg}</div>}
+
+      {/* 카테고리별 상품 목록 */}
+      {shopCats.map(cat => {
+        const catItems = items.filter(i => i.category === cat);
+        return (
+          <div key={cat} className="card" style={{marginBottom:10,padding:16}}>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
+              <div style={{display:"flex",alignItems:"center",gap:6}}>
+                <span style={{width:3,height:13,background:"linear-gradient(180deg,var(--blue),var(--gold))",display:"inline-block",borderRadius:2}} />
+                <span style={{fontFamily:"'Noto Serif KR',serif",fontSize:14,fontWeight:600}}>{cat}</span>
+                <span className="cat-count">{catItems.length}</span>
+              </div>
+              <button className="btn btn-danger btn-xs" onClick={() => rmCat(cat)}>삭제</button>
+            </div>
+            {catItems.length === 0 ? (
+              <div style={{fontSize:12,color:"var(--ink-30)",paddingBottom:8}}>상품이 없습니다.</div>
+            ) : (
+              <div style={{marginBottom:10}}>
+                {catItems.map(item => (
+                  <div key={item.id} style={{display:"flex",alignItems:"center",gap:8,padding:"6px 0",borderBottom:"1px solid var(--border)"}}>
+                    <span style={{flex:1,fontSize:13,fontWeight:500,color:item.active?"var(--ink)":"var(--ink-30)",textDecoration:item.active?"none":"line-through"}}>{item.name}</span>
+                    <span style={{fontSize:12,color:"var(--ink-60)"}}>{item.defaultPrice > 0 ? `${item.defaultPrice.toLocaleString()}원` : "가격 미정"}</span>
+                    <button className="btn btn-secondary btn-xs" onClick={() => toggleActive(item.id)}>{item.active ? "비활성" : "활성"}</button>
+                    <button className="btn btn-danger btn-xs" onClick={() => rmItem(item.id)}>삭제</button>
+                  </div>
+                ))}
+              </div>
+            )}
+            {/* 해당 카테고리에 새 상품 추가 인라인 */}
+            <div style={{display:"flex",gap:6,marginTop:6}}>
+              <input className="inp" style={{flex:2}} placeholder="상품명"
+                value={newItem.category === cat ? newItem.name : ""}
+                onFocus={() => setNewItem(n => ({ ...n, category: cat }))}
+                onChange={e => setNewItem(n => ({ ...n, name: e.target.value, category: cat }))}
+                onKeyDown={e => e.key === "Enter" && newItem.category === cat && addItem()} />
+              <input className="inp" style={{flex:1}} placeholder="기본가격"
+                type="number" min="0"
+                value={newItem.category === cat ? newItem.defaultPrice : ""}
+                onFocus={() => setNewItem(n => ({ ...n, category: cat }))}
+                onChange={e => setNewItem(n => ({ ...n, defaultPrice: e.target.value, category: cat }))} />
+              <button className="btn btn-green btn-sm" onClick={() => { setNewItem(n => ({ ...n, category: cat })); addItem(); }}>추가</button>
+            </div>
+          </div>
+        );
+      })}
+
+      {/* 새 카테고리 추가 */}
+      <div className="card" style={{padding:16,borderStyle:"dashed"}}>
+        <div style={{fontFamily:"'Noto Serif KR',serif",fontSize:13,fontWeight:600,marginBottom:10}}>새 카테고리</div>
+        <div style={{display:"flex",gap:8}}>
+          <input className="inp" style={{flex:1}} value={newCat} onChange={e => setNewCat(e.target.value)} placeholder="카테고리 이름" onKeyDown={e => e.key === "Enter" && addCat()} />
+          <button className="btn btn-primary btn-sm" onClick={addCat}>추가</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── TRASH VIEW (휴지통 — 7일 백업) ───────────────────────────────────────────
 export function TrashView({ trash, onRestore, onPermanentDelete }) {
   const [confirmId, setConfirmId] = useState(null);
