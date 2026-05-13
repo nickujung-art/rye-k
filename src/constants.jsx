@@ -647,6 +647,9 @@ input[type="date"]::-webkit-date-and-time-value{text-align:left}
 /* ── .text-large: 본문 컨텐츠 영역 확대 ─── */
 /* 컨텐츠 영역 기본 스케일 */
 .text-large .main-content{font-size:15px}
+/* 페이지 헤더 */
+.text-large .ph h1{font-size:23px}
+.text-large .ph-sub{font-size:13.5px}
 /* 공지사항 */
 .text-large .notice-title{font-size:16px;line-height:1.5}
 .text-large .notice-body{font-size:15px;line-height:1.75}
@@ -654,19 +657,53 @@ input[type="date"]::-webkit-date-and-time-value{text-align:left}
 /* 레슨노트 */
 .text-large .lesson-note-content,.text-large .ln-text,.text-large .ln-body{font-size:15px;line-height:1.75}
 .text-large .ln-title{font-size:14px}
+/* 회원 카드 (s-card) */
+.text-large .s-name{font-size:18px}
+.text-large .s-inst{font-size:13px}
+.text-large .s-meta{font-size:13.5px}
+/* 카테고리 헤더 */
+.text-large .cat-title{font-size:19px}
+.text-large .cat-count{font-size:12px}
 /* 회원 상세 */
 .text-large .det-name{font-size:21px}
+.text-large .ii-label{font-size:11.5px}
 .text-large .ii-val{font-size:14px;line-height:1.6}
 .text-large .notes-box{font-size:14px;line-height:1.7}
 .text-large .lesson-detail-inst{font-size:14px}
 .text-large .sched-chip{font-size:13px}
-/* 출석·결제 목록 본문 */
+/* 강사 스케줄 */
+.text-large .sched-day-name{font-size:16px}
+.text-large .sched-day-date{font-size:12.5px}
+.text-large .sched-name{font-size:15px}
+.text-large .sched-inst{font-size:12.5px}
+.text-large .sched-teacher{font-size:12.5px}
+.text-large .sched-time{font-size:13.5px;width:50px}
+.text-large .sched-empty{font-size:13.5px}
+/* 출석 */
 .text-large .att-stat{font-size:13px}
+.text-large .att-btn .att-label{font-size:10.5px}
+/* 수납 */
 .text-large .pay-status{font-size:13px}
+.text-large .pay-summary-num{font-size:22px}
+.text-large .pay-summary-label{font-size:11.5px}
+.text-large .pay-footer-label{font-size:13.5px}
+/* 대시보드·통계 */
+.text-large .stat-label{font-size:13px}
+.text-large .dash-card-title{font-size:16px}
+/* 메뉴 */
+.text-large .menu-item-label{font-size:16px}
+.text-large .menu-item-desc{font-size:13px}
+/* 활동기록 */
+.text-large .log-msg{font-size:14px}
+.text-large .log-time{font-size:12px}
+/* 알림 */
+.text-large .notif-text{font-size:14px}
+.text-large .notif-hd-title{font-size:15.5px}
 /* 시스템 소식 */
 .text-large .news-desc{font-size:14.5px;line-height:1.75}
 .text-large .news-title{font-size:16px}
 .text-large .news-pm{font-size:13.5px}
+.text-large .news-ver,.text-large .news-date{font-size:13.5px}
 /* 모달 본문 */
 .text-large .modal-b .fg-label{font-size:12px}
 .text-large .modal-b .ii-val{font-size:14px}
@@ -679,7 +716,7 @@ input[type="date"]::-webkit-date-and-time-value{text-align:left}
 .text-large .sidebar,.text-large .sidebar *,
 .text-large table,.text-large table td,.text-large table th,
 .text-large .cal-grid,.text-large .cal-grid *,
-.text-large .ftab,.text-large .s-card,.text-large .s-card *,
+.text-large .ftab,
 .text-large .pay-row .pay-amount{font-size:revert!important}
 
 /* ── 정산서 ─────────────────────────────────────────── */
@@ -766,4 +803,12 @@ body:has(.ai-backdrop) .ai-fab{display:none}
 .portal-expiry-extend:hover{opacity:.85}
 .portal-expiry-logout{background:none;border:1px solid rgba(200,136,0,.4);color:var(--gold-dk);border-radius:var(--radius-sm);padding:6px 12px;font-size:12px;font-weight:500;cursor:pointer;font-family:inherit;white-space:nowrap;transition:all .12s}
 .portal-expiry-logout:hover{background:rgba(245,168,0,.12)}
+
+/* ── Shop (즉시청구 상품 관리) ──────────────────────────────── */
+.shop-chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+.shop-chip{padding:5px 12px;font-size:12px;cursor:pointer;border:1.5px solid var(--border);background:var(--paper);color:var(--ink-30);transition:all .12s;font-family:inherit;border-radius:20px;white-space:nowrap}
+.shop-chip.active{background:var(--gold);border-color:var(--gold);color:#fff}
+.shop-item-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;margin-bottom:12px}
+.shop-item-card{border:1.5px solid var(--border);background:var(--paper);border-radius:10px;padding:10px 8px;text-align:center;cursor:pointer;transition:all .12s;font-size:12px}
+.shop-item-card.selected{border-color:var(--gold);background:var(--gold-lt,rgba(255,179,0,0.08))}
 `;
