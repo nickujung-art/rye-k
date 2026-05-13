@@ -1071,6 +1071,26 @@ function MainApp() {
                 addLog(`${data.itemCategory} — ${data.itemName} 즉시청구 요청`);
                 showToast("즉시 청구 요청이 전송되었습니다.");
               }}
+              onApproveInstantCharge={async (id, amount, approvedBy) => {
+                await updateInstantCharge(id, {
+                  status: "approved",
+                  amount,
+                  amountPending: false,
+                  approvedAt: Date.now(),
+                  approvedBy,
+                });
+                addLog(`즉시청구 승인 — ${amount.toLocaleString()}원`);
+                showToast("즉시 청구가 승인되었습니다.");
+              }}
+              onRejectInstantCharge={async (id, reason) => {
+                await updateInstantCharge(id, {
+                  status: "rejected",
+                  rejectedAt: Date.now(),
+                  rejectedReason: reason,
+                });
+                addLog(`즉시청구 거절 — ${reason}`);
+                showToast("즉시 청구가 거절되었습니다.");
+              }}
             />}
             {view === "teachers" && canManageAll(user.role) && <TeachersView teachers={teachers} students={students} categories={categories} onAdd={() => { setSelected(null); setModal("tForm"); }} onSelect={t => { setSelected(t); setModal("tDetail"); }} attendance={attendance} />}
             {view === "institutions" && <InstitutionsView institutions={institutions} teachers={teachers} currentUser={user} onAdd={() => { setSelected(null); setModal("instForm"); }} onSelect={i => { setSelected(i); setModal("instDetail"); }} />}
