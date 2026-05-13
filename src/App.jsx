@@ -427,14 +427,27 @@ function MainApp() {
       unsubscribes.push(chargesUnsub);
     };
 
-    // ★ 핵심: Firebase Auth 세션 복원 대기 → 이미 로그인된 경우 즉시 리스너 시작,
-    //         미로그인(포털) 경우에만 익명 로그인 후 시작
+    // ★ 핵심: setupListeners는 반드시 한 번만 호출
+    let setupCalled = false;
+    const doSetup = () => {
+      if (setupCalled) return;
+      setupCalled = true;
+      setupListeners();
+    };
+
+    // 방어 타이머: auth 흐름이 어떤 이유로든 막히면 4초 후 강제 시작
+    const setupFallback = setTimeout(doSetup, 4000);
+
+    // Firebase Auth 세션 복원 대기 → 이미 로그인된 경우 즉시, 아니면 익명 로그인 후 시작
     const unsubAuth = onAuthStateChanged(auth, (firebaseUser) => {
-      unsubAuth(); // 최초 1회만 처리
+      unsubAuth();
+      clearTimeout(setupFallback);
       if (firebaseUser) {
-        setupListeners();
+        doSetup();
       } else {
-        firebaseSignInAnon().then(() => setupListeners()).catch(() => setupListeners());
+        // 포털용 익명 로그인 시도, 3초 안에 안 되면 그냥 시작
+        const anonFallback = setTimeout(doSetup, 3000);
+        firebaseSignInAnon().then(() => { clearTimeout(anonFallback); doSetup(); });
       }
     });
 
@@ -447,6 +460,7 @@ function MainApp() {
 
     return () => {
       clearTimeout(timeout);
+      clearTimeout(setupFallback);
       unsubscribes.forEach(unsub => unsub());
     };
   }, []);
