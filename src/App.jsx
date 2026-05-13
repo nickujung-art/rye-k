@@ -347,46 +347,52 @@ function MainApp() {
 
     const checkAllLoaded = async () => {
       if (Object.keys(received).length < KEYS.length) return;
-      if (!seeded && (!received["rye-teachers"] || received["rye-teachers"].length === 0)) {
-        seeded = true;
-        const seed = generateSeedData();
-        await Promise.all([
-          sSet("rye-teachers", seed.seedTeachers),
-          sSet("rye-students", seed.seedStudents),
-          sSet("rye-notices", seed.seedNotices),
-          sSet("rye-attendance", seed.seedAttendance),
-          sSet("rye-payments", seed.seedPayments),
-          sSet("rye-activity", seed.seedActivity),
-        ]);
-      }
-      if (!seeded && received["rye-students"] && received["rye-students"].length > 0) {
-        const studentsArr = received["rye-students"];
-        const needsMigration = studentsArr.some(s => !s.studentCode);
-        if (needsMigration) {
-          const existingCodes = new Set(studentsArr.filter(s => s.studentCode).map(s => s.studentCode));
-          const migrated = studentsArr.map(s => {
-            if (s.studentCode) return s;
-            let code;
-            do { code = generateStudentCode(); } while (existingCodes.has(code));
-            existingCodes.add(code);
-            return { ...s, studentCode: code };
-          });
-          await sSet("rye-students", migrated);
-          console.log("Migrated studentCodes for", migrated.filter((s,i) => s.studentCode !== studentsArr[i]?.studentCode).length, "students");
+      // PERMISSION_DENIED가 발생한 경우 씨드/마이그레이션 건너뜀 (데이터가 있어도 못 읽은 것)
+      const hasPermissionError = Object.values(received).some(v => v === null);
+      try {
+        if (!hasPermissionError && !seeded && (!received["rye-teachers"] || received["rye-teachers"].length === 0)) {
+          seeded = true;
+          const seed = generateSeedData();
+          await Promise.all([
+            sSet("rye-teachers", seed.seedTeachers),
+            sSet("rye-students", seed.seedStudents),
+            sSet("rye-notices", seed.seedNotices),
+            sSet("rye-attendance", seed.seedAttendance),
+            sSet("rye-payments", seed.seedPayments),
+            sSet("rye-activity", seed.seedActivity),
+          ]);
         }
-      }
-      // 1회 데이터 복구 — 백업 77명과 현재 Firestore 병합 (현재 데이터 우선)
-      if (!seeded && !localStorage.getItem("rye-recovery-v1")) {
-        const curStudents = received["rye-students"] || [];
-        const seedStudents = generateSeedData().seedStudents;
-        const currentById = Object.fromEntries(curStudents.map(s => [s.id, s]));
-        const merged = seedStudents.map(ss => currentById[ss.id] || ss);
-        const seedIds = new Set(seedStudents.map(s => s.id));
-        const extras = curStudents.filter(s => !seedIds.has(s.id));
-        const final = [...merged, ...extras];
-        await sSet("rye-students", final);
-        localStorage.setItem("rye-recovery-v1", "1");
-        console.log(`[Recovery] ${final.length}명 복구 완료 (기존 ${curStudents.length}명 보존)`);
+        if (!seeded && received["rye-students"] && received["rye-students"].length > 0) {
+          const studentsArr = received["rye-students"];
+          const needsMigration = studentsArr.some(s => !s.studentCode);
+          if (needsMigration) {
+            const existingCodes = new Set(studentsArr.filter(s => s.studentCode).map(s => s.studentCode));
+            const migrated = studentsArr.map(s => {
+              if (s.studentCode) return s;
+              let code;
+              do { code = generateStudentCode(); } while (existingCodes.has(code));
+              existingCodes.add(code);
+              return { ...s, studentCode: code };
+            });
+            await sSet("rye-students", migrated);
+            console.log("Migrated studentCodes for", migrated.filter((s,i) => s.studentCode !== studentsArr[i]?.studentCode).length, "students");
+          }
+        }
+        // 1회 데이터 복구 — 백업 77명과 현재 Firestore 병합 (현재 데이터 우선)
+        if (!seeded && !hasPermissionError && !localStorage.getItem("rye-recovery-v1")) {
+          const curStudents = received["rye-students"] || [];
+          const seedStudents = generateSeedData().seedStudents;
+          const currentById = Object.fromEntries(curStudents.map(s => [s.id, s]));
+          const merged = seedStudents.map(ss => currentById[ss.id] || ss);
+          const seedIds = new Set(seedStudents.map(s => s.id));
+          const extras = curStudents.filter(s => !seedIds.has(s.id));
+          const final = [...merged, ...extras];
+          await sSet("rye-students", final);
+          localStorage.setItem("rye-recovery-v1", "1");
+          console.log(`[Recovery] ${final.length}명 복구 완료 (기존 ${curStudents.length}명 보존)`);
+        }
+      } catch (err) {
+        console.error("checkAllLoaded setup error:", err);
       }
       resolved = true;
       setLoading(false);
