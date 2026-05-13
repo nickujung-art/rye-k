@@ -159,15 +159,21 @@ export function StudentFormModal({ student, teachers, currentUser, categories, f
               <input className="inp" value={form.guardianPhone} onChange={e => set("guardianPhone", fmtPhone(e.target.value))} placeholder="010-0000-0000" maxLength={13} />
             </div>
           )}
-          <div className="fg">
-            <label className="fg-label">담당 강사</label>
-            {canManageAll(currentUser.role) ? (
-              <select className="sel" value={form.teacherId} onChange={e => set("teacherId", e.target.value)}>
-                <option value="">미배정</option>
-                {teachers.map(t => <option key={t.id} value={t.id}>{t.name} ({(t.instruments || []).filter(Boolean).join(", ") || "강사"})</option>)}
-              </select>
-            ) : (<input className="inp" value={teachers.find(t => t.id === currentUser.id)?.name || currentUser.name} disabled />)}
-          </div>
+          {(() => {
+            const allLessonsHaveTeacher = (form.lessons || []).length > 0 && (form.lessons || []).every(l => l.teacherId);
+            if (canManageAll(currentUser.role) && allLessonsHaveTeacher) return null;
+            return (
+              <div className="fg">
+                <label className="fg-label">담당 강사</label>
+                {canManageAll(currentUser.role) ? (
+                  <select className="sel" value={form.teacherId} onChange={e => set("teacherId", e.target.value)}>
+                    <option value="">미배정</option>
+                    {teachers.map(t => <option key={t.id} value={t.id}>{t.name} ({(t.instruments || []).filter(Boolean).join(", ") || "강사"})</option>)}
+                  </select>
+                ) : (<input className="inp" value={teachers.find(t => t.id === currentUser.id)?.name || currentUser.name} disabled />)}
+              </div>
+            );
+          })()}
           {canManageAll(currentUser.role) ? (
             <div className="fg">
               <label className="fg-label">월 수강료 (과목별 합계)</label>

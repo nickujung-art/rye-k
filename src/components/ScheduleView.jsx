@@ -23,9 +23,10 @@ function ScheduleView({ students, teachers, currentUser, attendance, onSaveAtten
   const canSeeAll = canManageAll(currentUser.role);
   const effectiveFilter = canSeeAll ? filterTeacherId : currentUser.id;
   const visibleStudents = students.filter(s =>
-    effectiveFilter === "all" ||
-    s.teacherId === effectiveFilter ||
-    (s.lessons || []).some(l => l.teacherId === effectiveFilter)
+    s.status !== "paused" && s.status !== "withdrawn" &&
+    (effectiveFilter === "all" ||
+     s.teacherId === effectiveFilter ||
+     (s.lessons || []).some(l => l.teacherId === effectiveFilter))
   );
 
   const ATT_BADGE = {
@@ -50,7 +51,20 @@ function ScheduleView({ students, teachers, currentUser, attendance, onSaveAtten
       if (effectiveFilter !== "all" && lessonTid !== effectiveFilter) return;
       const teacher = teachers.find(t => t.id === lessonTid);
       (lesson.schedule || []).forEach(sch => {
-        if (sch.day && DAYS.includes(sch.day)) {
+        if (!sch.day || !DAYS.includes(sch.day)) return;
+        if (s.isInstitution) {
+          const groupKey = `${s.id}_${sch.day}_${sch.time || ""}`;
+          if (!scheduleByDay[sch.day].some(e => e.groupKey === groupKey)) {
+            scheduleByDay[sch.day].push({
+              studentId: s.id, studentName: s.name, instrument: lesson.instrument,
+              time: sch.time || "", teacherId: lessonTid,
+              teacherName: teacher ? teacher.name : "미배정",
+              color: getTeacherColor(lessonTid, teachers), isMakeup: false,
+              isGroup: true, groupKey,
+              participantCount: s.participantCount || lesson.participantCount || 0,
+            });
+          }
+        } else {
           scheduleByDay[sch.day].push({
             studentId: s.id, studentName: s.name, instrument: lesson.instrument,
             time: sch.time || "", teacherId: lessonTid,
@@ -165,7 +179,10 @@ function ScheduleView({ students, teachers, currentUser, attendance, onSaveAtten
                 <div key={i} className={"sched-lesson" + (entry.isMakeup?" makeup":"")} style={{borderLeftColor:entry.color,cursor:"pointer"}} onClick={()=>{setEditEntry({studentId:entry.studentId,studentName:entry.studentName,instrument:entry.instrument,originalDay:dayName,originalDate:date,time:entry.time});setEditForm({action:"move",newDay:"",newTime:entry.time||"",newDate:""});}}>
                   <span className="sched-time">{entry.time||"—"}</span>
                   <div className="sched-info">
-                    <div className="sched-name">{entry.studentName}</div>
+                    <div className="sched-name">
+                      {entry.studentName}
+                      {entry.isGroup && entry.participantCount > 0 && <span style={{fontSize:9,color:"var(--ink-30)",marginLeft:3,fontWeight:400}}>({entry.participantCount}명)</span>}
+                    </div>
                     <div className="sched-inst">{entry.instrument}</div>
                     <div className="sched-teacher">{entry.teacherName}</div>
                   </div>
@@ -339,7 +356,10 @@ function ScheduleView({ students, teachers, currentUser, attendance, onSaveAtten
                   onClick={()=>{setEditEntry({studentId:entry.studentId,studentName:entry.studentName,instrument:entry.instrument,originalDay:dayName,originalDate:dayDetail,time:entry.time});setEditForm({action:"move",newDay:"",newTime:entry.time||"",newDate:""});}}>
                   <span className="sched-time">{entry.time||"—"}</span>
                   <div className="sched-info">
-                    <div className="sched-name">{entry.studentName}</div>
+                    <div className="sched-name">
+                      {entry.studentName}
+                      {entry.isGroup && entry.participantCount > 0 && <span style={{fontSize:9,color:"var(--ink-30)",marginLeft:3,fontWeight:400}}>({entry.participantCount}명)</span>}
+                    </div>
                     <div className="sched-inst">{entry.instrument}</div>
                     <div className="sched-teacher">{entry.teacherName}</div>
                   </div>

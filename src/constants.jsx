@@ -353,6 +353,8 @@ input[type="date"]::-webkit-date-and-time-value{text-align:left}
 .fee-inp-cell .inp{width:90px;height:28px;padding:3px 7px;font-size:12px;text-align:right;font-variant-numeric:tabular-nums}
 /* ── Unmatched payments tab / card (PAY-06) ── */
 .unmatched-card{background:var(--paper);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;margin-bottom:8px;display:flex;align-items:flex-start;gap:10px}
+.unmatched-card > div:last-child{flex-shrink:0;width:160px;max-width:160px}
+.unmatched-card > div:last-child select{width:100%}
 .unmatched-badge{background:var(--red);color:#fff;font-size:10px;font-weight:700;padding:2px 6px;border-radius:10px;margin-left:4px}
 
 /* ── Activity log ──────────────────────────────────────── */
@@ -643,6 +645,8 @@ input[type="date"]::-webkit-date-and-time-value{text-align:left}
 .btn-aa.active{background:var(--blue-lt);border-color:var(--blue);color:var(--blue)}
 .btn-aa:hover{border-color:var(--blue-md);color:var(--blue)}
 /* ── .text-large: 본문 컨텐츠 영역 확대 ─── */
+/* 컨텐츠 영역 기본 스케일 */
+.text-large .main-content{font-size:15px}
 /* 공지사항 */
 .text-large .notice-title{font-size:16px;line-height:1.5}
 .text-large .notice-body{font-size:15px;line-height:1.75}
@@ -669,14 +673,14 @@ input[type="date"]::-webkit-date-and-time-value{text-align:left}
 /* 회원 포털 본문 */
 .text-large .portal-body{font-size:15px;line-height:1.65}
 .text-large .portal-body .tab-content-text{font-size:15px;line-height:1.75}
-/* ── 레이아웃 고정 영역 — 크기 고정 ─── */
+/* ── 레이아웃 고정 영역 — 크기 고정 (revert = author stylesheet 값으로 복원) ─── */
 .text-large .topbar,.text-large .topbar *,
 .text-large .bnav,.text-large .bnav *,
 .text-large .sidebar,.text-large .sidebar *,
 .text-large table,.text-large table td,.text-large table th,
 .text-large .cal-grid,.text-large .cal-grid *,
 .text-large .ftab,.text-large .s-card,.text-large .s-card *,
-.text-large .pay-row .pay-amount{font-size:unset!important}
+.text-large .pay-row .pay-amount{font-size:revert!important}
 
 /* ── 정산서 ─────────────────────────────────────────── */
 .settlement-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:600;overflow-y:auto;padding:20px;display:flex;align-items:flex-start;justify-content:center}
