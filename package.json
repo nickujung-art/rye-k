@@ -6,7 +6,10 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "db:backup": "node scripts/backup-firestore.js",
+    "db:restore": "node scripts/restore-firestore.js",
+    "db:restore:dry": "node scripts/restore-firestore.js --dry-run"
   },
   "dependencies": {
     "react": "^18.3.1",

@@ -21,6 +21,20 @@
   batchStudentDocs(updates[])      // 다건 수정 (수강료 일괄 등)
   ```
   모두 `runTransaction(db, ...)` 기반 → React state 기준이 아닌 Firestore 직접 읽어 수정.
+- **`generateSeedData()` 씨드 함수는 `rye-attendance` / `rye-payments` 를 절대 쓰지 않는다.**
+  - 이유: 2026-05-14 auth 디버깅 중 씨드 조건이 잘못 발동해 출석/레슨노트 전체 삭제 사고 발생.
+  - 씨드는 teachers·students·notices·activity 4개만 초기화. 운영 데이터(출석·수납)는 건드리지 않음.
+
+### DB 백업 체계 (2026-05-16 구축)
+- **Firebase PITR**: 7일 분 1분 단위 복원 가능 (`POINT_IN_TIME_RECOVERY_ENABLED`)
+- **Firebase 자동 백업**: 매일 14일 보관 + 매주 일요일 30일 보관 (Google Cloud Storage)
+- **Firebase 삭제 보호**: `DELETE_PROTECTION_ENABLED` (DB 자체 실수 삭제 방지)
+- **로컬 백업**: `npm run db:backup` → `backups/backup-YYYY-MM-DD.json`
+- **로컬 복원**: `npm run db:restore` (최신 백업 자동 선택), `npm run db:restore:dry` (미리보기)
+  - 특정 파일: `node scripts/restore-firestore.js backups/backup-XXX.json`
+  - 특정 키만: `node scripts/restore-firestore.js --keys rye-attendance,rye-payments`
+
+> **작업 전 로컬 백업 권장**: App.jsx `checkAllLoaded` / `resetSeed` / Firestore rules 등 DB에 영향 줄 수 있는 코드를 건드리기 전에는 반드시 `npm run db:backup` 먼저 실행.
 
 ### CRITICAL — UI
 - **`window.confirm` / `window.alert` 절대 사용 금지.** 모든 확인은 인라인 UI 또는 커스텀 모달로.

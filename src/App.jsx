@@ -356,12 +356,11 @@ function MainApp() {
         if (!hasPermissionError && !seeded && (!received["rye-teachers"] || received["rye-teachers"].length === 0)) {
           seeded = true;
           const seed = generateSeedData();
+          // attendance·payments는 씨드에서 절대 덮어쓰지 않음 — 실수로 트리거 시 운영 데이터 유실 방지
           await Promise.all([
             sSet("rye-teachers", seed.seedTeachers),
             sSet("rye-students", seed.seedStudents),
             sSet("rye-notices", seed.seedNotices),
-            sSet("rye-attendance", seed.seedAttendance),
-            sSet("rye-payments", seed.seedPayments),
             sSet("rye-activity", seed.seedActivity),
           ]);
         }
