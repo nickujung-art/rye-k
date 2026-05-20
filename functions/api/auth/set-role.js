@@ -2,7 +2,6 @@ import { verifyToken } from "../ai/_utils/auth.js";
 import { SignJWT, importPKCS8 } from "jose";
 
 const FIREBASE_PROJECT_ID = "rye-k-center";
-const FIREBASE_API_KEY = "AIzaSyDViGzxa0o1tqqX6fGr46Sfiews-ieGmks";
 
 // Google OAuth2 Access Token 취득 (서비스 계정 JWT → Bearer token)
 async function getGoogleAccessToken(env) {
@@ -55,8 +54,8 @@ function strField(f) {
 }
 
 // Firebase Auth REST — Custom Claims 설정
-async function setCustomClaims(uid, claims, accessToken) {
-  const url = `https://identitytoolkit.googleapis.com/v1/accounts:update?key=${FIREBASE_API_KEY}`;
+async function setCustomClaims(uid, claims, accessToken, env) {
+  const url = `https://identitytoolkit.googleapis.com/v1/accounts:update?key=${env.FIREBASE_API_KEY}`;
   const resp = await fetch(url, {
     method: "POST",
     headers: {
@@ -99,8 +98,8 @@ export async function onRequest(context) {
 
     // 2. admin 특수 처리 — rye-teachers 조회 없이 바로 admin claim 부여
     //    admin 계정은 username="admin" → email="admin@ryek.app"
-    if (email === "admin@ryek.app") {
-      await setCustomClaims(uid, { role: "admin", teacherId: "admin" }, accessToken);
+    if (email === "admin@ryek2.app") {
+      await setCustomClaims(uid, { role: "admin", teacherId: "admin" }, accessToken, env);
       return new Response(JSON.stringify({ ok: true, role: "admin" }), {
         headers: { "Content-Type": "application/json" },
       });
@@ -114,16 +113,18 @@ export async function onRequest(context) {
 
     if (!teacher) {
       // 강사 레코드 없음 — 기본 role=teacher 부여
-      await setCustomClaims(uid, { role: "teacher", teacherId: "" }, accessToken);
+      await setCustomClaims(uid, { role: "teacher", teacherId: "" }, accessToken, env);
       return new Response(JSON.stringify({ ok: true, role: "teacher", note: "teacher record not found" }), {
         headers: { "Content-Type": "application/json" },
       });
     }
 
-    const role = strField(teacher.role) || "teacher";
+    const ALLOWED_ROLES = new Set(["teacher", "manager"]);
+    const rawRole = strField(teacher.role);
+    const role = ALLOWED_ROLES.has(rawRole) ? rawRole : "teacher";
     const teacherId = strField(teacher.id) || "";
 
-    await setCustomClaims(uid, { role, teacherId }, accessToken);
+    await setCustomClaims(uid, { role, teacherId }, accessToken, env);
 
     return new Response(JSON.stringify({ ok: true, role, teacherId }), {
       headers: { "Content-Type": "application/json" },

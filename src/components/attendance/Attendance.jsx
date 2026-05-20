@@ -361,7 +361,7 @@ function detectLessonGroups(students, dayName, filterTeacher) {
     .sort((a, b) => (a.time || "").localeCompare(b.time || ""));
 }
 
-function AttendanceView({ students, teachers, currentUser, attendance, onSaveAttendance, categories, scheduleOverrides, onSaveScheduleOverride, onUpdateStudent }) {
+function AttendanceView({ students, teachers, currentUser, attendance, onSaveAttendance, categories, scheduleOverrides, onSaveScheduleOverride, onUpdateStudent, showToast = (msg) => console.error(msg) }) {
   const [date, setDate] = useState(TODAY_STR);
   const [filterTeacher, setFilterTeacher] = useState(currentUser.role === "teacher" ? currentUser.id : "all");
   const [noteModal, setNoteModal] = useState(null); // { studentId } | { groupKey, studentIds }
@@ -415,9 +415,14 @@ function AttendanceView({ students, teachers, currentUser, attendance, onSaveAtt
     }
     if (sharePracticeGuide && practiceGuideText?.trim() && onUpdateStudent) {
       const theStudent = students.find(s => s.id === studentId);
-      if (theStudent) {
-        const instrument = (theStudent.lessons || []).map(l => l.instrument).filter(Boolean)[0] || "";
-        await onUpdateStudent({ ...theStudent, practiceGuide: { body: practiceGuideText.trim(), instrument, createdAt: Date.now() } });
+      if (theStudent && !theStudent.isInstitution) {
+        try {
+          const instrument = (theStudent.lessons || []).map(l => l.instrument).filter(Boolean)[0] || "";
+          await onUpdateStudent({ ...theStudent, practiceGuide: { body: practiceGuideText.trim(), instrument, createdAt: Date.now() } });
+        } catch (e) {
+          showToast("연습 가이드 저장에 실패했습니다. 다시 시도해주세요.", true);
+          return;
+        }
       }
     }
     setNoteModal(null);
@@ -779,7 +784,7 @@ function AttendanceView({ students, teachers, currentUser, attendance, onSaveAtt
   );
 }
 // ── LESSON NOTES VIEW ────────────────────────────────────────────────────────
-function LessonNotesView({ students, teachers, currentUser, attendance, onSaveAttendance, onUpdateStudent }) {
+function LessonNotesView({ students, teachers, currentUser, attendance, onSaveAttendance, onUpdateStudent, showToast = (msg) => console.error(msg) }) {
   const isManager = canManageAll(currentUser.role);
   const [filterTeacher, setFilterTeacher] = useState(currentUser.role === "teacher" ? currentUser.id : "all");
   const [filterMonth, setFilterMonth] = useState(THIS_MONTH);
@@ -854,17 +859,25 @@ function LessonNotesView({ students, teachers, currentUser, attendance, onSaveAt
   const saveLessonNoteInView = async (studentId, noteData) => {
     const noteDate = newNoteTarget?.date || TODAY_STR;
     const { practiceGuideText, sharePracticeGuide, ...cleanNote } = noteData;
+    const theStudent = students.find(x => x.id === studentId);
+    const lessonTeacherId = theStudent
+      ? ((theStudent.lessons || []).find(l => l.teacherId)?.teacherId || theStudent.teacherId || currentUser.id)
+      : currentUser.id;
     const existing = attendance.find(a => a.studentId === studentId && a.date === noteDate);
     if (existing) {
       await onSaveAttendance(attendance.map(a => a.id === existing.id ? { ...a, lessonNote: cleanNote, note: formatLessonNoteSummary(cleanNote), updatedAt: Date.now() } : a));
     } else {
-      await onSaveAttendance([...attendance, { id: uid(), studentId, teacherId: currentUser.id, date: noteDate, status: "present", lessonNote: cleanNote, note: formatLessonNoteSummary(cleanNote), createdAt: Date.now() }]);
+      await onSaveAttendance([...attendance, { id: uid(), studentId, teacherId: lessonTeacherId, date: noteDate, status: "present", lessonNote: cleanNote, note: formatLessonNoteSummary(cleanNote), createdAt: Date.now() }]);
     }
     if (sharePracticeGuide && practiceGuideText?.trim() && onUpdateStudent) {
-      const theStudent = students.find(s => s.id === studentId);
-      if (theStudent) {
-        const instrument = (theStudent.lessons || []).map(l => l.instrument).filter(Boolean)[0] || "";
-        await onUpdateStudent({ ...theStudent, practiceGuide: { body: practiceGuideText.trim(), instrument, createdAt: Date.now() } });
+      if (theStudent && !theStudent.isInstitution) {
+        try {
+          const instrument = (theStudent.lessons || []).map(l => l.instrument).filter(Boolean)[0] || "";
+          await onUpdateStudent({ ...theStudent, practiceGuide: { body: practiceGuideText.trim(), instrument, createdAt: Date.now() } });
+        } catch (e) {
+          showToast("연습 가이드 저장에 실패했습니다. 다시 시도해주세요.", true);
+          return;
+        }
       }
     }
     setNewNoteTarget(null);

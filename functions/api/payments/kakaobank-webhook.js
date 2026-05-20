@@ -165,9 +165,8 @@ async function handleGet(request, env) {
   if (!payload) {
     return json({ error: "Unauthorized" }, 401);
   }
-  const url = new URL(request.url);
-  const role = String(url.searchParams.get("role") || "").toLowerCase();
-  if (role !== "admin" && role !== "manager") {
+  const jwtRole = String(payload?.role || "").toLowerCase();
+  if (jwtRole !== "admin" && jwtRole !== "manager") {
     return json({ error: "Forbidden" }, 403);
   }
 
@@ -203,26 +202,28 @@ async function handleGet(request, env) {
 
 // ── Helpers ──────────────────────────────────────────────────────────────
 
-// Constant-time comparison to prevent timing attacks (ASVS V2, Pitfall 5)
+// Constant-time comparison to prevent timing attacks (ASVS V2)
+// 랜덤 키 HMAC + XOR 누적 → JS 엔진의 string short-circuit 우회
 async function timingSafeEqual(a, b) {
   const enc = new TextEncoder();
   const aB = enc.encode(a);
   const bB = enc.encode(b);
   if (aB.length !== bB.length) return false;
-  const key = await crypto.subtle.importKey(
-    "raw", aB, { name: "HMAC", hash: "SHA-256" }, false, ["sign"]
-  );
+  const key = await crypto.subtle.generateKey({ name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
   const [s1, s2] = await Promise.all([
     crypto.subtle.sign("HMAC", key, aB),
     crypto.subtle.sign("HMAC", key, bB),
   ]);
-  const h = (buf) => Array.from(new Uint8Array(buf)).map(x => x.toString(16).padStart(2, "0")).join("");
-  return h(s1) === h(s2);
+  const v1 = new Uint8Array(s1);
+  const v2 = new Uint8Array(s2);
+  let diff = 0;
+  for (let i = 0; i < v1.length; i++) diff |= v1[i] ^ v2[i];
+  return diff === 0;
 }
 
 // Inline rate limiter (mirrors _utils/ratelimit.js — avoids cross-function import)
 async function checkRateLimit(kv, userId, limit) {
-  if (!kv) return true; // fail open if KV not bound
+  if (!kv) return false; // fail closed — KV 미바인딩 시 차단
   const bucket = Math.floor(Date.now() / 60000);
   const key = `rl:${userId}:${bucket}`;
   const val = await kv.get(key);

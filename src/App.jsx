@@ -385,15 +385,20 @@ function MainApp() {
         // 1회 데이터 복구 — 백업 77명과 현재 Firestore 병합 (현재 데이터 우선)
         if (!seeded && !hasPermissionError && !localStorage.getItem("rye-recovery-v1")) {
           const curStudents = received["rye-students"] || [];
-          const seedStudents = generateSeedData().seedStudents;
-          const currentById = Object.fromEntries(curStudents.map(s => [s.id, s]));
-          const merged = seedStudents.map(ss => currentById[ss.id] || ss);
-          const seedIds = new Set(seedStudents.map(s => s.id));
-          const extras = curStudents.filter(s => !seedIds.has(s.id));
-          const final = [...merged, ...extras];
-          await sSet("rye-students", final);
-          localStorage.setItem("rye-recovery-v1", "1");
-          console.log(`[Recovery] ${final.length}명 복구 완료 (기존 ${curStudents.length}명 보존)`);
+          if (curStudents.length > 0) {
+            // 실제 학생 데이터가 있으면 복구 불필요 — 플래그만 세팅하고 스킵
+            localStorage.setItem("rye-recovery-v1", "1");
+          } else {
+            const seedStudents = generateSeedData().seedStudents;
+            const currentById = Object.fromEntries(curStudents.map(s => [s.id, s]));
+            const merged = seedStudents.map(ss => currentById[ss.id] || ss);
+            const seedIds = new Set(seedStudents.map(s => s.id));
+            const extras = curStudents.filter(s => !seedIds.has(s.id));
+            const final = [...merged, ...extras];
+            await sSet("rye-students", final);
+            localStorage.setItem("rye-recovery-v1", "1");
+            console.log(`[Recovery] ${final.length}명 복구 완료 (기존 ${curStudents.length}명 보존)`);
+          }
         }
       } catch (err) {
         console.error("checkAllLoaded setup error:", err);
@@ -989,6 +994,7 @@ function MainApp() {
       console.warn("Firebase Auth failed, proceeding with local auth only");
     }
 
+    try { localStorage.setItem("ryek_last_login", String(Date.now())); } catch {}
     setUserPersist(appUser);
     // Firebase Auth 성공 시 리스너를 이메일 권한으로 재시작 (write 오류 방지)
     if (fbUser) setListenersKey(k => k + 1);
@@ -1080,7 +1086,7 @@ function MainApp() {
               instantCharges={instantCharges}
             />}
             {view === "students" && <StudentsView students={filtered} allStudents={visible} teachers={teachers} categories={categories} filter={filter} setFilter={setFilter} search={search} setSearch={setSearch} onAdd={() => { setSelected(null); setModal("sForm"); }} onSelect={s => { setSelected(s); setModal("sDetail"); }} currentUser={user} onBulkFeeUpdate={async (updatedStudents) => { await batchStudentDocs(updatedStudents); addLog("수강료 일괄 설정"); showToast("수강료가 일괄 변경되었습니다."); }} payments={payments} />}
-            {view === "attendance" && <AttendanceView students={allMembers} teachers={teachers} currentUser={user} attendance={attendance} onSaveAttendance={async (upd) => { await saveAttendance(upd); }} categories={categories} scheduleOverrides={scheduleOverrides} onSaveScheduleOverride={saveScheduleOverrides} onUpdateStudent={async (s) => { await updateStudentDoc(s); }} />}
+            {view === "attendance" && <AttendanceView students={allMembers} teachers={teachers} currentUser={user} attendance={attendance} onSaveAttendance={async (upd) => { await saveAttendance(upd); }} categories={categories} scheduleOverrides={scheduleOverrides} onSaveScheduleOverride={saveScheduleOverrides} onUpdateStudent={async (s) => { await updateStudentDoc(s); }} showToast={showToast} />}
             {view === "payments" && <PaymentsView students={allMembers} teachers={teachers} currentUser={user} payments={payments} attendance={attendance} onSavePayments={async (upd) => { await savePayments(upd); showToast("수납 정보가 저장되었습니다."); }} onSaveStudents={async (upd) => {
                 // inst 가상회원 제외 후 트랜잭션으로 개별 업데이트
                 const realUpd = upd.filter(s => !s.isInstitution);
@@ -1199,7 +1205,7 @@ function MainApp() {
             {view === "schedule" && <ScheduleView students={allMembers} teachers={teachers} currentUser={user} attendance={attendance} onSaveAttendance={async(upd)=>{await saveAttendance(upd);}} onSaveScheduleOverride={saveScheduleOverrides} scheduleOverrides={scheduleOverrides} notices={notices} />}
             {view === "trash" && canManageAll(user.role) && <TrashView trash={trash} onRestore={restoreFromTrash} onPermanentDelete={permanentDeleteFromTrash} />}
             {view === "studentNotices" && (canManageAll(user.role) || user.role === "teacher") && <StudentNoticeManager notices={studentNotices} students={allMembers} teachers={teachers} currentUser={user} onSave={async (upd) => { await saveStudentNotices(upd); showToast("수강생 공지가 저장되었습니다."); }} />}
-            {view === "lessonNotes" && <LessonNotesView students={allMembers} teachers={teachers} currentUser={user} attendance={attendance} onSaveAttendance={async (upd) => { await saveAttendance(upd); }} onUpdateStudent={async (s) => { await updateStudentDoc(s); }} />}
+            {view === "lessonNotes" && <LessonNotesView students={allMembers} teachers={teachers} currentUser={user} attendance={attendance} onSaveAttendance={async (upd) => { await saveAttendance(upd); }} onUpdateStudent={async (s) => { await updateStudentDoc(s); }} showToast={showToast} />}
             {view === "systemNews" && <SystemNewsView user={user} navigate={navigate} />}
             {view === "monthlyReports" && (canManageAll(user.role) || user.role === "teacher") && <MonthlyReportsView students={students} teachers={teachers} attendance={attendance} currentUser={user} aiReports={aiReports} onSaveAiReports={saveAiReports} />}
             {view === "aiSettings" && user.role === "admin" && <AiSettingsView settings={ryeSettings} onSave={saveRyeSettings} />}

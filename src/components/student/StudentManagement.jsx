@@ -18,6 +18,7 @@ export function LessonEditor({ lessons, onChange, categories, teachers, feePrese
   const addSch = inst => onChange(lessons.map(l => l.instrument !== inst ? l : { ...l, schedule: [...l.schedule, { day: "", time: "" }] }));
   const rmSch = (inst, idx) => onChange(lessons.map(l => l.instrument !== inst ? l : { ...l, schedule: l.schedule.filter((_, i) => i !== idx) }));
   const updTeacher = (inst, tid) => onChange(lessons.map(l => l.instrument !== inst ? l : { ...l, teacherId: tid }));
+  const togglePaused = inst => onChange(lessons.map(l => l.instrument !== inst ? l : { ...l, paused: !l.paused }));
   return (
     <div>
       <div className="fg-label" style={{ marginBottom: 6 }}>악기 / 과목 <span className="req">*</span> <span style={{ fontWeight: 400, color: "var(--ink-30)", textTransform: "none", letterSpacing: 0 }}>(복수 선택)</span></div>
@@ -38,13 +39,17 @@ export function LessonEditor({ lessons, onChange, categories, teachers, feePrese
           {lessons.map(l => {
             const isGhost = !Object.values(categories).flat().includes(l.instrument);
             return (
-            <div key={l.instrument} className="lesson-item">
+            <div key={l.instrument} className="lesson-item" style={l.paused ? {opacity:0.65,borderColor:"var(--gold)"} : {}}>
               <div className="lesson-item-head" style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
                 <div style={{display:"flex",alignItems:"center",gap:6}}>
                   <div className="lesson-inst-label">{l.instrument}</div>
                   {isGhost && <span style={{fontSize:10,color:"var(--gold-dk)",background:"var(--gold-lt)",padding:"1px 6px",borderRadius:4,fontWeight:600}}>삭제된 과목</span>}
+                  {l.paused && <span style={{fontSize:10,color:"var(--gold-dk)",background:"var(--gold-lt)",padding:"1px 6px",borderRadius:4,fontWeight:600}}>휴원 중</span>}
                 </div>
-                <button type="button" style={{background:"none",border:"1px solid var(--border)",borderRadius:4,color:"var(--red)",cursor:"pointer",fontSize:11,padding:"2px 8px",lineHeight:1.5,fontFamily:"inherit"}} onClick={()=>onChange(lessons.filter(x=>x.instrument!==l.instrument))} title="과목 제거">× 제거</button>
+                <div style={{display:"flex",gap:4}}>
+                  <button type="button" style={{background:l.paused?"var(--gold-lt)":"none",border:"1px solid var(--gold)",borderRadius:4,color:"var(--gold-dk)",cursor:"pointer",fontSize:11,padding:"2px 8px",lineHeight:1.5,fontFamily:"inherit"}} onClick={()=>togglePaused(l.instrument)}>{l.paused ? "▶ 재개" : "⏸ 휴원"}</button>
+                  <button type="button" style={{background:"none",border:"1px solid var(--border)",borderRadius:4,color:"var(--red)",cursor:"pointer",fontSize:11,padding:"2px 8px",lineHeight:1.5,fontFamily:"inherit"}} onClick={()=>onChange(lessons.filter(x=>x.instrument!==l.instrument))} title="과목 제거">× 제거</button>
+                </div>
               </div>
               {teachers && teachers.length > 0 && (
                 <div style={{ marginBottom: 8 }}>
@@ -690,13 +695,19 @@ export function BulkFeeModal({ allStudents, teachers, categories, onClose, onApp
   const handleApply = async () => {
     if (!amount) return;
     setApplying(true);
-    const updated = allStudents.map(s => {
-      if (!baseList.find(b => b.id === s.id)) return s;
-      return { ...s, monthlyFee: calcNew(s.monthlyFee) };
-    });
-    await onApply(updated);
-    setApplying(false);
-    onClose();
+    try {
+      const updated = allStudents.map(s => {
+        if (s.isInstitution) return s;
+        if (!baseList.find(b => b.id === s.id)) return s;
+        return { ...s, monthlyFee: calcNew(s.monthlyFee) };
+      });
+      await onApply(updated);
+      onClose();
+    } catch {
+      // onApply 실패 시 모달 닫지 않음 (사용자가 재시도 가능)
+    } finally {
+      setApplying(false);
+    }
   };
 
   return (

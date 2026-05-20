@@ -17,6 +17,7 @@ export async function verifyToken(request) {
       audience: PROJECT_ID,
     });
     if (!payload?.sub) return null;
+    if (payload.firebase?.sign_in_provider === "anonymous") return null;
     return payload;
   } catch {
     return null;

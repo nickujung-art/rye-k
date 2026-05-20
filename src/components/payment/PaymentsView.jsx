@@ -152,7 +152,7 @@ export default function PaymentsView({
       const sName = visibleStudents.find(s => s.id === editForm.studentId)?.name;
       if (editForm.paid && !existing?.paid) onLog(`${sName} 회원 ${monthLabel(month)} 수강료 입금 확인`);
       setEditingId(null);
-    } catch {}
+    } catch (e) { console.error("수납 저장 실패:", e); }
   };
 
   const prevMonth = () => { const d = new Date(month + "-01"); d.setMonth(d.getMonth() - 1); setMonth(d.toISOString().slice(0,7)); };
@@ -230,7 +230,7 @@ export default function PaymentsView({
       }
       await onSavePayments(updated);
       setBulkPrepModal(false);
-    } catch {} finally { setBulkSaving(false); }
+    } catch (e) { console.error("일괄 수납 청구 실패:", e); } finally { setBulkSaving(false); }
   };
 
   const openBulkPrepInst = () => {
@@ -273,7 +273,7 @@ export default function PaymentsView({
       }
       await onSavePayments(updated);
       setBulkInstModal(false);
-    } catch {} finally { setBulkInstSaving(false); }
+    } catch (e) { console.error("기관 수납 청구 실패:", e); } finally { setBulkInstSaving(false); }
   };
 
   return (

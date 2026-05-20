@@ -7,7 +7,7 @@ export const DEFAULT_CATEGORIES = {
   "유아·아동": ["유아 국악 프로그램", "초등 국악 프로그램"],
 };
 export const DAYS = ["월","화","수","목","금","토","일"];
-export const ADMIN = { id:"admin", username:"admin", password:"rye2024", role:"admin", name:"관리자" };
+export const ADMIN = { id:"admin", username:"admin", password: import.meta.env.VITE_ADMIN_PASSWORD || "rye2024", role:"admin", name:"관리자" };
 export const TODAY_STR = new Date().toISOString().slice(0,10);
 export const THIS_MONTH = TODAY_STR.slice(0,7);
 export const TODAY_DAY = ["일","월","화","수","목","금","토"][new Date().getDay()];

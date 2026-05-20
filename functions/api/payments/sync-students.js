@@ -32,9 +32,9 @@ export async function onRequest(context) {
   try { body = await request.json(); }
   catch { return json({ error: "Bad Request" }, 400); }
 
-  // 3. 역할 체크 — admin/manager만 허용
-  const role = String(body.role || "").toLowerCase();
-  if (role !== "admin" && role !== "manager") {
+  // 3. 역할 체크 — JWT payload의 custom claim에서 role 읽기 (body.role 신뢰 금지)
+  const jwtRole = String(payload?.role || "").toLowerCase();
+  if (jwtRole !== "admin" && jwtRole !== "manager") {
     return json({ error: "Forbidden" }, 403);
   }
 
