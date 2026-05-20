@@ -27,6 +27,7 @@ const MonthlyReportsView  = lazy(() => import("./components/aireports/MonthlyRep
 
 // ── Storage (Firestore — 실시간 크로스플랫폼 동기화) ─────────────────────────
 const COLLECTION = "appData";
+const SESSION_V = 2; // bump to force all clients to re-login
 async function sSet(k,v){try{await setDoc(doc(db,COLLECTION,k),{value:v,updatedAt:Date.now()});}catch(e){console.error("sSet error:",k,e);throw e;}}
 
 
@@ -209,6 +210,7 @@ function MainApp() {
       const s = localStorage.getItem("rye-session");
       if (!s) return null;
       const u = JSON.parse(s);
+      if (u?._sv !== SESSION_V) { localStorage.removeItem("rye-session"); return null; }
       // 구 세션에 role 필드 누락 시 admin 계정은 항상 role:"admin" 보정
       if (u?.id === ADMIN.id || u?.username === ADMIN.username) return { ...u, role: "admin" };
       return u;
@@ -216,7 +218,7 @@ function MainApp() {
   });
   const setUserPersist = (u) => {
     setUser(u);
-    if (u) localStorage.setItem("rye-session", JSON.stringify(u));
+    if (u) localStorage.setItem("rye-session", JSON.stringify({ ...u, _sv: SESSION_V }));
     else localStorage.removeItem("rye-session");
   };
   const [view, setView] = useState("dashboard");

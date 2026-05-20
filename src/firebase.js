@@ -15,7 +15,7 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
 
-const toAuthEmail = (username) => `${username}@ryek.app`;
+const toAuthEmail = (username) => `${username}@ryek2.app`;
 
 // ⚠️ VITE_AUTH_SALT — 한 번 설정하면 절대 변경/제거 금지!
 // 변경 시 SALTED 사용자 모두 로그인 실패 → 강사 앱 마비.
