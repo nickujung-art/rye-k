@@ -590,11 +590,12 @@ function MainApp() {
         const autoUnmatched = [];
         if (matched.length > 0) {
           const kstNow = new Date(Date.now() + 9 * 60 * 60 * 1000); // UTC+9 KST
-          const month = kstNow.toISOString().slice(0, 7); // "YYYY-MM"
           const newPayments = matched.map(record => ({
             id: record.id,
             studentId: record.matchedStudentId,
-            month,
+            month: record.matchedAt
+              ? record.matchedAt.slice(0, 7)
+              : kstNow.toISOString().slice(0, 7),
             paid: true,
             amount: record.amount,
             paidAmount: record.amount,
@@ -1127,6 +1128,8 @@ function MainApp() {
                 showToast("즉시 청구가 거절되었습니다.");
               }}
               onConfirmInstantPayment={async (charge, student) => {
+                // 중복 실행 방어: 동일 paymentId가 이미 존재하면 얼리 리턴
+                if (payments.some(p => p.id === charge.id + "_pay")) return;
                 // 1. rye-instant-charges status → "paid"
                 await updateInstantCharge(charge.id, {
                   status: "paid",

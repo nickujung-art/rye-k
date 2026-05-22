@@ -30,15 +30,17 @@ service cloud.firestore {
 
     // ── appData 컬렉션별 규칙 ─────────────────────────────────────────────────
 
-    // 학생 PII — 인증된 모든 사용자 읽기, 관리자 이상만 쓰기
+    // 학생 PII — 이메일 인증 사용자(스태프)만 읽기, 관리자 이상만 쓰기
+    // SEC-2: 익명(포털) 사용자 직접 읽기 차단 — 앱 레벨에서 필터링하므로 불필요
     match /appData/rye-students {
-      allow read:  if isAuthenticated();
+      allow read:  if isEmailUser();
       allow write: if isManagerOrAbove();
     }
 
-    // 강사 정보 — 인증된 모든 사용자 읽기 (로그인 전 credential 확인 필요), 관리자 이상만 쓰기
+    // 강사 PII — 이메일 인증 사용자(스태프)만 읽기, 관리자 이상만 쓰기
+    // SEC-2: 익명 사용자에게 강사 비밀번호 해시·연락처 노출 차단
     match /appData/rye-teachers {
-      allow read:  if isAuthenticated();
+      allow read:  if isEmailUser();
       allow write: if isManagerOrAbove();
     }
 
@@ -48,25 +50,31 @@ service cloud.firestore {
       allow write: if isManagerOrAbove();
     }
 
-    // 출석 기록 — 스태프 전체 쓰기, 익명(포털)은 배열 크기 유지·증가만 허용 (삭제 차단)
+    // 출석 기록 — 스태프(이메일 인증)만 쓰기
+    // SEC-4: 익명 사용자의 size() 체크 기반 컨텐츠 주입 경로 제거 (포털 출석 직접 쓰기 유스케이스 없음)
     match /appData/rye-attendance {
       allow read:  if isAuthenticated();
-      allow write: if isEmailUser()
-                   || (isAuthenticated()
-                       && request.resource.data.keys().hasAll(['value', 'updatedAt'])
-                       && request.resource.data.value.size() >= resource.data.value.size());
+      allow write: if isEmailUser();
     }
 
-    // 수강 등록 대기 — 인증된 모든 사용자 읽기·쓰기 (/register 폼)
+    // 수강 등록 대기 — 포털(익명) 수강 신청 허용, 페이로드 제한으로 플러딩 차단
+    // NOTE: 익명 쓰기 허용은 의도적 — PublicRegisterForm 수강 신청 경로
+    // SEC-3: 필수 키 + 배열 크기 1000 이하 제한으로 DB 플러딩 차단
     match /appData/rye-pending {
       allow read:  if isAuthenticated();
-      allow write: if isAuthenticated();
+      allow write: if isAuthenticated() &&
+        request.resource.data.keys().hasAll(['value', 'updatedAt']) &&
+        request.resource.data.value.size() <= 1000;
     }
 
-    // 회원 공지 — 인증된 모든 사용자 읽기·쓰기 (포털 읽음 처리)
+    // 회원 공지 — 포털 공지 읽음 처리(updatedAt 갱신) 허용, 크기 제한으로 플러딩 차단
+    // NOTE: 익명 쓰기 허용은 의도적 — 포털에서 공지 읽음 처리 경로
+    // SEC-3: 배열 크기 1000 이하 제한으로 과도한 주입 차단
     match /appData/rye-student-notices {
       allow read:  if isAuthenticated();
-      allow write: if isAuthenticated();
+      allow write: if isAuthenticated() &&
+        request.resource.data.keys().hasAll(['value', 'updatedAt']) &&
+        request.resource.data.value.size() <= 1000;
     }
 
     // 기관(B2B) — 인증된 모든 사용자 읽기, 관리자 이상 쓰기

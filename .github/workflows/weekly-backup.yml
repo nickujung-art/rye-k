@@ -1,0 +1,71 @@
+name: Weekly Firestore Backup
+
+on:
+  schedule:
+    # 매주 월요일 00:00 UTC = 09:00 KST
+    - cron: '0 0 * * 1'
+  workflow_dispatch:
+    # 수동 실행 허용 (GitHub Actions UI에서 "Run workflow" 클릭)
+
+jobs:
+  backup:
+    name: Firestore Full Backup
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write   # backups/ 커밋을 위해 필요
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run Firestore backup
+        # 인증: scripts/backup-firestore.js 는 Firebase Client SDK + signInAnonymously() 사용
+        # 서비스 계정 JSON 불필요 — firebaseConfig 가 스크립트에 embed 되어 있음
+        run: npm run db:backup
+
+      - name: Validate backup file
+        run: |
+          BACKUP_FILE=$(ls -t backups/backup-*.json | head -1)
+          if [ -z "$BACKUP_FILE" ]; then
+            echo "ERROR: No backup file found"
+            exit 1
+          fi
+          FILE_SIZE=$(wc -c < "$BACKUP_FILE")
+          echo "Backup file: $BACKUP_FILE"
+          echo "File size: $FILE_SIZE bytes"
+          if [ "$FILE_SIZE" -lt 1000 ]; then
+            echo "ERROR: Backup file too small (< 1KB), likely empty or failed"
+            exit 1
+          fi
+          COLLECTION_COUNT=$(node -e "
+            const fs = require('fs');
+            const data = JSON.parse(fs.readFileSync('$BACKUP_FILE', 'utf8'));
+            const keys = Object.keys(data.appData || {});
+            console.log(keys.length);
+          ")
+          echo "Collections backed up: $COLLECTION_COUNT"
+          if [ "$COLLECTION_COUNT" -lt 5 ]; then
+            echo "ERROR: Too few collections ($COLLECTION_COUNT), backup may be incomplete"
+            exit 1
+          fi
+          echo "Backup validation passed"
+
+      - name: Commit backup to repository
+        uses: EndBug/add-and-commit@v9
+        with:
+          add: 'backups/'
+          message: 'chore(backup): weekly Firestore backup ${{ github.run_id }}'
+          default_author: github_actions
+          push: true

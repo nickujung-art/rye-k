@@ -9,7 +9,7 @@ export function fmtDate(d){return d?new Date(d).toLocaleDateString("ko-KR"):"-";
 export function fmtDateShort(d){if(!d)return"-";const x=new Date(d);return `${x.getMonth()+1}/${x.getDate()}`;}
 export function fmtDateTime(ts){if(!ts)return"-";const d=new Date(ts);return d.toLocaleDateString("ko-KR")+` ${d.getHours().toString().padStart(2,"0")}:${d.getMinutes().toString().padStart(2,"0")}`;}
 export function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6);}
-export function fmtPhone(v){const d=v.replace(/\D/g,"");if(d.startsWith("02")){if(d.length<=2)return d;if(d.length<=6)return d.slice(0,2)+"-"+d.slice(2);return d.slice(0,2)+"-"+d.slice(2,6)+"-"+d.slice(6,10);}if(d.length<=3)return d;if(d.length<=7)return d.slice(0,3)+"-"+d.slice(3);return d.slice(0,3)+"-"+d.slice(3,7)+"-"+d.slice(7,11);}
+export function fmtPhone(v){if(!v)return"";const d=v.replace(/\D/g,"");if(d.startsWith("02")){if(d.length<=2)return d;if(d.length<=6)return d.slice(0,2)+"-"+d.slice(2);return d.slice(0,2)+"-"+d.slice(2,6)+"-"+d.slice(6,10);}if(d.length<=3)return d;if(d.length<=7)return d.slice(0,3)+"-"+d.slice(3);return d.slice(0,3)+"-"+d.slice(3,7)+"-"+d.slice(7,11);}
 export function fmtMoney(n){return n!=null?n.toLocaleString("ko-KR")+"원":"-";}
 export function allLessonInsts(s){return(s.lessons||[]).map(l=>l.instrument);}
 export function allLessonDays(s){const days=new Set();(s.lessons||[]).forEach(l=>(l.schedule||[]).forEach(x=>x.day&&days.add(x.day)));return Array.from(days);}
@@ -98,6 +98,7 @@ export function compressImage(file, maxWidth=360, quality=0.75) {
 }
 export function printQR(qrImgUrl, regUrl) {
   const w = window.open("", "_blank");
+  if (!w) { console.warn('[printQR] 팝업이 차단되었습니다. 브라우저 팝업 허용 후 다시 시도하세요.'); return; }
   const html = "<html><head><title>RYE-K 등록 QR</title></head><body style='display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;font-family:sans-serif'><h2>RYE-K K-Culture Center</h2><p>수강 등록 QR코드</p><img src='" + qrImgUrl + "' style='width:300px;height:300px'/><p style='font-size:12px;color:#999;margin-top:16px'>" + regUrl + "</p><script>window.print()<\/script></body></html>";
   w.document.write(html);
   w.document.close();
