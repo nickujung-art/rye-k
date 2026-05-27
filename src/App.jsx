@@ -1,4 +1,4 @@
-import { useState, useEffect, lazy, Suspense } from "react";
+import { useState, useEffect, useRef, lazy, Suspense } from "react";
 import { db, auth, doc, setDoc, onSnapshot, runTransaction, collection, getDoc, addInstantCharge, updateInstantCharge, firebaseSignIn, firebaseSignInAnon, firebaseLogout, onAuthStateChanged } from "./firebase.js";
 import { DEFAULT_CATEGORIES, DAYS, ADMIN, TODAY_STR, THIS_MONTH, TODAY_DAY, ATT_STATUS, PAY_METHODS, INST_TYPES, IC, CSS } from "./constants.jsx";
 import { calcAge, isMinor, getCat, fmtDate, fmtDateShort, fmtDateTime, uid, fmtPhone, fmtMoney, allLessonInsts, allLessonDays, canManageAll, monthLabel, generateStudentCode, getBirthPassword, getPhoneInitialPassword, instTypeLabel, expandInstitutionsToMembers, getContractDaysLeft, formatLessonNoteSummary, calcLessonFeeWithFallback } from "./utils.js";
@@ -223,6 +223,7 @@ function MainApp() {
   };
   const [view, setView] = useState("dashboard");
   const [teachers, setTeachers] = useState([]);
+  const teachersRef = useRef([]);
   const [students, setStudents] = useState([]);
   const [notices, setNotices] = useState([]);
   const [categories, setCategories] = useState(DEFAULT_CATEGORIES);
@@ -283,6 +284,9 @@ function MainApp() {
     else if (darkMode === "light") { root.setAttribute("data-theme", "light"); localStorage.setItem("rye-theme", "light"); }
     else { root.removeAttribute("data-theme"); localStorage.removeItem("rye-theme"); }
   }, [darkMode]);
+
+  // teachersRef — login() async 함수에서 stale closure 없이 최신 teachers 접근용
+  useEffect(() => { teachersRef.current = teachers; }, [teachers]);
 
   // 레슨노트 읽음 시각 — 로그인한 사용자별 localStorage 복원
   useEffect(() => {
@@ -978,27 +982,54 @@ function MainApp() {
   };
 
   const login = async (username, password) => {
-    // 로컬 credential 먼저 확인 (rules가 any auth 읽기 허용 → teachers는 이미 로드됨)
     let appUser = null;
+    let fbUser = null;
+    let listenersRestartedForLoad = false;
+
     if (username === ADMIN.username && password === ADMIN.password) {
       appUser = ADMIN;
     } else {
-      if (!teachers.length) return "loading";
-      const t = teachers.find(t => t.username === username && t.password === password);
+      let teachersList = teachers;
+
+      // rye-teachers가 permission-denied로 미로드된 경우 (SEC-01: 익명 auth로는 못 읽음):
+      // Firebase Auth를 먼저 시도해 email 권한을 얻은 뒤, teachers 데이터가 로드될 때까지 대기
+      if (!teachersList.length) {
+        fbUser = await firebaseSignIn(username, password);
+        if (!fbUser) return false; // Firebase Auth 실패 = 잘못된 계정
+
+        // email 권한으로 리스너 재시작 → rye-teachers가 이제 로드됨
+        setListenersKey(k => k + 1);
+        listenersRestartedForLoad = true;
+
+        // teachersRef가 업데이트될 때까지 최대 8초 대기 (500ms × 16회)
+        teachersList = await new Promise(resolve => {
+          let attempts = 0;
+          const iv = setInterval(() => {
+            attempts++;
+            if (teachersRef.current.length > 0) { clearInterval(iv); resolve(teachersRef.current); }
+            else if (attempts >= 16) { clearInterval(iv); resolve([]); }
+          }, 500);
+        });
+
+        if (!teachersList.length) return false; // 8초 내 로드 실패
+      }
+
+      const t = teachersList.find(t => t.username === username && t.password === password);
       if (t) appUser = { ...t, role: t.role || "teacher" };
     }
+
     if (!appUser) return false;
 
-    // Firebase Auth — write 권한 확보용. 실패해도 read는 any auth로 가능.
-    const fbUser = await firebaseSignIn(username, password);
+    // Firebase Auth (위에서 아직 안 했으면) — write 권한 확보용. 실패해도 read는 가능.
     if (!fbUser) {
-      console.warn("Firebase Auth failed, proceeding with local auth only");
+      fbUser = await firebaseSignIn(username, password);
+      if (!fbUser) console.warn("Firebase Auth failed, proceeding with local auth only");
     }
 
     try { localStorage.setItem("ryek_last_login", String(Date.now())); } catch {}
     setUserPersist(appUser);
-    // Firebase Auth 성공 시 리스너를 이메일 권한으로 재시작 (write 오류 방지)
-    if (fbUser) setListenersKey(k => k + 1);
+    // Firebase Auth 성공 시 리스너를 이메일 권한으로 재시작 (이미 재시작했으면 생략)
+    if (fbUser && !listenersRestartedForLoad) setListenersKey(k => k + 1);
     return true;
   };
 
