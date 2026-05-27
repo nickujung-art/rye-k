@@ -309,7 +309,16 @@ function fuzzyMatchStudent(inputName, students) {
 // Format B2: "입금\n150,000원\n홍길동"              (일부 기기 줄바꿈 변형)
 // Format C:  "홍길동님이 150,000원을 보내셨어요"    (카카오뱅크 문자/알림 변형)
 // Format D:  "150,000원 입금\n홍길동"               (역순 포맷)
+// Format E:  카카오뱅크 SMS — "[Web발신]\n[카카오뱅크]\n...\n입금 N원\n입금자명"
 function parseRawText(text) {
+  // Format E — 카카오뱅크 SMS (가장 먼저 체크 — 구체적 포맷)
+  // "[Web발신]\n[카카오뱅크]\n계좌주(계좌번호)\nMM/DD HH:mm\n입금 N원\n입금자명"
+  const mE = text.match(/\[카카오뱅크\][\s\S]*?입금\s+([\d,]+)원\s*[\r\n]+([^\r\n]{2,30})/);
+  if (mE) {
+    const senderRaw = mE[2].trim().replace(/\s+/g, " ");
+    if (senderRaw.length >= 2) return { name: senderRaw, amount: parseInt(mE[1].replace(/,/g, "")) || 0 };
+  }
+
   // Format A
   const mA = text.match(/(?:\[.*?\]\s*)?([가-힣a-zA-Z]{2,10})\s+([\d,]+)원\s*입금/);
   if (mA) return { name: mA[1], amount: parseInt(mA[2].replace(/,/g, "")) || 0 };
