@@ -33,15 +33,12 @@ async function handlePost(request, env) {
   const allowed = await checkRateLimit(env.RATE_LIMIT_KV, `wh:${ip}`, 10);
   if (!allowed) return new Response("Too Many Requests", { status: 429 });
 
-  // 2. Parse body — accept JSON or plain text (Tasker sends plain text)
+  // 2. Parse body — Content-Type 무시하고 text 우선 읽기 후 JSON 시도
+  //    Tasker가 Content-Type:application/json + 평문 body 조합을 보내는 경우 대응
   let body;
   try {
-    const ct = request.headers.get("content-type") || "";
-    if (ct.includes("application/json")) {
-      body = await request.json();
-    } else {
-      body = { rawText: await request.text() };
-    }
+    const rawBody = await request.text();
+    try { body = JSON.parse(rawBody); } catch { body = { rawText: rawBody }; }
   } catch { return new Response("Bad Request", { status: 400 }); }
 
   // 3. Secret header validation — timingSafeEqual (ASVS: timing attack prevention)
