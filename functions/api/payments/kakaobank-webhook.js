@@ -61,18 +61,40 @@ async function handlePost(request, env) {
   }
 
   // 5. Input validation — parse rawText first, then override with explicit fields
-  const rawText = String(body.rawText || "").slice(0, 200);
+  const rawText = String(body.rawText || "").slice(0, 500);
   const parsed = parseRawText(rawText);
 
   const rawName = String(body.name || parsed.name || "").trim();
   const name = rawName.replace(/[^가-힣ᄀ-ᇿ㄰-㆏ a-zA-Z0-9]/g, "").trim();
   const amount = parseInt(String(body.amount || "0").replace(/[^\d]/g, "")) || parsed.amount || 0;
 
-  if (!name || name.length < 2 || name.length > 20) {
-    return json({ error: "Invalid name" }, 400);
-  }
   if (amount <= 0 || amount > 10_000_000) {
     return json({ error: "Invalid amount" }, 400);
+  }
+
+  // name 파싱 실패 시 400 반환 금지 — 입금 기록 유실 방지
+  // rawText를 보존해 unmatched 큐에 저장 → 관리자가 수동 매칭
+  const nameValid = name && name.length >= 2 && name.length <= 20;
+  if (!nameValid) {
+    const id = crypto.randomUUID();
+    const fallbackRecord = {
+      id,
+      senderName: rawText.slice(0, 30) || "미확인",
+      amount,
+      timestamp: ts,
+      source: "kakaobank",
+      rawText,
+      createdAt: now,
+      matchedAt: null,
+      matchedStudentId: null,
+      confidence: "parse_error",
+    };
+    await env.RATE_LIMIT_KV.put(
+      `pending:unmatched:${id}`,
+      JSON.stringify(fallbackRecord),
+      { expirationTtl: 604800 }
+    );
+    return json({ ok: true, matched: false, confidence: "parse_error" });
   }
 
   // 6. Load student list from KV cache (set by browser app — see notes below)
@@ -281,18 +303,31 @@ function fuzzyMatchStudent(inputName, students) {
   return { match: null, confidence: "no_match" };
 }
 
-// Parse KakaoBank notification text — two formats supported:
-// Format A: "홍길동 150,000원 입금" or "[카카오뱅크] 홍길동 150,000원 입금"
-// Format B (actual KakaoBank app): "05/08 15:36\n입금 150,000원\n홍길동"
+// Parse KakaoBank notification text — multiple formats:
+// Format A:  "[카카오뱅크] 홍길동 150,000원 입금"
+// Format B:  "05/08 15:36\n입금 150,000원\n홍길동"  (실제 앱 알림)
+// Format B2: "입금\n150,000원\n홍길동"              (일부 기기 줄바꿈 변형)
+// Format C:  "홍길동님이 150,000원을 보내셨어요"    (카카오뱅크 문자/알림 변형)
+// Format D:  "150,000원 입금\n홍길동"               (역순 포맷)
 function parseRawText(text) {
-  const mA = text.match(/(?:\[.*?\]\s+)?(\S+)\s+([\d,]+)원\s*입금/);
+  // Format A
+  const mA = text.match(/(?:\[.*?\]\s*)?([가-힣a-zA-Z]{2,10})\s+([\d,]+)원\s*입금/);
   if (mA) return { name: mA[1], amount: parseInt(mA[2].replace(/,/g, "")) || 0 };
 
-  const mB = text.match(/입금\s+([\d,]+)원[\r\n]+(.+)/);
+  // Format B / B2 — "입금 N원" 뒤 줄바꿈 후 이름 (줄바꿈 개수 유연하게)
+  const mB = text.match(/입금\s*[\r\n]?\s*([\d,]+)원[\r\n\s]+([가-힣a-zA-Z]{2,10})/);
   if (mB) {
     const senderName = mB[2].split(/\s*→\s*/)[0].trim();
     return { name: senderName, amount: parseInt(mB[1].replace(/,/g, "")) || 0 };
   }
+
+  // Format C — "N원을 보내셨어요" 계열
+  const mC = text.match(/([가-힣a-zA-Z]{2,10})님[이가]?\s*([\d,]+)원/);
+  if (mC) return { name: mC[1], amount: parseInt(mC[2].replace(/,/g, "")) || 0 };
+
+  // Format D — 금액 먼저, 이름 나중
+  const mD = text.match(/([\d,]+)원\s*입금[\r\n\s]+([가-힣a-zA-Z]{2,10})/);
+  if (mD) return { name: mD[2], amount: parseInt(mD[1].replace(/,/g, "")) || 0 };
 
   return { name: "", amount: 0 };
 }
