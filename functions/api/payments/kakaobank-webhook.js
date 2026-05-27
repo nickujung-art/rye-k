@@ -68,9 +68,10 @@ async function handlePost(request, env) {
   const name = rawName.replace(/[^가-힣ᄀ-ᇿ㄰-㆏ a-zA-Z0-9]/g, "").trim();
   const amount = parseInt(String(body.amount || "0").replace(/[^\d]/g, "")) || parsed.amount || 0;
 
-  if (amount <= 0 || amount > 10_000_000) {
+  if (amount > 10_000_000) {
     return json({ error: "Invalid amount" }, 400);
   }
+  // amount=0: 파싱 실패로 간주 — 400 금지, unmatched 저장 후 계속
 
   // name 파싱 실패 시 400 반환 금지 — 입금 기록 유실 방지
   // rawText를 보존해 unmatched 큐에 저장 → 관리자가 수동 매칭
