@@ -7,12 +7,28 @@
 
 import { initializeApp } from "firebase/app";
 import { getFirestore, doc, getDoc, collection, getDocs } from "firebase/firestore";
-import { getAuth, signInAnonymously } from "firebase/auth";
-import { writeFileSync, mkdirSync, existsSync } from "fs";
+import { getAuth, signInWithEmailAndPassword } from "firebase/auth";
+import { writeFileSync, mkdirSync, existsSync, readFileSync } from "fs";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
+
+// ── 이메일 Auth 자격증명 파생 (firebase.js와 동일한 로직) ───────────────────────
+// RYEK_BACKUP_USER 환경변수로 재정의 가능 (기본값: admin)
+const BACKUP_USER = process.env.RYEK_BACKUP_USER || "admin";
+const BACKUP_EMAIL = `${BACKUP_USER}@ryek2.app`;
+let _AUTH_SALT = process.env.VITE_AUTH_SALT || "";
+if (!_AUTH_SALT) {
+  try {
+    const env = readFileSync(join(__dirname, "..", ".env.local"), "utf8");
+    const m = env.match(/^VITE_AUTH_SALT=(.+)$/m);
+    if (m) _AUTH_SALT = m[1].trim();
+  } catch {}
+}
+const BACKUP_PASSWORD = _AUTH_SALT
+  ? `ryek2!${BACKUP_USER}#${_AUTH_SALT}`
+  : `ryek!${BACKUP_USER}#2024`;
 
 const firebaseConfig = {
   apiKey: "AIzaSyDViGzxa0o1tqqX6fGr46Sfiews-ieGmks",
@@ -52,10 +68,10 @@ async function main() {
   const db = getFirestore(app);
   const auth = getAuth(app);
 
-  // Anonymous sign-in (rules: isAuthenticated() = any auth)
-  console.log("Firebase Auth 연결 중...");
-  await signInAnonymously(auth);
-  console.log("✓ Auth 완료 (anonymous)\n");
+  // 이메일 로그인 (rye-teachers/students는 isEmailUser() 읽기만 허용)
+  console.log(`Firebase Auth 연결 중... (${BACKUP_EMAIL})`);
+  await signInWithEmailAndPassword(auth, BACKUP_EMAIL, BACKUP_PASSWORD);
+  console.log("✓ Auth 완료 (email)\n");
 
   const backup = {
     timestamp: new Date().toISOString(),

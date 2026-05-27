@@ -591,7 +591,7 @@ export function PublicParentView() {
         { key: "rye-students", setter: setStudents, default: [] },
         { key: "rye-attendance", setter: setAttendance, default: [] },
         { key: "rye-payments", setter: setPayments, default: [] },
-        { key: "rye-teachers", setter: setTeachers, default: [] },
+        // rye-teachers: isEmailUser() 전용 — 익명 auth로 읽기 불가, 강사명은 빈 배열 fallback
         { key: "rye-student-notices", setter: setStudentNotices, default: [] },
         { key: "rye-ai-reports", setter: setAiReports, default: [] },
       ];

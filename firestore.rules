@@ -30,10 +30,10 @@ service cloud.firestore {
 
     // ── appData 컬렉션별 규칙 ─────────────────────────────────────────────────
 
-    // 학생 PII — 이메일 인증 사용자(스태프)만 읽기, 관리자 이상만 쓰기
-    // SEC-2: 익명(포털) 사용자 직접 읽기 차단 — 앱 레벨에서 필터링하므로 불필요
+    // 학생 PII — 인증된 모든 사용자 읽기(포털 익명 사용자 포함), 관리자 이상만 쓰기
+    // NOTE: 포털(My RYE-K)은 익명 auth로 studentCode+생일로 로그인하므로 anonymous 읽기 필요
     match /appData/rye-students {
-      allow read:  if isEmailUser();
+      allow read:  if isAuthenticated();
       allow write: if isManagerOrAbove();
     }
 
