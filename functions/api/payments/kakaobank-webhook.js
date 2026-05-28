@@ -185,8 +185,9 @@ async function handleGet(request, env) {
   if (!payload) {
     return json({ error: "Unauthorized" }, 401);
   }
-  const jwtRole = String(payload?.role || "").toLowerCase();
-  if (jwtRole !== "admin" && jwtRole !== "manager") {
+  // set-role이 호출되지 않아 JWT custom claim에 role이 없는 경우를 고려해
+  // 이메일 인증 여부로 체크 (anonymous 차단은 verifyToken에서 이미 처리됨)
+  if (payload.firebase?.sign_in_provider !== "password") {
     return json({ error: "Forbidden" }, 403);
   }
 
