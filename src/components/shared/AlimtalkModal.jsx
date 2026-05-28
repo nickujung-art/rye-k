@@ -1,6 +1,6 @@
 ﻿import { useState } from "react";
 import { IC, THIS_MONTH } from "../../constants.jsx";
-import { monthLabel, fmtMoney, getAudience } from "../../utils.js";
+import { monthLabel, fmtMoney, getAudience, sendAligoMessage } from "../../utils.js";
 import { aiPolishPaymentMessage } from "../../aiClient.js";
 
 const TEMPLATES = {
@@ -28,6 +28,9 @@ export default function AlimtalkModal({ type: initialType = "monthly_fee", stude
   const [aiPreview, setAiPreview] = useState("");
   const [aiToneLoading, setAiToneLoading] = useState(false);
   const [aiToneError, setAiToneError] = useState("");
+  const [testPhone, setTestPhone] = useState("");
+  const [testResult, setTestResult] = useState(null); // null | {ok, msg}
+  const [isTestSending, setIsTestSending] = useState(false);
 
   const autoFee = (s) => (s.monthlyFee || 0) + (s.instrumentRental ? (s.rentalFee || 0) : 0);
 
@@ -61,6 +64,26 @@ export default function AlimtalkModal({ type: initialType = "monthly_fee", stude
 
   const canSend = targets.length > 0 && zeroFeeStudents.length === 0 && !isSubmitting &&
     (type !== "makeup_lesson" || (makeupDate && makeupTime));
+
+  const handleTestSend = async () => {
+    const phone = testPhone.replace(/[^0-9]/g, "");
+    if (phone.length < 10) { setTestResult({ ok: false, msg: "전화번호를 올바르게 입력하세요." }); return; }
+    if (targets.length === 0) { setTestResult({ ok: false, msg: "발송 대상 학생이 없습니다." }); return; }
+    setIsTestSending(true);
+    setTestResult(null);
+    try {
+      const first = targets[0];
+      const p = getPayment?.(first.id);
+      const amt = p?.amount ?? autoFee(first);
+      const testStudent = { ...first, phone, amount: amt };
+      await sendAligoMessage(type, [testStudent], { month, deadline, makeupDate, makeupTime });
+      setTestResult({ ok: true, msg: `✓ ${phone} 발송 성공 — 카톡 확인해주세요` });
+    } catch (e) {
+      setTestResult({ ok: false, msg: `✗ 실패: ${e.message}` });
+    } finally {
+      setIsTestSending(false);
+    }
+  };
 
   const handleSend = async () => {
     setIsSubmitting(true);
@@ -206,6 +229,27 @@ export default function AlimtalkModal({ type: initialType = "monthly_fee", stude
                   {aiPreview || preview}
                 </div>
                 {aiPreview && <div style={{fontSize:10,color:"var(--ink-30)",marginTop:4}}>✨ AI 다듬기 적용 중 (미리보기 전용)</div>}
+              </div>
+
+              {/* 테스트 발송 */}
+              <div style={{borderTop:"1px solid var(--border)",paddingTop:10,marginTop:4}}>
+                <div style={{fontSize:11,fontWeight:600,color:"var(--ink-30)",marginBottom:6}}>테스트 발송 (1건)</div>
+                <div style={{display:"flex",gap:6,alignItems:"center"}}>
+                  <input className="inp" placeholder="내 번호 입력 (01012345678)" inputMode="tel"
+                    value={testPhone} onChange={e => { setTestPhone(e.target.value); setTestResult(null); }}
+                    style={{flex:1,fontSize:12}} />
+                  <button className="btn btn-secondary btn-sm" style={{flexShrink:0,whiteSpace:"nowrap"}}
+                    disabled={isTestSending || !testPhone} onClick={handleTestSend}>
+                    {isTestSending ? "발송 중…" : "테스트"}
+                  </button>
+                </div>
+                {testResult && (
+                  <div style={{fontSize:12,marginTop:6,padding:"6px 10px",borderRadius:6,
+                    background: testResult.ok ? "var(--green-lt, #f0fdf4)" : "var(--red-lt)",
+                    color: testResult.ok ? "var(--green)" : "var(--red)",fontWeight:500}}>
+                    {testResult.msg}
+                  </div>
+                )}
               </div>
 
               <div style={{fontSize:12,color:"var(--ink-30)",marginBottom:4}}>총 {targets.length}명에게 발송됩니다.</div>
