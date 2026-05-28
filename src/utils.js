@@ -137,7 +137,7 @@ export async function sendAligoMessage(type, students, options = {}) {
     const mo = monthKr(month);
     const amt = fmtAmt(s.amount);
     if (type === "monthly_fee")
-      return `[RYE-K K-Culture Center]\n\n안녕하세요, ${s.name}님!\n${mo} 수강료 안내드립니다.\n\n💰 수강료: ${amt}원\n📅 납부 기한: ${deadline}\n\n계좌: 카카오뱅크 3333-34-5220544\n(예금주: 예케이케이컬처센터)\n\n감사합니다 🎵`;
+      return `[RYE-K K-Culture Center]\n\n안녕하세요, ${s.name}님!\n${mo} 수강료를 안내드립니다.\n\n💰 수강료: ${amt}원\n📅 납부 기한: ${deadline}\n\n계좌: 카카오뱅크 3333-34-5220544\n예금주: 예케이케이컬처센터\n\n감사합니다 🎵`;
     if (type === "unpaid_reminder")
       return `[RYE-K K-Culture Center]\n\n${s.name}님, ${mo} 수강료 ${amt}원이 아직 미납 상태입니다.\n\n빠른 시일 내 납부 부탁드립니다.\n계좌: 카카오뱅크 3333-34-5220544\n\n문의: 원장실`;
     return "";
@@ -153,6 +153,13 @@ export async function sendAligoMessage(type, students, options = {}) {
       params.append(`recvname_${n}`, s.name);
       params.append(`message_${n}`, buildMsg(s));
     });
+    // monthly_fee 템플릿 버튼 (My RYE 포탈)
+    if (type === "monthly_fee") {
+      params.set("button_name_1", "My RYE 포탈");
+      params.set("button_type_1", "WL");
+      params.set("button_url_mobile_1", "https://app.ryekorea.com/myryk/");
+      params.set("button_url_pc_1", "https://app.ryekorea.com/myryk/");
+    }
     const res = await fetch(ALIGO_URL, {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
