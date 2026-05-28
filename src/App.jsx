@@ -18,6 +18,7 @@ import { BottomNav, Sidebar, MoreMenu } from "./components/layout/NavLayout.jsx"
 import { UpdatePopup } from "./components/updates/UpdatePopup.jsx";
 import { setAiEnabled } from "./aiClient.js";
 import AiAssistant from "./components/ai/AiAssistant.jsx";
+import SettlementView from "./components/settlement/SettlementView.jsx";
 
 // ── Lazy-loaded views (code-split) ────────────────────────────────────────────
 const AnalyticsView       = lazy(() => import("./components/analytics/AnalyticsView.jsx"));
@@ -1091,7 +1092,7 @@ function MainApp() {
   if (!user) return <><style>{CSS}</style><LoginScreen onLogin={login} /></>;
 
   const pendingCount = isAdmin ? pending.length : 0;
-  const topTitle = { dashboard: "RYE-K", students: "회원 관리", attendance: "출석 체크", payments: "수납 관리", teachers: "강사 관리", notices: "공지사항", categories: "과목 관리", analytics: "현황 분석", profile: "내 정보", more: "더보기", activity: "활동 기록", pending: "등록 대기", schedule: "강사 스케줄", trash: "휴지통", studentNotices: "수강생 공지", lessonNotes: "레슨노트", institutions: "기관 관리", systemNews: "시스템 소식", monthlyReports: "월간 리포트", aiSettings: "AI 설정", shop: "상품 관리" }[view] || "RYE-K";
+  const topTitle = { dashboard: "RYE-K", students: "회원 관리", attendance: "출석 체크", payments: "수납 관리", teachers: "강사 관리", notices: "공지사항", categories: "과목 관리", analytics: "현황 분석", profile: "내 정보", more: "더보기", activity: "활동 기록", pending: "등록 대기", schedule: "강사 스케줄", trash: "휴지통", studentNotices: "수강생 공지", lessonNotes: "레슨노트", institutions: "기관 관리", systemNews: "시스템 소식", monthlyReports: "월간 리포트", aiSettings: "AI 설정", shop: "상품 관리", settlement: "정산 관리" }[view] || "RYE-K";
 
   return (
     <>
@@ -1247,6 +1248,17 @@ function MainApp() {
               shopItems={shopItems}
               onSave={async u => { await saveShopItems(u); addLog("상품 카탈로그 수정"); }}
             />}
+            {view === "settlement" && canManageAll(user.role) && <SettlementView
+              teachers={teachers}
+              students={students}
+              attendance={attendance}
+              payments={payments}
+              institutions={institutions}
+              instantCharges={instantCharges}
+              feePresets={feePresets}
+              shopItems={shopItems}
+              currentUser={user}
+            />}
             {view === "more" && <MoreMenu user={user} setView={navigate} onLogout={handleLogout} onResetSeed={resetSeed} counts={{ teachers: teachers.length }} pendingCount={pendingCount} darkMode={darkMode} setDarkMode={setDarkMode} trash={trash} newCommentCount={newCommentCount} />}
           </div>
           </Suspense>
@@ -1288,7 +1300,7 @@ function MainApp() {
         }
       }} />}
       {modal === "sDetail" && selected && <StudentDetailModal student={selected} teachers={teachers} currentUser={user} categories={categories} feePresets={feePresets} attendance={attendance} payments={payments} onClose={() => setModal(null)} onEdit={() => setModal("sForm")} onDelete={async () => { await softDeleteStudent(selected); setModal(null); showToast(`${selected.name} 회원이 삭제되었습니다. (7일간 복원 가능)`); }} onPhotoUpdate={async (sid, photoData) => { const s = students.find(s => s.id === sid); if (s) { await updateStudentDoc({ ...s, photo: photoData }); } showToast("프로필 사진이 저장되었습니다."); }} onSaveStudent={async (upd) => { await updateStudentDoc(upd); setSelected(upd); showToast("청구 요청이 등록되었습니다."); }} />}
-      {modal === "tForm" && canManageAll(user.role) && <TeacherFormModal teacher={selected} categories={categories} onClose={() => setModal(null)} onSave={async data => {
+      {modal === "tForm" && canManageAll(user.role) && <TeacherFormModal teacher={selected} categories={categories} shopItems={shopItems} onClose={() => setModal(null)} onSave={async data => {
         const isNew = !data.id;
         const upd = data.id ? teachers.map(t => t.id === data.id ? data : t) : [...teachers, { ...data, id: uid() }];
         await saveTeachers(upd);

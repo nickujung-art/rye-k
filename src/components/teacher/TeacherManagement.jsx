@@ -25,8 +25,8 @@ export function InstSelector({ selected, onChange, categories }) {
 }
 
 // ── TEACHER FORM ──────────────────────────────────────────────────────────────
-export function TeacherFormModal({ teacher, categories, onClose, onSave }) {
-  const [form, setForm] = useState(teacher || { name: "", username: "", password: "", phone: "", email: "", instruments: [], birthDate: "", hireDate: TODAY_STR, photo: "", bio: "", role: "teacher" });
+export function TeacherFormModal({ teacher, categories, onClose, onSave, shopItems }) {
+  const [form, setForm] = useState(teacher || { name: "", username: "", password: "", phone: "", email: "", instruments: [], birthDate: "", hireDate: TODAY_STR, photo: "", bio: "", role: "teacher", settlementRate: "", shopIncentiveRates: {} });
   const [err, setErr] = useState("");
   const [confirming, setConfirming] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -46,7 +46,12 @@ export function TeacherFormModal({ teacher, categories, onClose, onSave }) {
     if (saving) return; setSaving(true);
     try {
       // 신규: 초기 비밀번호 = 핸드폰 뒷4자리
-      const dataToSave = isEdit ? form : { ...form, password: initialPw };
+      const rateNum = parseFloat(form.settlementRate) || 0;
+      const shopRates = Object.fromEntries(
+        Object.entries(form.shopIncentiveRates || {}).map(([k,v]) => [k, parseFloat(v) || 0])
+      );
+      const base = isEdit ? form : { ...form, password: initialPw };
+      const dataToSave = { ...base, settlementRate: rateNum, shopIncentiveRates: shopRates };
       await onSave(dataToSave);
     } catch(e) { setErr("저장 중 오류가 발생했습니다."); setConfirming(false); }
     finally { setSaving(false); }
@@ -84,6 +89,38 @@ export function TeacherFormModal({ teacher, categories, onClose, onSave }) {
             <InstSelector selected={form.instruments || []} onChange={v => set("instruments", v)} categories={categories} />
           </div>
           <div className="fg"><label className="fg-label">소개 / 경력</label><textarea className="inp" value={form.bio} onChange={e => set("bio", e.target.value)} placeholder="학력, 경력, 수상 이력 등" rows={3} /></div>
+          <div className="divider" />
+          {/* ── 정산 설정 ── */}
+          <div style={{fontSize:12,fontWeight:700,color:"var(--ink-30)",letterSpacing:.5,marginBottom:10}}>정산 설정 (선택)</div>
+          <div className="fg">
+            <label className="fg-label">기본 정산 요율</label>
+            <div style={{display:"flex",alignItems:"center",gap:6,maxWidth:160}}>
+              <input className="inp" inputMode="numeric" placeholder="예: 60"
+                value={form.settlementRate ?? ""}
+                onChange={e => set("settlementRate", e.target.value.replace(/[^\d.]/g,""))}
+                style={{textAlign:"right"}} />
+              <span style={{fontSize:13,color:"var(--ink-60)",flexShrink:0}}>%</span>
+            </div>
+          </div>
+          {(shopItems?.categories?.length > 0) && (
+            <div className="fg">
+              <label className="fg-label">카테고리별 상품 인센티브</label>
+              <div style={{border:"1px solid var(--border)",borderRadius:8,overflow:"hidden"}}>
+                {shopItems.categories.map((cat, i) => (
+                  <div key={cat} style={{display:"flex",alignItems:"center",padding:"7px 12px",borderTop: i > 0 ? "1px solid var(--border)" : undefined,gap:8}}>
+                    <span style={{flex:1,fontSize:12.5}}>{cat}</span>
+                    <div style={{display:"flex",alignItems:"center",gap:4,width:90,flexShrink:0}}>
+                      <input className="inp" inputMode="numeric" placeholder="0"
+                        value={(form.shopIncentiveRates || {})[cat] ?? ""}
+                        onChange={e => set("shopIncentiveRates", { ...(form.shopIncentiveRates||{}), [cat]: e.target.value.replace(/[^\d.]/g,"") })}
+                        style={{textAlign:"right",fontSize:12,padding:"4px 6px"}} />
+                      <span style={{fontSize:11,color:"var(--ink-60)",flexShrink:0}}>%</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
         {confirming ? (
           <div className="confirm-bar">

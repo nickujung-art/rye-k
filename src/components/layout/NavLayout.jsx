@@ -15,7 +15,7 @@ export function BottomNav({ view, setView, unpaidCount, pendingCount, newComment
   return (
     <nav className="bnav">
       {tabs.map(t => (
-        <div key={t.id} className={`bnav-item ${view === t.id || (t.id === "more" && ["teachers","notices","categories","profile","activity","pending","trash","studentNotices","analytics","lessonNotes","schedule","institutions","systemNews","monthlyReports","aiSettings","shop"].includes(view)) ? "active" : ""}`} onClick={() => setView(t.id)}>
+        <div key={t.id} className={`bnav-item ${view === t.id || (t.id === "more" && ["teachers","notices","categories","profile","activity","pending","trash","studentNotices","analytics","lessonNotes","schedule","institutions","systemNews","monthlyReports","aiSettings","shop","settlement"].includes(view)) ? "active" : ""}`} onClick={() => setView(t.id)}>
           <span className="bnav-dot" />
           {t.badge > 0 && <span className="bnav-badge">{t.badge > 99 ? "99+" : t.badge}</span>}
           {t.icon}
@@ -77,6 +77,7 @@ export function Sidebar({ view, setView, user, onLogout, counts, pendingCount, d
     { id: "payments", label: "수납 관리", icon: "₩" },
     { id: "schedule", label: "강사 스케줄", icon: "◫" },
     ...(canManageAll(user.role) ? [{ id: "institutions", label: "기관 관리", icon: "🏢" }] : []),
+    ...(canManageAll(user.role) ? [{ id: "settlement", label: "정산 관리", icon: "💰" }] : []),
     ...(canManageAll(user.role) ? [{ id: "pending", label: "등록 대기", icon: "📋", badge: pendingCount || undefined }] : []),
     ...(canManageAll(user.role) ? [{ id: "teachers", label: "강사 관리", icon: "◈", badge: counts.teachers }] : []),
     ...(canManageAll(user.role) ? [{ id: "notices", label: "공지사항", icon: "◉" }] : []),
