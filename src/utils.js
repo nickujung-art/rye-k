@@ -115,14 +115,54 @@ export function formatLessonNoteSummary(note) {
 }
 
 export async function sendAligoMessage(type, students, options = {}) {
-  const res = await fetch("/api/alimtalk/send", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ type, students, options }),
-  });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok || !data.success) throw new Error(data.error || `발송 실패 (HTTP ${res.status})`);
-  return data;
+  const ALIGO_URL = "https://kakaoapi.aligo.in/akv10/alimtalk/send/";
+  const TPL = { monthly_fee: "UI_1525", unpaid_reminder: "UI_1526", makeup_lesson: "UI_1527" };
+  const apikey   = import.meta.env.VITE_ALIGO_APIKEY;
+  const userid   = import.meta.env.VITE_ALIGO_USERID;
+  const senderkey = import.meta.env.VITE_ALIGO_SENDERKEY;
+  const sender   = import.meta.env.VITE_ALIGO_SENDER;
+
+  if (!apikey) throw new Error("알림톡 API 설정이 없습니다. 관리자에게 문의하세요.");
+  if (!TPL[type]) throw new Error(`알 수 없는 타입: ${type}`);
+  if (type === "makeup_lesson") throw new Error("보강 안내 템플릿은 현재 재승인 대기 중입니다.");
+
+  const valid = students.filter(s => s.phone || s.guardianPhone);
+  const noPhone = students.filter(s => !s.phone && !s.guardianPhone).map(s => s.name);
+  if (valid.length === 0) throw new Error("전화번호가 있는 수신자가 없습니다.");
+
+  const fmtAmt = n => String(Math.round(n || 0)).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  const monthKr = ym => ym ? `${parseInt(ym.split("-")[1], 10)}월` : "";
+  const buildMsg = s => {
+    const { month, deadline, makeupDate, makeupTime } = options;
+    const mo = monthKr(month);
+    const amt = fmtAmt(s.amount);
+    if (type === "monthly_fee")
+      return `[RYE-K K-Culture Center]\n\n안녕하세요, ${s.name}님!\n${mo} 수강료 안내드립니다.\n\n💰 수강료: ${amt}원\n📅 납부 기한: ${deadline}\n\n계좌: 카카오뱅크 3333-34-5220544\n(예금주: 예케이케이컬처센터)\n\n감사합니다 🎵`;
+    if (type === "unpaid_reminder")
+      return `[RYE-K K-Culture Center]\n\n${s.name}님, ${mo} 수강료 ${amt}원이 아직 미납 상태입니다.\n\n빠른 시일 내 납부 부탁드립니다.\n계좌: 카카오뱅크 3333-34-5220544\n\n문의: 원장실`;
+    return "";
+  };
+
+  const results = [];
+  for (let i = 0; i < valid.length; i += 500) {
+    const batch = valid.slice(i, i + 500);
+    const params = new URLSearchParams({ apikey, userid, senderkey, tpl_code: TPL[type], sender });
+    batch.forEach((s, j) => {
+      const n = j + 1;
+      params.append(`receiver_${n}`, (s.phone || s.guardianPhone || "").replace(/\D/g, ""));
+      params.append(`recvname_${n}`, s.name);
+      params.append(`message_${n}`, buildMsg(s));
+    });
+    const res = await fetch(ALIGO_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: params.toString(),
+    });
+    const data = await res.json();
+    results.push(data);
+    if (data.code !== 0) throw new Error(data.message || "Aligo API 오류");
+  }
+  return { success: true, sent: valid.length, noPhone, details: results };
 }
 
 // ── Phase 0: 출석률 헬퍼 (Phase 2·3 공통 기반) ────────────────────────────────
