@@ -114,8 +114,15 @@ export function formatLessonNoteSummary(note) {
   return parts.join(" | ") || "";
 }
 
-export async function sendAligoMessage(_targetType, _students) {
-  await new Promise(resolve => setTimeout(resolve, 1000));
+export async function sendAligoMessage(type, students, options = {}) {
+  const res = await fetch("/api/alimtalk/send", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ type, students, options }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || !data.success) throw new Error(data.error || `발송 실패 (HTTP ${res.status})`);
+  return data;
 }
 
 // ── Phase 0: 출석률 헬퍼 (Phase 2·3 공통 기반) ────────────────────────────────

@@ -868,13 +868,15 @@ export default function PaymentsView({
           month={month}
           getPayment={getPayment}
           onClose={() => setAlimtalkModal(null)}
-          onSend={async (type, targets) => {
-            if (type === "unpaid_reminder") {
-              onLog("ALM-07 stub: Phase 4 AlimTalk 연동 후 활성화됩니다");
-              setAlimtalkModal(null);
-              return;
+          onSend={async (type, targets, options) => {
+            try {
+              const result = await sendAligoMessage(type, targets, options);
+              const noPhoneMsg = result.noPhone?.length ? ` (전화번호 없음: ${result.noPhone.join(", ")})` : "";
+              onLog(`알림톡 ${result.sent}명 발송 완료${noPhoneMsg}`);
+            } catch (e) {
+              onLog(`알림톡 발송 실패: ${e.message}`);
             }
-            await sendAligoMessage(type, targets);
+            setAlimtalkModal(null);
           }}
         />
       )}

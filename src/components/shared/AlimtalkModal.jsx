@@ -64,7 +64,11 @@ export default function AlimtalkModal({ type: initialType = "monthly_fee", stude
 
   const handleSend = async () => {
     setIsSubmitting(true);
-    await onSend?.(type, targets, { deadline, makeupDate, makeupTime });
+    const enriched = targets.map(s => {
+      const p = getPayment?.(s.id);
+      return { ...s, amount: p?.amount ?? autoFee(s) };
+    });
+    await onSend?.(type, enriched, { month, deadline, makeupDate, makeupTime });
     setIsSubmitting(false);
     onClose();
   };
@@ -132,8 +136,10 @@ export default function AlimtalkModal({ type: initialType = "monthly_fee", stude
                 <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
                   {Object.entries(TYPE_LABELS).map(([k,v]) => (
                     <button key={k} className={`btn btn-sm ${type===k?"btn-primary":"btn-secondary"}`}
-                      onClick={() => { setType(k); setTargetMode(k==="unpaid_reminder"?"unpaid":"all"); setAiPreview(""); setAiToneError(""); }}>
-                      {v}
+                      onClick={() => { setType(k); setTargetMode(k==="unpaid_reminder"?"unpaid":"all"); setAiPreview(""); setAiToneError(""); }}
+                      disabled={k === "makeup_lesson"}
+                      title={k === "makeup_lesson" ? "템플릿 재승인 대기 중" : undefined}>
+                      {v}{k === "makeup_lesson" ? " (대기)" : ""}
                     </button>
                   ))}
                 </div>
