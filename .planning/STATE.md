@@ -1,114 +1,45 @@
 # Project State
 
-## Project Reference
-
-See: .planning/PROJECT.md (updated 2026-05-05)
-
-**Core value:** 강사와 학생이 레슨에 집중할 수 있도록, 행정 업무(수납·출결·소통)를 자동화하고 모든 역할이 하나의 앱에서 필요한 정보를 얻을 수 있게 한다
-**Current focus:** Phase 5 완료 → Phase 6 — 분석 대시보드 고도화 (Phase 4 AlimTalk API 미수령, 나중에 처리)
-
 ## Current Position
 
-Phase: 05-payment-automation ✓ COMPLETE
-Plan: 5/5 완료
-Status: **VERIFIED** — 전체 5개 플랜 완료. webhook 리플레이 보호 + GET role 체크 gap closure 포함.
-Last activity: 2026-05-09 — 갭 클로저(리플레이 보호, handleGet role 체크) 커밋 후 VERIFICATION passed
+**Version**: v16.x (라이브)
+**Last push**: `d7b3510` (2026-05-29) — alimtalk 템플릿 텍스트 정교화 + gemini function-call 파싱 수정
 
-Progress: [██████████] 100% (05-05 완료)
+## Completed Phases
 
-## Performance Metrics
+| Phase | Status | Notes |
+|-------|--------|-------|
+| 01 보안 기반 | ✓ COMPLETE | |
+| 02 포털 완성 | ✓ COMPLETE | |
+| 03 AI 완성 | ✓ COMPLETE | |
+| 05 수납 자동화 | ✓ COMPLETE | 실제 카카오뱅크 테스트 미완 |
+| BACKUP-01 | ✓ COMPLETE | GitHub Actions 주간 백업 |
+| BUG-01 | ✓ COMPLETE | |
+| FS-fee-split | ✓ COMPLETE | 과목별 수강료 분리 |
+| QA-01 / QA-02 | ✓ COMPLETE | |
+| SEC-01 | ✓ COMPLETE | |
+| SHOP-01 | ✓ COMPLETE | 즉시청구 & 상품관리 |
 
-**Velocity:**
-- Total plans completed: 4 (Phase 2)
-- Total execution time: ~1 session (2026-05-05)
+## Active Work
 
-**By Phase:**
+없음. 다음 작업 대기 중.
 
-| Phase | Plans | Status |
-|-------|-------|--------|
-| Phase 1 — 보안 강화 | 4 | ✓ 완료 |
-| Phase 2 — 포털 완성 | 4 | ✓ 완료 |
-| Phase 3 — AI 기능 연동 | 3 | ✓ 완료 (human UAT 대기) |
+## Pending / Blockers
 
-*Updated after each plan completion*
+- **알림톡**: makeup_lesson(UI_1527) 재승인 대기 — 완료 시 utils.js line 127 throw 제거만 하면 됨
+- **카카오뱅크 webhook**: 실제 입금 테스트 미완 (Tasker 설정 대기)
+- **monthlyFee**: 전원 0원 상태 — Nick이 직접 수납 관리에서 입력 필요
 
-## Accumulated Context
+## Key Decisions
 
-### Decisions
+- `saveStudents()` 영구 비활성화 — per-op 트랜잭션만 사용 (addStudentDoc/updateStudentDoc/deleteStudentDoc/batchStudentDocs)
+- 알림톡: Aligo API 직접 호출 (Worker 우회, IPv6 문제)
+- Firebase Auth: anonymous→email deadlock 해소 — READ isAuthenticated(), WRITE isEmailUser()
+- Gemini 2.5 Flash 사용, thinkingBudget:0 (function-call 파싱 안정성)
 
-Decisions are logged in PROJECT.md Key Decisions table.
-Recent decisions affecting current work:
+## DB 백업 체계
 
-- saveStudents() 영구 비활성화, per-op 트랜잭션 전환 (완료)
-- 외부 결제 미연동, 은행 알림 자동화만 채택
-- 카카오 알림톡 우선, FCM 나중 (AlimtalkModal UI 이미 존재)
-- Gemini 2.5 Flash 사용 (anthropic.js 이름 정리 필요 — Phase 3)
-- [FS-01] lesson.fee 양수 체크 (0="미설정" 구분), monthlyFee/lessonCount 균등 분배 폴백 채택
-- [FS-01] isInstitution 가상회원 별도 분기 없이 기존 폴백으로 처리 (lessons[0].fee 없으면 monthlyFee 반환)
-- [FS-02] set() 함수에서 monthlyFee 자동계산 제거 — feePresets 기반 fee 적용은 toggleInst에서만 (신규 과목 추가 시)
-- [FS-02] handleConfirm에서 calcTotalFee 파생 계산 후 monthlyFee 덮어씀 — 기존 PaymentsView의 s.monthlyFee 참조 보호
-- [FS-02] 월 수강료 입력 필드 → 읽기 전용 합계 표시로 교체, 수강료 편집은 LessonEditor 내부에서
-- [FS-03] PaymentsView autoFee를 calcTotalFee 기반으로 교체, 인라인 monthlyFee 편집창 제거
-- [FS-03] 수납 상세 모달에 lessons[].fee 기반 과목별 breakdown UI 추가
-- [FS-03] feePresets prop을 App.jsx에서 PaymentsView, Dashboard로 전달
-- [FS-04] 마이그레이션 결과 카드에 오류 메시지도 표시 (error 필드 처리 추가)
-- [05-05] sync-students 역할 체크는 body.role로 클라이언트가 전달 (verifyToken에 role 클레임 없음)
-- [05-05] KV TTL 86400s (24h) — kakaobank-webhook pending 레코드 TTL과 동일
-- [05-05] PII 최소화: id/name/status 3개 필드만 KV 저장
-- [SHOP-01-02] ShopView 상품 삭제 즉시 처리 (window.confirm 미사용) — dirty 플래그로 저장 전 되돌리기 가능
-- [SHOP-01-02] 카테고리별 인라인 추가 폼 — newItem.category 포커스 시 해당 카테고리로 설정
-- [SHOP-01-04] 즉시청구 탭 canManageAll 조건 적용 (관리자/매니저 전용)
-- [SHOP-01-04] 알림 메시지는 승인 모달 내 + approved 카드에서 재복사 가능 (이중 진입점)
-- [SHOP-01-04] 거절 확인은 인라인 UI (별도 모달 없음), approveInstantCopied에 charge.id/'modal' 구분
-- [SHOP-01-05] 입금 확인 시 payment id = charge.id + "_pay" 패턴으로 즉시청구 역참조 추적
-- [SHOP-01-05] KST month/paidDate: Date.now() + 9h 오프셋 → ISO 슬라이싱
-- [SHOP-01-05] Dashboard 4.6 배지 type:blue, key:instant-charge (강사 비용 청구 4.5와 구분)
-
-### Pending Todos
-
-None yet.
-
-### Blockers/Concerns
-
-- **Phase 4 blocker**: 카카오 비즈니스 채널 개설 + Solapi 계정 등록 + 알림톡 템플릿 심사 — Nick 선행 작업 필요 (심사 최대 7영업일 소요) — Phase 5 이후 처리
-- **Phase 5 action (Nick)**: `monthlyFee` 전체 0원 — PAY-01 스프레드시트 UI 완성 후 Nick이 직접 입력
-- **Phase 5 action (Nick)**: Cloudflare secret `RYE_WEBHOOK_SECRET` 등록 — 카카오뱅크 Webhook Worker 배포 후
-- **Phase 5 action (Nick)**: Tasker + AutoNotification 플러그인 설치 + Profile 설정 — 업무폰 Android에서
-- **Phase 1 risk**: Custom Claims Worker 배포 후 Firestore 규칙 순차 적용 필수 — 순서 역전 시 강사 전원 로그아웃됨
-- **Ongoing**: App.jsx 840+ 줄 god-file — Phase 5-6에서 리스너 추가 시 `useAppData()` 훅 분리 고려
-
-## Deferred Items
-
-| Category | Item | Status | Deferred At |
-|----------|------|--------|-------------|
-| SaaS | 멀티테넌트 아키텍처 | Out of scope | v1.0 |
-| Commerce | 한복·악기 판매 마켓플레이스 | Out of scope | v1.0 |
-| Commerce | 공연·이벤트 티켓 시스템 | Out of scope | v1.0 |
-| Tech | TypeScript 마이그레이션 | Out of scope | v1.0 |
-| Notifications | FCM 푸시 알림 | Out of scope | v1.0 |
-| Data | Firestore 서브컬렉션 마이그레이션 | Out of scope (단 ANL-04 아카이빙으로 부분 대응) | v1.0 |
-
-## Session Continuity
-
-Last session: 2026-05-14
-Stopped at: SHOP-01-instant-charge-shop SHOP-01-05 완료 (입금 확인 버튼 + Dashboard 배지 + App.jsx 콜백, 커밋 217e748, 43c8542). SHOP-01 Phase 전체 5개 플랜 완료.
-Resume file: None
-
-## Plans Completed This Phase (SHOP-01-instant-charge-shop)
-
-| Plan | Wave | Requirements | Files |
-|------|------|-------------|-------|
-| SHOP-01-01 | 1 | SHOP-01, SHOP-02 | src/firebase.js, src/App.jsx |
-| SHOP-01-02 | 1 | SHOP-06 | src/constants.jsx, src/components/admin/AdminTools.jsx, src/App.jsx, src/components/layout/NavLayout.jsx |
-| SHOP-01-03 | 2 | SHOP-03 | src/components/payment/PaymentsView.jsx, src/App.jsx |
-| SHOP-01-04 | 3 | SHOP-04 | src/components/payment/PaymentsView.jsx, src/App.jsx |
-| SHOP-01-05 | 4 | SHOP-05, SHOP-07 | src/components/payment/PaymentsView.jsx, src/components/dashboard/Dashboard.jsx, src/App.jsx |
-
-## Plans Completed Previous Phase (FS-fee-split)
-
-| Plan | Wave | Requirements | Files |
-|------|------|-------------|-------|
-| FS-01 | 1 | FS-FEE-01, FS-FEE-02 | src/utils.js |
-| FS-02 | 2 | FS-FEE-03 | src/components/student/StudentManagement.jsx |
-| FS-03 | 2 | FS-FEE-04, FS-FEE-05 | src/components/payment/PaymentsView.jsx, src/components/dashboard/Dashboard.jsx, src/App.jsx |
-| FS-04 | 3 | FS-FEE-06 | src/components/admin/AdminTools.jsx, src/App.jsx |
+- Firebase PITR: 7일 1분 단위 (asia-northeast3)
+- Firebase 자동 백업: 매일 14일 + 매주 30일 (GCS)
+- GitHub Actions: 매주 월요일 KST 09:00 자동 백업
+- 로컬: `npm run db:backup` / `npm run db:restore`
