@@ -37,6 +37,7 @@ export async function callGemini(apiKey, { system, user, max_tokens = 400, tempe
 }
 
 // Gemini function-calling: 함수 선택 결과만 반환 (Phase 2 자연어 쿼리용)
+// thinkingBudget:0 으로 thinking 비활성화 — thinking 활성 시 parts[0]이 thought가 되어 functionCall을 놓침
 export async function callGeminiTools(apiKey, { system, user, tools, max_tokens = 200 }) {
   const resp = await fetch(`${GEMINI_BASE}/gemini-2.5-flash:generateContent?key=${apiKey}`, {
     method: "POST",
@@ -45,7 +46,7 @@ export async function callGeminiTools(apiKey, { system, user, tools, max_tokens 
       system_instruction: system ? { parts: [{ text: system }] } : undefined,
       contents: [{ role: "user", parts: [{ text: user }] }],
       tools: [{ function_declarations: tools }],
-      generationConfig: { maxOutputTokens: max_tokens, temperature: 0.1 },
+      generationConfig: { maxOutputTokens: max_tokens, temperature: 0.1, thinkingConfig: { thinkingBudget: 0 } },
     }),
   });
   if (!resp.ok) {
@@ -55,9 +56,10 @@ export async function callGeminiTools(apiKey, { system, user, tools, max_tokens 
     throw e;
   }
   const data = await resp.json();
-  const part = data.candidates?.[0]?.content?.parts?.[0];
-  if (part?.functionCall) {
-    return { type: "tool", tool: part.functionCall.name, args: part.functionCall.args || {} };
+  const parts = data.candidates?.[0]?.content?.parts || [];
+  const functionCallPart = parts.find(p => p.functionCall);
+  if (functionCallPart) {
+    return { type: "tool", tool: functionCallPart.functionCall.name, args: functionCallPart.functionCall.args || {} };
   }
   return { type: "text" };
 }
