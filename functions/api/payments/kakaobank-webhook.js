@@ -35,11 +35,20 @@ async function handlePost(request, env) {
 
   // 2. Parse body — Content-Type 무시하고 text 우선 읽기 후 JSON 시도
   //    Tasker가 Content-Type:application/json + 평문 body 조합을 보내는 경우 대응
+  //    JSON 형식: {"title": "%antitle", "text": "%antext"} 또는 plain text
   let body;
   try {
     const rawBody = await request.text();
     try { body = JSON.parse(rawBody); } catch { body = { rawText: rawBody }; }
   } catch { return new Response("Bad Request", { status: 400 }); }
+
+  // 2-a. 알림 타이틀 필터 — 카카오뱅크 알림만 처리
+  //      body.title 또는 X-Notification-Title 헤더로 전달
+  //      타이틀이 있고 카카오뱅크가 아니면 저장 없이 정상 응답 (일반 메시지 차단)
+  const notifTitle = String(body.title || request.headers.get("X-Notification-Title") || "").toLowerCase();
+  if (notifTitle && !notifTitle.includes("카카오뱅크") && !notifTitle.includes("카카오 뱅크") && !notifTitle.includes("kakaobank")) {
+    return json({ ok: true, skipped: "title_mismatch" });
+  }
 
   // 3. Secret header validation — timingSafeEqual (ASVS: timing attack prevention)
   const secret = request.headers.get("X-RYE-Secret") || "";
@@ -58,7 +67,8 @@ async function handlePost(request, env) {
   }
 
   // 5. Input validation — parse rawText first, then override with explicit fields
-  const rawText = String(body.rawText || "").slice(0, 500);
+  //    body.text: JSON 형식으로 전송 시 텍스트 필드, body.rawText: 기존 plain text 호환
+  const rawText = String(body.rawText || body.text || "").slice(0, 500);
   const parsed = parseRawText(rawText);
 
   const rawName = String(body.name || parsed.name || "").trim();

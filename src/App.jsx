@@ -598,13 +598,13 @@ function MainApp() {
             id: record.id,
             studentId: record.matchedStudentId,
             month: record.matchedAt
-              ? record.matchedAt.slice(0, 7)
+              ? new Date(record.matchedAt + 9 * 60 * 60 * 1000).toISOString().slice(0, 7)
               : kstNow.toISOString().slice(0, 7),
             paid: true,
             amount: record.amount,
             paidAmount: record.amount,
             senderName: record.senderName,
-            paidDate: new Date(record.matchedAt || record.createdAt).toISOString().slice(0, 10),
+            paidDate: new Date((record.matchedAt || record.createdAt) + 9 * 60 * 60 * 1000).toISOString().slice(0, 10),
             method: "transfer",
             note: `카카오뱅크 자동매칭 (${record.senderName})`,
             source: "kakaobank",

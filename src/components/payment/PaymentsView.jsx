@@ -478,7 +478,7 @@ export default function PaymentsView({
         />
       )}
       {activeTab === "log" && canManageAll(currentUser.role) && (
-        <PaymentLogTab paymentLog={paymentLog} students={students} />
+        <PaymentLogTab paymentLog={paymentLog} students={students} onSavePaymentLog={onSavePaymentLog} />
       )}
 
       {activeTab === "instantCharges" && canManageAll(currentUser.role) && (
@@ -1449,7 +1449,14 @@ function UnmatchedPaymentsTab({
                     {s ? ` → ${s.name}` : ""}
                   </div>
                 </div>
-                <span style={{fontSize:11,color:"var(--green)",fontWeight:700}}>✓ 매칭 완료</span>
+                <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:4}}>
+                  <span style={{fontSize:11,color:"var(--green)",fontWeight:700}}>✓ 매칭 완료</span>
+                  <button
+                    className="btn btn-sm"
+                    style={{background:"var(--ink-10)",color:"var(--red)",border:"none",fontSize:10,padding:"2px 8px"}}
+                    onClick={() => handleDismiss(u.id)}
+                  >× 삭제</button>
+                </div>
               </div>
             );
           })}
@@ -1459,7 +1466,7 @@ function UnmatchedPaymentsTab({
   );
 }
 
-function PaymentLogTab({ paymentLog, students }) {
+function PaymentLogTab({ paymentLog, students, onSavePaymentLog }) {
   const now = new Date();
   const [viewMonth, setViewMonth] = useState(`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}`);
   const [copied, setCopied] = useState(false);
@@ -1478,6 +1485,11 @@ function PaymentLogTab({ paymentLog, students }) {
   const sorted = [...filtered].sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
   const totalAmount = sorted.reduce((s, e) => s + (e.amount || 0), 0);
   const matchedCount = sorted.filter(e => e.matched).length;
+
+  const handleDeleteLog = async (id) => {
+    if (!onSavePaymentLog) return;
+    await onSavePaymentLog(paymentLog.filter(e => e.id !== id));
+  };
 
   const copyTSV = async () => {
     const header = "날짜\t시간\t입금인\t금액\t매칭\t학생명";
@@ -1543,6 +1555,7 @@ function PaymentLogTab({ paymentLog, students }) {
                   <th style={{textAlign:"right"}}>금액</th>
                   <th>매칭</th>
                   <th>학생</th>
+                  <th style={{width:36}} />
                 </tr>
               </thead>
               <tbody>
@@ -1571,6 +1584,17 @@ function PaymentLogTab({ paymentLog, students }) {
                         </span>
                       </td>
                       <td style={{color:"var(--ink-60)"}}>{s ? s.name : "—"}</td>
+                      <td style={{textAlign:"center"}}>
+                        {onSavePaymentLog && (
+                          <button
+                            title="삭제"
+                            style={{background:"none",border:"none",color:"var(--ink-20)",cursor:"pointer",fontSize:14,padding:"2px 4px",lineHeight:1}}
+                            onClick={() => handleDeleteLog(e.id)}
+                            onMouseEnter={ev => ev.currentTarget.style.color="var(--red)"}
+                            onMouseLeave={ev => ev.currentTarget.style.color="var(--ink-20)"}
+                          >×</button>
+                        )}
+                      </td>
                     </tr>
                   );
                 })}
@@ -1579,7 +1603,7 @@ function PaymentLogTab({ paymentLog, students }) {
                 <tr>
                   <td colSpan={3}>합계 {sorted.length}건 (매칭 {matchedCount} · 미매칭 {sorted.length - matchedCount})</td>
                   <td style={{textAlign:"right",color:"var(--green)"}}>{totalAmount.toLocaleString()}원</td>
-                  <td colSpan={2} />
+                  <td colSpan={3} />
                 </tr>
               </tfoot>
             </table>
@@ -1610,6 +1634,13 @@ function PaymentLogTab({ paymentLog, students }) {
                       {d ? `${d.getMonth()+1}/${d.getDate()} ${d.toLocaleTimeString("ko-KR",{hour:"2-digit",minute:"2-digit"})}` : ""}
                     </div>
                   </div>
+                  {onSavePaymentLog && (
+                    <button
+                      style={{background:"none",border:"none",color:"var(--ink-20)",cursor:"pointer",fontSize:18,padding:"2px 6px",alignSelf:"center",flexShrink:0}}
+                      onClick={() => handleDeleteLog(e.id)}
+                      title="삭제"
+                    >×</button>
+                  )}
                 </div>
               );
             })}
