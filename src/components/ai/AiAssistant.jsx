@@ -275,7 +275,7 @@ export default function AiAssistant({ students, attendance, payments, teachers, 
       }
       if (aiMsg) setMessages(m => [...m, aiMsg]);
     } catch (e) {
-      // AI-05: 에러 유형별 메시지
+      console.error("[AI Assistant]", e.message);
       const errMsg = e.message === "rate_limited"
         ? "요청이 많아 잠시 후 다시 시도해주세요. (분당 제한)"
         : e.message === "ai_disabled"

@@ -19,6 +19,7 @@ function ScheduleView({ students, teachers, currentUser, attendance, onSaveAtten
   const [dayDetail, setDayDetail] = useState(null);
   const [editEntry, setEditEntry] = useState(null); // {studentId, studentName, instrument, originalDay, originalDate}
   const [editForm, setEditForm] = useState({ action: "move", newDay: "", newTime: "", newDate: "" });
+  const [expandedGroups, setExpandedGroups] = useState({});
 
   const canSeeAll = canManageAll(currentUser.role);
   const effectiveFilter = canSeeAll ? filterTeacherId : currentUser.id;
@@ -47,6 +48,7 @@ function ScheduleView({ students, teachers, currentUser, attendance, onSaveAtten
   DAYS.forEach(d => { scheduleByDay[d] = []; });
   visibleStudents.forEach(s => {
     (s.lessons || []).forEach(lesson => {
+      if (lesson.paused) return;
       const lessonTid = lesson.teacherId || s.teacherId;
       if (effectiveFilter !== "all" && lessonTid !== effectiveFilter) return;
       const teacher = teachers.find(t => t.id === lessonTid);
@@ -76,6 +78,31 @@ function ScheduleView({ students, teachers, currentUser, attendance, onSaveAtten
     });
   });
   DAYS.forEach(d => { scheduleByDay[d].sort((a, b) => (a.time || "").localeCompare(b.time || "")); });
+
+  // Group regular students sharing same teacher+time+instrument into collapsible group lessons
+  DAYS.forEach(d => {
+    const entries = scheduleByDay[d];
+    const groupMap = {};
+    const result = [];
+    entries.forEach(entry => {
+      if (entry.isGroup) { result.push(entry); return; }
+      const gKey = `${entry.teacherId}|${entry.time}|${entry.instrument}`;
+      if (!groupMap[gKey]) {
+        groupMap[gKey] = { ...entry, members: [{ studentId: entry.studentId, studentName: entry.studentName }] };
+        result.push(groupMap[gKey]);
+      } else {
+        groupMap[gKey].members.push({ studentId: entry.studentId, studentName: entry.studentName });
+      }
+    });
+    result.forEach(e => {
+      if (e.members && e.members.length > 1) {
+        e.isGroupLesson = true;
+        e.participantCount = e.members.length;
+        e.groupLessonKey = `${d}|${e.teacherId}|${e.time}|${e.instrument}`;
+      }
+    });
+    scheduleByDay[d] = result;
+  });
 
   // Build notice events map: dateStr → notice[] (range notices span multiple days)
   const getNoticesForDate = (dateStr) => {
@@ -173,25 +200,41 @@ function ScheduleView({ students, teachers, currentUser, attendance, onSaveAtten
               })}
               {all.length === 0 ? (
                 <div className="sched-empty"><img src={knotLineSvg} style={{width:32,height:40,opacity:0.22}} alt="" />레슨 없음</div>
-              ) : all.map((entry, i) => {
-                const badge = !entry.isMakeup ? getAttBadge(entry.studentId, date) : null;
-                return (
-                <div key={i} className={"sched-lesson" + (entry.isMakeup?" makeup":"")} style={{borderLeftColor:entry.color,cursor:"pointer"}} onClick={()=>{setEditEntry({studentId:entry.studentId,studentName:entry.studentName,instrument:entry.instrument,originalDay:dayName,originalDate:date,time:entry.time});setEditForm({action:"move",newDay:"",newTime:entry.time||"",newDate:""});}}>
-                  <span className="sched-time">{entry.time||"—"}</span>
-                  <div className="sched-info">
-                    <div className="sched-name">
-                      {entry.studentName}
-                      {entry.isGroup && entry.participantCount > 0 && <span style={{fontSize:9,color:"var(--ink-30)",marginLeft:3,fontWeight:400}}>({entry.participantCount}명)</span>}
+              ) : all.flatMap((entry, i) => {
+                const isExpanded = entry.isGroupLesson && expandedGroups[entry.groupLessonKey];
+                const badge = (!entry.isMakeup && !entry.isGroupLesson) ? getAttBadge(entry.studentId, date) : null;
+                const mainRow = (
+                  <div key={i} className={"sched-lesson" + (entry.isMakeup?" makeup":"")} style={{borderLeftColor:entry.color,cursor:"pointer"}} onClick={()=>{
+                    if (entry.isGroupLesson) { setExpandedGroups(g => ({...g, [entry.groupLessonKey]: !g[entry.groupLessonKey]})); }
+                    else { setEditEntry({studentId:entry.studentId,studentName:entry.studentName,instrument:entry.instrument,originalDay:dayName,originalDate:date,time:entry.time}); setEditForm({action:"move",newDay:"",newTime:entry.time||"",newDate:""}); }
+                  }}>
+                    <span className="sched-time">{entry.time||"—"}</span>
+                    <div className="sched-info">
+                      <div className="sched-name">
+                        {entry.isGroupLesson ? "그룹 레슨" : entry.studentName}
+                        {((entry.isGroupLesson || entry.isGroup) && (entry.participantCount||0) > 0) && <span style={{fontSize:9,color:"var(--ink-30)",marginLeft:3,fontWeight:400}}>({entry.participantCount}명)</span>}
+                      </div>
+                      <div className="sched-inst">{entry.instrument}</div>
+                      <div className="sched-teacher">{entry.teacherName}</div>
                     </div>
-                    <div className="sched-inst">{entry.instrument}</div>
-                    <div className="sched-teacher">{entry.teacherName}</div>
+                    {entry.isGroupLesson && <span style={{fontSize:11,color:"var(--ink-40)",flexShrink:0}}>{isExpanded ? "▲" : "▼"}</span>}
+                    {!entry.isGroupLesson && entry.isMakeup && <span className="sched-makeup-badge">보강</span>}
+                    {!entry.isGroupLesson && (scheduleOverrides||[]).find(o=>o.studentId===entry.studentId&&o.originalDate===date&&o.type==="absent") && <span style={{background:"var(--red-lt)",color:"var(--red)",fontSize:10,fontWeight:600,padding:"2px 8px",borderRadius:6,flexShrink:0}}>결석</span>}
+                    {!entry.isGroupLesson && (scheduleOverrides||[]).find(o=>o.studentId===entry.studentId&&o.originalDate===date&&o.type==="move") && <span style={{background:"var(--gold-lt)",color:"var(--gold-dk)",fontSize:10,fontWeight:600,padding:"2px 8px",borderRadius:6,flexShrink:0}}>변경</span>}
+                    {badge && <span style={{fontSize:10,fontWeight:600,padding:"2px 8px",borderRadius:6,flexShrink:0,background:badge.bg,color:badge.color}}>{badge.label}</span>}
                   </div>
-                  {entry.isMakeup && <span className="sched-makeup-badge">보강</span>}
-                  {(scheduleOverrides||[]).find(o=>o.studentId===entry.studentId&&o.originalDate===date&&o.type==="absent") && <span style={{background:"var(--red-lt)",color:"var(--red)",fontSize:10,fontWeight:600,padding:"2px 8px",borderRadius:6,flexShrink:0}}>결석</span>}
-                  {(scheduleOverrides||[]).find(o=>o.studentId===entry.studentId&&o.originalDate===date&&o.type==="move") && <span style={{background:"var(--gold-lt)",color:"var(--gold-dk)",fontSize:10,fontWeight:600,padding:"2px 8px",borderRadius:6,flexShrink:0}}>변경</span>}
-                  {badge && <span style={{fontSize:10,fontWeight:600,padding:"2px 8px",borderRadius:6,flexShrink:0,background:badge.bg,color:badge.color}}>{badge.label}</span>}
-                </div>
                 );
+                if (!isExpanded || !entry.members) return [mainRow];
+                return [mainRow, ...entry.members.map((m, mi) => {
+                  const mBadge = getAttBadge(m.studentId, date);
+                  return (
+                    <div key={`m-${i}-${mi}`} className="sched-lesson" style={{borderLeftColor:entry.color,marginLeft:16,cursor:"pointer",borderRadius:4}} onClick={()=>{setEditEntry({studentId:m.studentId,studentName:m.studentName,instrument:entry.instrument,originalDay:dayName,originalDate:date,time:entry.time});setEditForm({action:"move",newDay:"",newTime:entry.time||"",newDate:""});}}>
+                      <span className="sched-time" style={{visibility:"hidden"}}>{entry.time||"—"}</span>
+                      <div className="sched-info"><div className="sched-name">{m.studentName}</div></div>
+                      {mBadge && <span style={{fontSize:10,fontWeight:600,padding:"2px 8px",borderRadius:6,flexShrink:0,background:mBadge.bg,color:mBadge.color}}>{mBadge.label}</span>}
+                    </div>
+                  );
+                })];
               })}
             </div>
           );
@@ -348,25 +391,43 @@ function ScheduleView({ students, teachers, currentUser, attendance, onSaveAtten
               </div>
             )}
             {all.length === 0 ? <div className="sched-empty" style={{padding:16}}><img src={knotLineSvg} style={{width:32,height:40,opacity:0.22}} alt="" />레슨 없음</div> :
-              all.map((entry, i) => {
-                const badge = !entry.isMakeup ? getAttBadge(entry.studentId, dayDetail) : null;
-                return (
-                <div key={i} className={"sched-lesson"+(entry.isMakeup?" makeup":"")}
-                  style={{borderLeftColor:entry.color,borderRadius:0,margin:0,borderTop:i>0?"1px solid var(--border)":"none",borderRight:"none",borderBottom:"none",cursor:"pointer"}}
-                  onClick={()=>{setEditEntry({studentId:entry.studentId,studentName:entry.studentName,instrument:entry.instrument,originalDay:dayName,originalDate:dayDetail,time:entry.time});setEditForm({action:"move",newDay:"",newTime:entry.time||"",newDate:""});}}>
-                  <span className="sched-time">{entry.time||"—"}</span>
-                  <div className="sched-info">
-                    <div className="sched-name">
-                      {entry.studentName}
-                      {entry.isGroup && entry.participantCount > 0 && <span style={{fontSize:9,color:"var(--ink-30)",marginLeft:3,fontWeight:400}}>({entry.participantCount}명)</span>}
+              all.flatMap((entry, i) => {
+                const isExpanded = entry.isGroupLesson && expandedGroups[entry.groupLessonKey];
+                const badge = (!entry.isMakeup && !entry.isGroupLesson) ? getAttBadge(entry.studentId, dayDetail) : null;
+                const mainRow = (
+                  <div key={i} className={"sched-lesson"+(entry.isMakeup?" makeup":"")}
+                    style={{borderLeftColor:entry.color,borderRadius:0,margin:0,borderTop:i>0?"1px solid var(--border)":"none",borderRight:"none",borderBottom:"none",cursor:"pointer"}}
+                    onClick={()=>{
+                      if (entry.isGroupLesson) { setExpandedGroups(g => ({...g, [entry.groupLessonKey]: !g[entry.groupLessonKey]})); }
+                      else { setEditEntry({studentId:entry.studentId,studentName:entry.studentName,instrument:entry.instrument,originalDay:dayName,originalDate:dayDetail,time:entry.time}); setEditForm({action:"move",newDay:"",newTime:entry.time||"",newDate:""}); }
+                    }}>
+                    <span className="sched-time">{entry.time||"—"}</span>
+                    <div className="sched-info">
+                      <div className="sched-name">
+                        {entry.isGroupLesson ? "그룹 레슨" : entry.studentName}
+                        {((entry.isGroupLesson || entry.isGroup) && (entry.participantCount||0) > 0) && <span style={{fontSize:9,color:"var(--ink-30)",marginLeft:3,fontWeight:400}}>({entry.participantCount}명)</span>}
+                      </div>
+                      <div className="sched-inst">{entry.instrument}</div>
+                      <div className="sched-teacher">{entry.teacherName}</div>
                     </div>
-                    <div className="sched-inst">{entry.instrument}</div>
-                    <div className="sched-teacher">{entry.teacherName}</div>
+                    {entry.isGroupLesson && <span style={{fontSize:11,color:"var(--ink-40)",flexShrink:0}}>{isExpanded ? "▲" : "▼"}</span>}
+                    {!entry.isGroupLesson && entry.isMakeup && <span className="sched-makeup-badge">보강</span>}
+                    {badge && <span style={{fontSize:10,fontWeight:600,padding:"2px 8px",borderRadius:6,flexShrink:0,background:badge.bg,color:badge.color}}>{badge.label}</span>}
                   </div>
-                  {entry.isMakeup && <span className="sched-makeup-badge">보강</span>}
-                  {badge && <span style={{fontSize:10,fontWeight:600,padding:"2px 8px",borderRadius:6,flexShrink:0,background:badge.bg,color:badge.color}}>{badge.label}</span>}
-                </div>
                 );
+                if (!isExpanded || !entry.members) return [mainRow];
+                return [mainRow, ...entry.members.map((m, mi) => {
+                  const mBadge = getAttBadge(m.studentId, dayDetail);
+                  return (
+                    <div key={`m-${i}-${mi}`} className="sched-lesson"
+                      style={{borderLeftColor:entry.color,borderRadius:0,margin:0,borderTop:"1px solid var(--border)",borderRight:"none",borderBottom:"none",paddingLeft:32,cursor:"pointer"}}
+                      onClick={()=>{setEditEntry({studentId:m.studentId,studentName:m.studentName,instrument:entry.instrument,originalDay:dayName,originalDate:dayDetail,time:entry.time});setEditForm({action:"move",newDay:"",newTime:entry.time||"",newDate:""});}}>
+                      <span className="sched-time" style={{visibility:"hidden"}}>{entry.time||"—"}</span>
+                      <div className="sched-info"><div className="sched-name">{m.studentName}</div></div>
+                      {mBadge && <span style={{fontSize:10,fontWeight:600,padding:"2px 8px",borderRadius:6,flexShrink:0,background:mBadge.bg,color:mBadge.color}}>{mBadge.label}</span>}
+                    </div>
+                  );
+                })];
               })
             }
           </div>
