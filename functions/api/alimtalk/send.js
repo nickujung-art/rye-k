@@ -1,4 +1,19 @@
-const ALIGO_URL = "https://kakaoapi.aligo.in/akv10/alimtalk/send/";
+const ALIGO_HOST = "kakaoapi.aligo.in";
+const ALIGO_URL = `https://${ALIGO_HOST}/akv10/alimtalk/send/`;
+
+// Aligo 서버의 IPv4 주소 조회 (Cloudflare Workers가 IPv6로 나가는 문제 우회)
+async function resolveIPv4(hostname) {
+  try {
+    const res = await fetch(
+      `https://cloudflare-dns.com/dns-query?name=${hostname}&type=A`,
+      { headers: { Accept: "application/dns-json" } }
+    );
+    const data = await res.json();
+    return data.Answer?.find(r => r.type === 1)?.data || null;
+  } catch {
+    return null;
+  }
+}
 
 const TPL_CODES = {
   monthly_fee: "UI_1525",
@@ -50,11 +65,16 @@ async function sendBatch(env, type, batch, options) {
     params.append(`message_${n}`, buildMessage(type, student, options));
   });
 
-  const res = await fetch(ALIGO_URL, {
+  // IPv4 강제: Cloudflare Workers 기본 IPv6 → Aligo IP 화이트리스트 차단 우회
+  const ipv4 = await resolveIPv4(ALIGO_HOST);
+  const fetchOpts = {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: params.toString(),
-  });
+  };
+  if (ipv4) fetchOpts.cf = { resolveOverride: ipv4 };
+
+  const res = await fetch(ALIGO_URL, fetchOpts);
   return res.json();
 }
 
