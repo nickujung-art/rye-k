@@ -1298,6 +1298,7 @@ function UnmatchedPaymentsTab({
 }) {
   const [matchingId, setMatchingId] = useState(null);
   const [selectedStudentId, setSelectedStudentId] = useState({});
+  const [confirmId, setConfirmId] = useState(null);
   const pending = unmatchedPayments.filter(u => !u.matchedAt);
   const matched = unmatchedPayments.filter(u => u.matchedAt);
 
@@ -1420,14 +1421,20 @@ function UnmatchedPaymentsTab({
                 >
                   {matchingId === u.id ? "처리 중…" : "✓ 수납 처리"}
                 </button>
-                <button
-                  className="btn btn-sm"
-                  style={{background:"var(--ink-10)",color:"var(--red)",border:"none",fontSize:11,marginTop:2}}
-                  disabled={!!matchingId}
-                  onClick={() => handleDismiss(u.id)}
-                >
-                  × 삭제
-                </button>
+                {confirmId === u.id ? (
+                  <div style={{display:"flex",gap:4,alignItems:"center",marginTop:2}}>
+                    <span style={{fontSize:10,color:"var(--red)"}}>삭제?</span>
+                    <button className="btn btn-sm" style={{background:"var(--red)",color:"#fff",border:"none",fontSize:10,padding:"2px 8px"}} onClick={()=>{handleDismiss(u.id);setConfirmId(null);}}>확인</button>
+                    <button className="btn btn-sm" style={{background:"var(--ink-10)",color:"var(--ink-60)",border:"none",fontSize:10,padding:"2px 8px"}} onClick={()=>setConfirmId(null)}>취소</button>
+                  </div>
+                ) : (
+                  <button
+                    className="btn btn-sm"
+                    style={{background:"var(--ink-10)",color:"var(--red)",border:"none",fontSize:11,marginTop:2}}
+                    disabled={!!matchingId}
+                    onClick={() => setConfirmId(u.id)}
+                  >× 삭제</button>
+                )}
               </div>
             </div>
           ))}
@@ -1451,11 +1458,15 @@ function UnmatchedPaymentsTab({
                 </div>
                 <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:4}}>
                   <span style={{fontSize:11,color:"var(--green)",fontWeight:700}}>✓ 매칭 완료</span>
-                  <button
-                    className="btn btn-sm"
-                    style={{background:"var(--ink-10)",color:"var(--red)",border:"none",fontSize:10,padding:"2px 8px"}}
-                    onClick={() => handleDismiss(u.id)}
-                  >× 삭제</button>
+                  {confirmId === u.id ? (
+                    <div style={{display:"flex",gap:4,alignItems:"center"}}>
+                      <span style={{fontSize:10,color:"var(--red)"}}>삭제?</span>
+                      <button className="btn btn-sm" style={{background:"var(--red)",color:"#fff",border:"none",fontSize:10,padding:"2px 6px"}} onClick={()=>{handleDismiss(u.id);setConfirmId(null);}}>확인</button>
+                      <button className="btn btn-sm" style={{background:"var(--ink-10)",color:"var(--ink-60)",border:"none",fontSize:10,padding:"2px 6px"}} onClick={()=>setConfirmId(null)}>취소</button>
+                    </div>
+                  ) : (
+                    <button className="btn btn-sm" style={{background:"var(--ink-10)",color:"var(--red)",border:"none",fontSize:10,padding:"2px 8px"}} onClick={() => setConfirmId(u.id)}>× 삭제</button>
+                  )}
                 </div>
               </div>
             );
@@ -1470,6 +1481,7 @@ function PaymentLogTab({ paymentLog, students, onSavePaymentLog }) {
   const now = new Date();
   const [viewMonth, setViewMonth] = useState(`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}`);
   const [copied, setCopied] = useState(false);
+  const [confirmId, setConfirmId] = useState(null);
 
   const changeMonth = (delta) => {
     const [y, m] = viewMonth.split("-").map(Number);
@@ -1489,6 +1501,7 @@ function PaymentLogTab({ paymentLog, students, onSavePaymentLog }) {
   const handleDeleteLog = async (id) => {
     if (!onSavePaymentLog) return;
     await onSavePaymentLog(paymentLog.filter(e => e.id !== id));
+    setConfirmId(null);
   };
 
   const copyTSV = async () => {
@@ -1584,16 +1597,15 @@ function PaymentLogTab({ paymentLog, students, onSavePaymentLog }) {
                         </span>
                       </td>
                       <td style={{color:"var(--ink-60)"}}>{s ? s.name : "—"}</td>
-                      <td style={{textAlign:"center"}}>
-                        {onSavePaymentLog && (
-                          <button
-                            title="삭제"
-                            style={{background:"none",border:"none",color:"var(--ink-20)",cursor:"pointer",fontSize:14,padding:"2px 4px",lineHeight:1}}
-                            onClick={() => handleDeleteLog(e.id)}
-                            onMouseEnter={ev => ev.currentTarget.style.color="var(--red)"}
-                            onMouseLeave={ev => ev.currentTarget.style.color="var(--ink-20)"}
-                          >×</button>
-                        )}
+                      <td style={{textAlign:"center",whiteSpace:"nowrap"}}>
+                        {onSavePaymentLog && (confirmId === e.id ? (
+                          <span style={{display:"inline-flex",gap:3,alignItems:"center"}}>
+                            <button style={{background:"var(--red)",border:"none",borderRadius:4,color:"#fff",fontSize:10,padding:"2px 6px",cursor:"pointer"}} onClick={() => handleDeleteLog(e.id)}>확인</button>
+                            <button style={{background:"var(--ink-10)",border:"none",borderRadius:4,color:"var(--ink-60)",fontSize:10,padding:"2px 6px",cursor:"pointer"}} onClick={() => setConfirmId(null)}>취소</button>
+                          </span>
+                        ) : (
+                          <button title="삭제" style={{background:"none",border:"none",color:"var(--ink-20)",cursor:"pointer",fontSize:14,padding:"2px 4px",lineHeight:1}} onClick={() => setConfirmId(e.id)} onMouseEnter={ev=>ev.currentTarget.style.color="var(--red)"} onMouseLeave={ev=>ev.currentTarget.style.color="var(--ink-20)"}>×</button>
+                        ))}
                       </td>
                     </tr>
                   );
@@ -1634,13 +1646,14 @@ function PaymentLogTab({ paymentLog, students, onSavePaymentLog }) {
                       {d ? `${d.getMonth()+1}/${d.getDate()} ${d.toLocaleTimeString("ko-KR",{hour:"2-digit",minute:"2-digit"})}` : ""}
                     </div>
                   </div>
-                  {onSavePaymentLog && (
-                    <button
-                      style={{background:"none",border:"none",color:"var(--ink-20)",cursor:"pointer",fontSize:18,padding:"2px 6px",alignSelf:"center",flexShrink:0}}
-                      onClick={() => handleDeleteLog(e.id)}
-                      title="삭제"
-                    >×</button>
-                  )}
+                  {onSavePaymentLog && (confirmId === e.id ? (
+                    <div style={{display:"flex",flexDirection:"column",gap:3,alignSelf:"center",flexShrink:0}}>
+                      <button style={{background:"var(--red)",border:"none",borderRadius:4,color:"#fff",fontSize:10,padding:"3px 7px",cursor:"pointer"}} onClick={() => handleDeleteLog(e.id)}>확인</button>
+                      <button style={{background:"var(--ink-10)",border:"none",borderRadius:4,color:"var(--ink-60)",fontSize:10,padding:"3px 7px",cursor:"pointer"}} onClick={() => setConfirmId(null)}>취소</button>
+                    </div>
+                  ) : (
+                    <button style={{background:"none",border:"none",color:"var(--ink-20)",cursor:"pointer",fontSize:18,padding:"2px 6px",alignSelf:"center",flexShrink:0}} onClick={() => setConfirmId(e.id)} title="삭제">×</button>
+                  ))}
                 </div>
               );
             })}

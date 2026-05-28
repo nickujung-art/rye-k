@@ -250,6 +250,7 @@ export function PendingView({ pending, teachers, categories, onApprove, onReject
 // ── CATEGORIES VIEW ───────────────────────────────────────────────────────────
 export function CategoriesView({ categories, onSave, feePresets, onSaveFees, onMigrateFeeSplit }) {
   const [cats, setCats] = useState(JSON.parse(JSON.stringify(categories)));
+  const [catOrder, setCatOrder] = useState(() => Object.keys(categories).sort((a, b) => a.localeCompare(b, "ko")));
   const [fees, setFees] = useState({ ...(feePresets || {}) });
   const [newCat, setNewCat] = useState("");
   const [newInst, setNewInst] = useState({});
@@ -265,6 +266,9 @@ export function CategoriesView({ categories, onSave, feePresets, onSaveFees, onM
   const [editingRentalVal, setEditingRentalVal] = useState("");
   const [savedFlash, setSavedFlash] = useState("");
   const [errMsg, setErrMsg] = useState("");
+  // 삭제 확인 상태
+  const [confirmCat, setConfirmCat] = useState(null);
+  const [confirmInst, setConfirmInst] = useState(null); // {cat, inst}
   // 마이그레이션 상태
   const [migrateConfirm, setMigrateConfirm] = useState(false);
   const [migrating, setMigrating] = useState(false);
@@ -278,9 +282,29 @@ export function CategoriesView({ categories, onSave, feePresets, onSaveFees, onM
     const v = newCat.trim();
     if (!v) return;
     if (cats[v]) { showErr("이미 존재하는 카테고리명입니다."); return; }
-    setCats(c => ({ ...c, [v]: [] })); setNewCat(""); setDirty(true);
+    setCats(c => ({ ...c, [v]: [] })); setCatOrder(o => [...o, v]); setNewCat(""); setDirty(true);
   };
-  const rmCat = cat => { const next = { ...cats }; delete next[cat]; setCats(next); setDirty(true); };
+  const rmCat = cat => {
+    const next = { ...cats }; delete next[cat]; setCats(next);
+    setCatOrder(o => o.filter(c => c !== cat));
+    setDirty(true);
+  };
+  const moveCatUp = cat => {
+    setCatOrder(o => { const i = o.indexOf(cat); if (i <= 0) return o; const n = [...o]; [n[i-1],n[i]]=[n[i],n[i-1]]; return n; });
+    setDirty(true);
+  };
+  const moveCatDown = cat => {
+    setCatOrder(o => { const i = o.indexOf(cat); if (i < 0 || i >= o.length-1) return o; const n = [...o]; [n[i],n[i+1]]=[n[i+1],n[i]]; return n; });
+    setDirty(true);
+  };
+  const moveInstUp = (cat, i) => {
+    setCats(c => { const arr = [...(c[cat]||[])]; if (i<=0) return c; [arr[i-1],arr[i]]=[arr[i],arr[i-1]]; return {...c,[cat]:arr}; });
+    setDirty(true);
+  };
+  const moveInstDown = (cat, i) => {
+    setCats(c => { const arr = [...(c[cat]||[])]; if (i>=arr.length-1) return c; [arr[i],arr[i+1]]=[arr[i+1],arr[i]]; return {...c,[cat]:arr}; });
+    setDirty(true);
+  };
   const addInst = cat => {
     const v = (newInst[cat] || "").trim();
     if (!v) return;
@@ -311,7 +335,9 @@ export function CategoriesView({ categories, onSave, feePresets, onSaveFees, onM
     if (trimmed !== oldCat) {
       const next = {};
       Object.entries(cats).forEach(([k, v]) => { next[k === oldCat ? trimmed : k] = v; });
-      setCats(next); setDirty(true);
+      setCats(next);
+      setCatOrder(o => o.map(c => c === oldCat ? trimmed : c));
+      setDirty(true);
     }
     setEditingCat(null);
   };
@@ -374,12 +400,19 @@ export function CategoriesView({ categories, onSave, feePresets, onSaveFees, onM
       </div>
       {errMsg && <div style={{margin:"0 0 10px",padding:"10px 14px",background:"var(--red-lt)",border:"1px solid rgba(232,40,28,.2)",borderRadius:8,fontSize:13,color:"var(--red)",fontWeight:500}}>⚠ {errMsg}</div>}
 
-      {/* ── 카테고리 목록 (가나다순) ── */}
-      {Object.entries(cats).sort(([a],[b]) => a.localeCompare(b,"ko")).map(([cat, insts]) => (
+      {/* ── 카테고리 목록 (수동 순서) ── */}
+      {catOrder.map((cat, catIdx) => {
+        const insts = cats[cat] || [];
+        return (
         <div key={cat} className="card" style={{ marginBottom: 10, padding: 16 }}>
           {/* 카테고리 헤더 */}
           <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom: 10 }}>
             <div style={{ display:"flex", alignItems:"center", gap:6, flex:1 }}>
+              {/* 카테고리 순서 버튼 */}
+              <div style={{display:"flex",flexDirection:"column",gap:1,flexShrink:0}}>
+                <button style={{background:"none",border:"none",cursor:catIdx===0?"default":"pointer",fontSize:10,padding:"0 3px",color:catIdx===0?"var(--ink-10)":"var(--ink-40)",lineHeight:1}} disabled={catIdx===0} onClick={()=>moveCatUp(cat)}>▲</button>
+                <button style={{background:"none",border:"none",cursor:catIdx===catOrder.length-1?"default":"pointer",fontSize:10,padding:"0 3px",color:catIdx===catOrder.length-1?"var(--ink-10)":"var(--ink-40)",lineHeight:1}} disabled={catIdx===catOrder.length-1} onClick={()=>moveCatDown(cat)}>▼</button>
+              </div>
               <span style={{ width:3, height:13, background:"linear-gradient(180deg,var(--blue),var(--gold))", display:"inline-block", borderRadius:2 }} />
               {editingCat === cat ? (
                 <div style={{display:"flex",alignItems:"center",gap:6,flex:1}}>
@@ -402,14 +435,28 @@ export function CategoriesView({ categories, onSave, feePresets, onSaveFees, onM
                 </>
               )}
             </div>
-            {editingCat !== cat && <button className="btn btn-danger btn-xs" onClick={() => rmCat(cat)}>삭제</button>}
+            {editingCat !== cat && (confirmCat === cat ? (
+              <div style={{display:"flex",gap:4,alignItems:"center"}}>
+                <span style={{fontSize:11,color:"var(--red)"}}>삭제?</span>
+                <button className="btn btn-danger btn-xs" onClick={()=>{rmCat(cat);setConfirmCat(null);}}>확인</button>
+                <button className="btn btn-secondary btn-xs" onClick={()=>setConfirmCat(null)}>취소</button>
+              </div>
+            ) : (
+              <button className="btn btn-danger btn-xs" onClick={() => setConfirmCat(cat)}>삭제</button>
+            ))}
           </div>
 
-          {/* 과목 리스트 (가나다순) */}
-          {[...insts].sort((a,b)=>a.localeCompare(b,"ko")).map(inst => {
+          {/* 과목 리스트 (수동 순서) */}
+          {insts.map((inst, instIdx) => {
             const isEditingThis = editingInst?.cat === cat && editingInst?.inst === inst;
+            const isConfirmThis = confirmInst?.cat === cat && confirmInst?.inst === inst;
             return (
               <div key={inst} style={{ display:"flex", alignItems:"center", gap:6, marginBottom:5 }}>
+                {/* 과목 순서 버튼 */}
+                <div style={{display:"flex",flexDirection:"column",gap:1,flexShrink:0}}>
+                  <button style={{background:"none",border:"none",cursor:instIdx===0?"default":"pointer",fontSize:9,padding:"0 3px",color:instIdx===0?"var(--ink-10)":"var(--ink-40)",lineHeight:1}} disabled={instIdx===0} onClick={()=>moveInstUp(cat,instIdx)}>▲</button>
+                  <button style={{background:"none",border:"none",cursor:instIdx===insts.length-1?"default":"pointer",fontSize:9,padding:"0 3px",color:instIdx===insts.length-1?"var(--ink-10)":"var(--ink-40)",lineHeight:1}} disabled={instIdx===insts.length-1} onClick={()=>moveInstDown(cat,instIdx)}>▼</button>
+                </div>
                 <div style={{ display:"flex", alignItems:"center", gap:4, background:"var(--blue-lt)", padding:"5px 10px", border:"1px solid rgba(43,58,159,.15)", borderRadius:6, flex:1 }}>
                   {isEditingThis ? (
                     <div style={{display:"flex",alignItems:"center",gap:4,flex:1}}>
@@ -425,7 +472,14 @@ export function CategoriesView({ categories, onSave, feePresets, onSaveFees, onM
                         style={{ fontSize:12.5, color:"var(--blue)", fontWeight:500, flex:1, cursor:"pointer" }}>
                         {inst}
                       </span>
-                      <button style={{ background:"none", border:"none", color:"var(--ink-30)", cursor:"pointer", fontSize:14, lineHeight:1, padding:"0 2px" }} onClick={() => rmInst(cat, inst)}>×</button>
+                      {isConfirmThis ? (
+                        <div style={{display:"flex",gap:3,alignItems:"center"}}>
+                          <button style={{background:"var(--red)",border:"none",borderRadius:4,color:"#fff",fontSize:10,padding:"2px 6px",cursor:"pointer"}} onClick={()=>{rmInst(cat,inst);setConfirmInst(null);}}>삭제</button>
+                          <button style={{background:"none",border:"1px solid var(--border)",borderRadius:4,color:"var(--ink-30)",fontSize:10,padding:"2px 5px",cursor:"pointer"}} onClick={()=>setConfirmInst(null)}>취소</button>
+                        </div>
+                      ) : (
+                        <button style={{ background:"none", border:"none", color:"var(--ink-30)", cursor:"pointer", fontSize:14, lineHeight:1, padding:"0 2px" }} onClick={() => setConfirmInst({cat,inst})}>×</button>
+                      )}
                     </>
                   )}
                 </div>
@@ -446,7 +500,8 @@ export function CategoriesView({ categories, onSave, feePresets, onSaveFees, onM
             <button className="btn btn-green btn-sm" onClick={() => addInst(cat)}>추가</button>
           </div>
         </div>
-      ))}
+        );
+      })}
 
       {/* ── 악기 대여료 설정 (가나다순, 인플레이스+즉시저장) ── */}
       <div className="card" style={{ marginBottom: 10, padding: 16 }}>
@@ -628,6 +683,8 @@ export function ShopView({ shopItems, onSave }) {
   const [dirty, setDirty] = useState(false);
   const [savedFlash, setSavedFlash] = useState("");
   const [errMsg, setErrMsg] = useState("");
+  const [confirmCat, setConfirmCat] = useState(null);
+  const [confirmItem, setConfirmItem] = useState(null);
   const showErr = (msg) => { setErrMsg(msg); setTimeout(() => setErrMsg(""), 2500); };
   const flashSaved = (msg = "저장됨 ✓") => { setSavedFlash(msg); setTimeout(() => setSavedFlash(""), 1800); };
 
@@ -640,6 +697,30 @@ export function ShopView({ shopItems, onSave }) {
   const rmCat = (cat) => {
     setShopCats(c => c.filter(x => x !== cat));
     setItems(prev => prev.filter(i => i.category !== cat));
+    setDirty(true);
+  };
+  const moveCatUp = (i) => { setShopCats(c => { if (i<=0) return c; const n=[...c]; [n[i-1],n[i]]=[n[i],n[i-1]]; return n; }); setDirty(true); };
+  const moveCatDown = (i) => { setShopCats(c => { if (i>=c.length-1) return c; const n=[...c]; [n[i],n[i+1]]=[n[i+1],n[i]]; return n; }); setDirty(true); };
+  const moveItemUp = (cat, itemId) => {
+    setItems(prev => {
+      const catItems = prev.filter(i => i.category === cat);
+      const idx = catItems.findIndex(i => i.id === itemId);
+      if (idx <= 0) return prev;
+      const posA = prev.findIndex(i => i.id === catItems[idx-1].id);
+      const posB = prev.findIndex(i => i.id === itemId);
+      const next = [...prev]; [next[posA],next[posB]]=[next[posB],next[posA]]; return next;
+    });
+    setDirty(true);
+  };
+  const moveItemDown = (cat, itemId) => {
+    setItems(prev => {
+      const catItems = prev.filter(i => i.category === cat);
+      const idx = catItems.findIndex(i => i.id === itemId);
+      if (idx < 0 || idx >= catItems.length-1) return prev;
+      const posA = prev.findIndex(i => i.id === itemId);
+      const posB = prev.findIndex(i => i.id === catItems[idx+1].id);
+      const next = [...prev]; [next[posA],next[posB]]=[next[posB],next[posA]]; return next;
+    });
     setDirty(true);
   };
   const addItem = () => {
@@ -677,28 +758,51 @@ export function ShopView({ shopItems, onSave }) {
       {errMsg && <div style={{margin:"0 0 10px",padding:"10px 14px",background:"var(--red-lt)",border:"1px solid rgba(232,40,28,.2)",borderRadius:8,fontSize:13,color:"var(--red)",fontWeight:500}}>⚠ {errMsg}</div>}
 
       {/* 카테고리별 상품 목록 */}
-      {shopCats.map(cat => {
+      {shopCats.map((cat, catIdx) => {
         const catItems = items.filter(i => i.category === cat);
         return (
           <div key={cat} className="card" style={{marginBottom:10,padding:16}}>
             <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
               <div style={{display:"flex",alignItems:"center",gap:6}}>
+                <div style={{display:"flex",flexDirection:"column",gap:1,flexShrink:0}}>
+                  <button style={{background:"none",border:"none",cursor:catIdx===0?"default":"pointer",fontSize:10,padding:"0 3px",color:catIdx===0?"var(--ink-10)":"var(--ink-40)",lineHeight:1}} disabled={catIdx===0} onClick={()=>moveCatUp(catIdx)}>▲</button>
+                  <button style={{background:"none",border:"none",cursor:catIdx===shopCats.length-1?"default":"pointer",fontSize:10,padding:"0 3px",color:catIdx===shopCats.length-1?"var(--ink-10)":"var(--ink-40)",lineHeight:1}} disabled={catIdx===shopCats.length-1} onClick={()=>moveCatDown(catIdx)}>▼</button>
+                </div>
                 <span style={{width:3,height:13,background:"linear-gradient(180deg,var(--blue),var(--gold))",display:"inline-block",borderRadius:2}} />
                 <span style={{fontFamily:"'Noto Serif KR',serif",fontSize:14,fontWeight:600}}>{cat}</span>
                 <span className="cat-count">{catItems.length}</span>
               </div>
-              <button className="btn btn-danger btn-xs" onClick={() => rmCat(cat)}>삭제</button>
+              {confirmCat === cat ? (
+                <div style={{display:"flex",gap:4,alignItems:"center"}}>
+                  <span style={{fontSize:11,color:"var(--red)"}}>삭제?</span>
+                  <button className="btn btn-danger btn-xs" onClick={()=>{rmCat(cat);setConfirmCat(null);}}>확인</button>
+                  <button className="btn btn-secondary btn-xs" onClick={()=>setConfirmCat(null)}>취소</button>
+                </div>
+              ) : (
+                <button className="btn btn-danger btn-xs" onClick={() => setConfirmCat(cat)}>삭제</button>
+              )}
             </div>
             {catItems.length === 0 ? (
               <div style={{fontSize:12,color:"var(--ink-30)",paddingBottom:8}}>상품이 없습니다.</div>
             ) : (
               <div style={{marginBottom:10}}>
-                {catItems.map(item => (
+                {catItems.map((item, itemIdx) => (
                   <div key={item.id} style={{display:"flex",alignItems:"center",gap:8,padding:"6px 0",borderBottom:"1px solid var(--border)"}}>
+                    <div style={{display:"flex",flexDirection:"column",gap:1,flexShrink:0}}>
+                      <button style={{background:"none",border:"none",cursor:itemIdx===0?"default":"pointer",fontSize:9,padding:"0 3px",color:itemIdx===0?"var(--ink-10)":"var(--ink-40)",lineHeight:1}} disabled={itemIdx===0} onClick={()=>moveItemUp(cat,item.id)}>▲</button>
+                      <button style={{background:"none",border:"none",cursor:itemIdx===catItems.length-1?"default":"pointer",fontSize:9,padding:"0 3px",color:itemIdx===catItems.length-1?"var(--ink-10)":"var(--ink-40)",lineHeight:1}} disabled={itemIdx===catItems.length-1} onClick={()=>moveItemDown(cat,item.id)}>▼</button>
+                    </div>
                     <span style={{flex:1,fontSize:13,fontWeight:500,color:item.active?"var(--ink)":"var(--ink-30)",textDecoration:item.active?"none":"line-through"}}>{item.name}</span>
                     <span style={{fontSize:12,color:"var(--ink-60)"}}>{item.defaultPrice > 0 ? `${item.defaultPrice.toLocaleString()}원` : "가격 미정"}</span>
                     <button className="btn btn-secondary btn-xs" onClick={() => toggleActive(item.id)}>{item.active ? "비활성" : "활성"}</button>
-                    <button className="btn btn-danger btn-xs" onClick={() => rmItem(item.id)}>삭제</button>
+                    {confirmItem === item.id ? (
+                      <div style={{display:"flex",gap:3,alignItems:"center"}}>
+                        <button className="btn btn-danger btn-xs" onClick={()=>{rmItem(item.id);setConfirmItem(null);}}>확인</button>
+                        <button className="btn btn-secondary btn-xs" onClick={()=>setConfirmItem(null)}>취소</button>
+                      </div>
+                    ) : (
+                      <button className="btn btn-danger btn-xs" onClick={() => setConfirmItem(item.id)}>삭제</button>
+                    )}
                   </div>
                 ))}
               </div>
