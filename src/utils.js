@@ -145,6 +145,8 @@ export async function sendAligoMessage(type, students, options = {}) {
     return "";
   };
 
+  const SUBJ = { monthly_fee: "수강료 안내", unpaid_reminder: "미납 독촉", makeup_lesson: "보강 안내" };
+  const buttonJson = JSON.stringify([{ name: "My RYE 포탈", linkType: "WL", linkTypeName: "웹링크", linkMo: "https://app.ryekorea.com/myryk/", linkPc: "https://app.ryekorea.com/myryk/" }]);
   const results = [];
   for (let i = 0; i < valid.length; i += 500) {
     const batch = valid.slice(i, i + 500);
@@ -153,13 +155,10 @@ export async function sendAligoMessage(type, students, options = {}) {
       const n = j + 1;
       params.append(`receiver_${n}`, (s.phone || s.guardianPhone || "").replace(/\D/g, ""));
       params.append(`recvname_${n}`, s.name);
+      params.append(`subject_${n}`, SUBJ[type]);
       params.append(`message_${n}`, buildMsg(s));
     });
-    // 모든 템플릿에 My RYE 포탈 버튼 포함
-    params.set("button_name_1", "My RYE 포탈");
-    params.set("button_type_1", "WL");
-    params.set("button_url_mobile_1", "https://app.ryekorea.com/myryk/");
-    params.set("button_url_pc_1", "https://app.ryekorea.com/myryk/");
+    params.set("button", buttonJson);
     const res = await fetch(ALIGO_URL, {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
