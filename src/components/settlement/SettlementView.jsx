@@ -161,6 +161,10 @@ export default function SettlementView({
   const [month, setMonth] = useState(THIS_MONTH);
   const [calculated, setCalculated] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [taxModal, setTaxModal] = useState(false);
+  const [taxExtras, setTaxExtras] = useState({});
+  const [taxIdNums, setTaxIdNums] = useState({});
+  const [taxEmail, setTaxEmail] = useState("");
 
   const availableTeachers = teachers.filter(t => canManageAll(currentUser?.role) || t.id === currentUser?.id);
   const selectedTeacher = teachers.find(t => t.id === selectedTeacherId);
@@ -174,6 +178,52 @@ export default function SettlementView({
     if (!selectedTeacherId) return;
     setCalculated(false);
     setTimeout(() => setCalculated(true), 0);
+  };
+
+  // 세무신고용: 선택 월의 전체 강사 정산 계산 (taxModal 열릴 때만)
+  const baseRows = useMemo(() => {
+    if (!taxModal) return [];
+    return teachers.map((t, idx) => {
+      const r = calcResult({ teacher: t, month, allStudents: students, attendance, payments, institutions: institutions || [], instantCharges: instantCharges || [], feePresets });
+      return { idx, teacher: t, preTax: r.grandTotal };
+    });
+  }, [taxModal, teachers, month, students, attendance, payments, institutions, instantCharges, feePresets]);
+
+  const handleTaxEmail = (allTaxRows, taxTotals) => {
+    if (!taxEmail.trim()) { alert("수신 이메일을 입력하세요."); return; }
+    const label = month.replace("-", "년 ") + "월";
+    const subject = `${label} 강사료 지급 내역 (세무신고용)`;
+    const lines = [
+      `RYE-K K-Culture Center — ${label} 강사료 지급 내역 (세무신고용)`,
+      `소득세: 세전 × 3%  /  지방소득세: 소득세 × 10%`,
+      ``,
+      `no\t강사명\t주민번호\t세전(원)\t그외경비\t소득세\t지방세\t차감액\t세후합계`,
+    ];
+    allTaxRows.forEach((r, i) => {
+      lines.push(`${i + 1}\t${r.teacher.name}\t${taxIdNums[r.teacher.id] || ""}\t${r.preTax.toLocaleString("ko-KR")}\t${r.extra.toLocaleString("ko-KR")}\t${r.incomeTax.toLocaleString("ko-KR")}\t${r.localTax.toLocaleString("ko-KR")}\t${r.deduction.toLocaleString("ko-KR")}\t${r.netPay.toLocaleString("ko-KR")}`);
+    });
+    lines.push(`합계\t\t\t${taxTotals.preTax.toLocaleString("ko-KR")}\t${taxTotals.extra.toLocaleString("ko-KR")}\t${taxTotals.incomeTax.toLocaleString("ko-KR")}\t${taxTotals.localTax.toLocaleString("ko-KR")}\t${taxTotals.deduction.toLocaleString("ko-KR")}\t${taxTotals.netPay.toLocaleString("ko-KR")}`);
+    const body = lines.join("\n");
+    window.location.href = `mailto:${encodeURIComponent(taxEmail)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  };
+
+  const handleTaxCsv = (allTaxRows, taxTotals) => {
+    const BOM = "﻿";
+    const header = "no,강사명,주민번호,월강사료(세전),그외경비지급,소득세(3%),지방세(0.3%),차감액,총지급액(세후)";
+    const dataRows = allTaxRows.map((r, i) =>
+      `${i + 1},${r.teacher.name},${taxIdNums[r.teacher.id] || ""},${r.preTax},${r.extra},${r.incomeTax},${r.localTax},${r.deduction},${r.netPay}`
+    );
+    const totalRow = `합계,,,${taxTotals.preTax},${taxTotals.extra},${taxTotals.incomeTax},${taxTotals.localTax},${taxTotals.deduction},${taxTotals.netPay}`;
+    const csv = BOM + [header, ...dataRows, totalRow].join("\r\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${month}_강사료지급내역_세무신고용.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   };
 
   const handleCopyTsv = async () => {
@@ -234,6 +284,9 @@ export default function SettlementView({
         <button className="btn btn-primary" onClick={handleCalc} disabled={!selectedTeacherId}>
           정산 계산
         </button>
+        <button className="btn btn-secondary" onClick={() => setTaxModal(true)} style={{ whiteSpace: "nowrap" }}>
+          세무신고용 전체
+        </button>
       </div>
 
       {selectedTeacher && !selectedTeacher.settlementRate && (
@@ -242,7 +295,120 @@ export default function SettlementView({
         </div>
       )}
 
-      {!result && <div style={{ textAlign: "center", padding: "60px 0", color: "var(--ink-30)", fontSize: 13 }}>강사와 월을 선택한 후 [정산 계산] 버튼을 누르세요.</div>}
+      {!result && <div style={{ textAlign: "center", padding: "60px 0", color: "var(--ink-30)", fontSize: 13 }}>강사와 월을 선택한 후 [정산 계산] 버튼을 누르세요.<br /><span style={{ fontSize: 12, marginTop: 8, display: "block" }}>전체 강사 세무신고용 내역은 [세무신고용 전체] 버튼을 누르세요.</span></div>}
+
+      {taxModal && (() => {
+        const allTaxRows = baseRows
+          .map(r => {
+            const extra = taxExtras[r.teacher.id] || 0;
+            const incomeTax = Math.round(r.preTax * 0.03);
+            const localTax = Math.round(incomeTax * 0.1);
+            const deduction = incomeTax + localTax;
+            return { ...r, extra, incomeTax, localTax, deduction, netPay: r.preTax + extra - deduction };
+          })
+          .filter(r => r.preTax > 0 || r.extra > 0);
+        const taxTotals = allTaxRows.reduce(
+          (acc, r) => ({ preTax: acc.preTax + r.preTax, extra: acc.extra + r.extra, incomeTax: acc.incomeTax + r.incomeTax, localTax: acc.localTax + r.localTax, deduction: acc.deduction + r.deduction, netPay: acc.netPay + r.netPay }),
+          { preTax: 0, extra: 0, incomeTax: 0, localTax: 0, deduction: 0, netPay: 0 }
+        );
+        return (
+          <div className="modal-backdrop" onClick={() => setTaxModal(false)}>
+            <div className="modal" style={{ maxWidth: 900, width: "96vw" }} onClick={e => e.stopPropagation()}>
+              <div className="modal-h">
+                <span style={{ fontFamily: "'Noto Serif KR',serif", fontWeight: 700 }}>세무신고용 강사료 지급 내역 — {monthLabel(month)}</span>
+              </div>
+              <div className="modal-b" style={{ overflowX: "auto" }}>
+                <div style={{ fontSize: 11, color: "var(--gold-dk)", background: "var(--gold-lt)", borderRadius: 8, padding: "8px 12px", marginBottom: 12 }}>
+                  ⚠ 주민번호는 저장되지 않습니다. 발송 후 창을 닫으면 초기화됩니다. &nbsp;|&nbsp; 소득세: 세전 × 3% &nbsp;/&nbsp; 지방소득세: 소득세 × 10%
+                </div>
+                {allTaxRows.length === 0 ? (
+                  <div style={{ textAlign: "center", padding: "40px 0", color: "var(--ink-30)" }}>이 달 정산 데이터가 있는 강사가 없습니다.</div>
+                ) : (
+                  <table className="log-table" style={{ minWidth: 700 }}>
+                    <thead>
+                      <tr>
+                        <th>no</th><th>강사명</th>
+                        <th>주민번호</th>
+                        <th style={{ textAlign: "right" }}>세전(원)</th>
+                        <th style={{ textAlign: "right" }}>그외경비</th>
+                        <th style={{ textAlign: "right" }}>소득세(3%)</th>
+                        <th style={{ textAlign: "right" }}>지방세(0.3%)</th>
+                        <th style={{ textAlign: "right" }}>차감액</th>
+                        <th style={{ textAlign: "right" }}>세후합계</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {allTaxRows.map((r, i) => (
+                        <tr key={r.teacher.id}>
+                          <td style={{ color: "var(--ink-30)" }}>{i + 1}</td>
+                          <td style={{ fontWeight: 600 }}>{r.teacher.name}</td>
+                          <td>
+                            <input
+                              className="inp"
+                              type="text"
+                              value={taxIdNums[r.teacher.id] || ""}
+                              onChange={e => setTaxIdNums(prev => ({ ...prev, [r.teacher.id]: e.target.value }))}
+                              placeholder="000000-0000000"
+                              style={{ width: 130, fontSize: 12, padding: "4px 8px" }}
+                              maxLength={14}
+                            />
+                          </td>
+                          <td style={{ textAlign: "right" }}>{fmtMoney(r.preTax)}</td>
+                          <td>
+                            <input
+                              className="inp"
+                              type="number"
+                              value={taxExtras[r.teacher.id] || ""}
+                              onChange={e => setTaxExtras(prev => ({ ...prev, [r.teacher.id]: parseInt(e.target.value) || 0 }))}
+                              placeholder="0"
+                              style={{ width: 90, textAlign: "right", fontSize: 12, padding: "4px 8px" }}
+                              min={0}
+                            />
+                          </td>
+                          <td style={{ textAlign: "right" }}>{fmtMoney(r.incomeTax)}</td>
+                          <td style={{ textAlign: "right" }}>{fmtMoney(r.localTax)}</td>
+                          <td style={{ textAlign: "right", color: "var(--red)" }}>{fmtMoney(r.deduction)}</td>
+                          <td style={{ textAlign: "right", fontWeight: 700, color: "var(--green)" }}>{fmtMoney(r.netPay)}</td>
+                        </tr>
+                      ))}
+                      <tr style={{ fontWeight: 700, background: "var(--bg-sub)" }}>
+                        <td colSpan={3} style={{ textAlign: "right", fontFamily: "'Noto Serif KR',serif" }}>합 계</td>
+                        <td style={{ textAlign: "right" }}>{fmtMoney(taxTotals.preTax)}</td>
+                        <td style={{ textAlign: "right" }}>{fmtMoney(taxTotals.extra)}</td>
+                        <td style={{ textAlign: "right" }}>{fmtMoney(taxTotals.incomeTax)}</td>
+                        <td style={{ textAlign: "right" }}>{fmtMoney(taxTotals.localTax)}</td>
+                        <td style={{ textAlign: "right", color: "var(--red)" }}>{fmtMoney(taxTotals.deduction)}</td>
+                        <td style={{ textAlign: "right", color: "var(--green)" }}>{fmtMoney(taxTotals.netPay)}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                )}
+                <div style={{ marginTop: 16, display: "flex", gap: 8, alignItems: "flex-end", flexWrap: "wrap" }}>
+                  <div style={{ flex: "1 1 220px" }}>
+                    <div style={{ fontSize: 11, color: "var(--ink-30)", fontWeight: 600, marginBottom: 4 }}>수신 이메일 (세무사)</div>
+                    <input
+                      className="inp"
+                      type="email"
+                      value={taxEmail}
+                      onChange={e => setTaxEmail(e.target.value)}
+                      placeholder="accountant@example.com"
+                    />
+                  </div>
+                  <button className="btn btn-primary" onClick={() => handleTaxEmail(allTaxRows, taxTotals)} disabled={allTaxRows.length === 0}>
+                    이메일 발송
+                  </button>
+                  <button className="btn btn-secondary" onClick={() => handleTaxCsv(allTaxRows, taxTotals)} disabled={allTaxRows.length === 0}>
+                    CSV 다운로드
+                  </button>
+                </div>
+              </div>
+              <div className="modal-f">
+                <button className="btn btn-secondary" onClick={() => { setTaxModal(false); setTaxIdNums({}); setTaxExtras({}); }}>닫기 (주민번호 초기화)</button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {result && (
         <>

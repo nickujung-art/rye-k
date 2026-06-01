@@ -69,6 +69,16 @@ async function handlePost(request, env) {
   // 5. Input validation — parse rawText first, then override with explicit fields
   //    body.text: JSON 형식으로 전송 시 텍스트 필드, body.rawText: 기존 plain text 호환
   const rawText = String(body.rawText || body.text || "").slice(0, 500);
+
+  // 5-a. 중복 방지 — 동일 rawText + 5분 버킷 조합으로 dedup key 생성
+  //       Tasker가 동일 알림에 대해 HTTP POST를 2회 보내는 경우를 차단
+  if (rawText) {
+    const bucket = Math.floor(ts / 300000);
+    const dedupHash = await shortHash(`${rawText}:${bucket}`);
+    const alreadySeen = await env.RATE_LIMIT_KV.get(`dedup:${dedupHash}`);
+    if (alreadySeen) return json({ ok: true, skipped: "duplicate" });
+    await env.RATE_LIMIT_KV.put(`dedup:${dedupHash}`, "1", { expirationTtl: 600 });
+  }
   const parsed = parseRawText(rawText);
 
   const rawName = String(body.name || parsed.name || "").trim();
@@ -348,6 +358,11 @@ function parseRawText(text) {
   if (mD) return { name: mD[2], amount: parseInt(mD[1].replace(/,/g, "")) || 0 };
 
   return { name: "", amount: 0 };
+}
+
+async function shortHash(text) {
+  const hash = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
+  return Array.from(new Uint8Array(hash)).slice(0, 8).map(b => b.toString(16).padStart(2, "0")).join("");
 }
 
 function json(data, status = 200) {

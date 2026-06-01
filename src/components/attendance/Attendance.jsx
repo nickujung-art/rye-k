@@ -345,7 +345,7 @@ function detectLessonGroups(students, dayName, filterTeacher) {
   const grouped = {};
   students.forEach(s => {
     (s.lessons || []).forEach(l => {
-      if (filterTeacher !== "all" && l.teacherId !== filterTeacher && s.teacherId !== filterTeacher) return;
+      if (filterTeacher !== "all" && (l.teacherId || s.teacherId) !== filterTeacher) return;
       (l.schedule || []).forEach(sc => {
         if (sc.day !== dayName) return;
         // ★ v12.1: 기관 가상회원은 항상 단독 그룹 (s.id를 키에 포함시켜 격리)
