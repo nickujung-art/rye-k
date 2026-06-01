@@ -5,9 +5,9 @@ import { aiPolishPaymentMessage } from "../../aiClient.js";
 
 const TEMPLATES = {
   monthly_fee: (d) =>
-    `[RYE-K K-Culture Center]\n\n안녕하세요, ${d.name}님!\n${d.month}월 수강료를 안내드립니다.\n\n💰 수강료: ${d.amount.toLocaleString()}원\n📅 납부 기한: ${d.deadline}\n\n계좌: 카카오뱅크 3333-34-5220544\n예금주: 예케이케이컬처센터\n\n감사합니다 ♪`,
+    `[RYE-K K-Culture Center]\n\n  안녕하세요, ${d.name}님!\n  ${d.month}월 수강료를 안내드립니다.\n\n  💰 수강료: ${d.amount.toLocaleString()}원\n  📅 납부 기한: ${d.deadline}\n\n  계좌: 카카오뱅크 3333-34-5220544\n  예금주: 예케이케이컬처센터\n\n  감사합니다 🎵`,
   unpaid_reminder: (d) =>
-    `[RYE-K K-Culture Center]\n\n${d.name}님, ${d.month}월 수강료 ${d.amount.toLocaleString()}원이 아직 미납 상태입니다.\n\n빠른 시일 내 납부 부탁드립니다.\n\n계좌: 카카오뱅크 3333-34-5220544\n예금주: 예케이케이컬처센터`,
+    `[RYE-K K-Culture Center]\n\n ${d.name}님, ${d.month}월 수강료 ${d.amount.toLocaleString()}원이 아직 미납 상태입니다.\n\n 빠른 시일 내 납부 부탁드립니다.\n\n 계좌: 카카오뱅크 3333-34-5220544\n 예금주: 예케이케이컬처센터`,
   makeup_lesson: (d) =>
     `[RYE-K K-Culture Center]\n\n${d.name}님, 보강 수업이 예정되어 있습니다.\n\n📅 일시: ${d.date} ${d.time}`,
 };

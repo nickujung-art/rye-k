@@ -137,9 +137,9 @@ export async function sendAligoMessage(type, students, options = {}) {
     const mo = monthKr(month);
     const amt = fmtAmt(s.amount);
     if (type === "monthly_fee")
-      return `[RYE-K K-Culture Center]\n\n안녕하세요, ${s.name}님!\n${mo} 수강료를 안내드립니다.\n\n💰 수강료: ${amt}원\n📅 납부 기한: ${deadline}\n\n계좌: 카카오뱅크 3333-34-5220544\n예금주: 예케이케이컬처센터\n\n감사합니다 ♪`;
+      return `[RYE-K K-Culture Center]\r\n\r\n  안녕하세요, ${s.name}님!\r\n  ${mo} 수강료를 안내드립니다.\r\n\r\n  💰 수강료: ${amt}원\r\n  📅 납부 기한: ${deadline}\r\n\r\n  계좌: 카카오뱅크 3333-34-5220544\r\n  예금주: 예케이케이컬처센터\r\n\r\n  감사합니다 🎵`;
     if (type === "unpaid_reminder")
-      return `[RYE-K K-Culture Center]\n\n${s.name}님, ${mo} 수강료 ${amt}원이 아직 미납 상태입니다.\n\n빠른 시일 내 납부 부탁드립니다.\n\n계좌: 카카오뱅크 3333-34-5220544\n예금주: 예케이케이컬처센터`;
+      return `[RYE-K K-Culture Center]\r\n\r\n ${s.name}님, ${mo} 수강료 ${amt}원이 아직 미납 상태입니다.\r\n\r\n 빠른 시일 내 납부 부탁드립니다.\r\n\r\n 계좌: 카카오뱅크 3333-34-5220544\r\n 예금주: 예케이케이컬처센터`;
     if (type === "makeup_lesson")
       return `[RYE-K K-Culture Center]\n\n${s.name}님, 보강 수업이 예정되어 있습니다.\n\n📅 일시: ${options.makeupDate} ${options.makeupTime}`;
     return "";
