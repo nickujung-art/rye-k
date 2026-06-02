@@ -1,7 +1,7 @@
 import { useState } from "react";
 import knotLineSvg from "../assets/heritage/knot-line.svg";
 import { DAYS, TODAY_STR, IC } from "../constants.jsx";
-import { canManageAll, allLessonInsts, uid, fmtDateShort } from "../utils.js";
+import { canManageAll, allLessonInsts, uid, fmtDateShort, sendAligoMessage } from "../utils.js";
 import { Av } from "./shared/CommonUI.jsx";
 
 const TEACHER_COLORS = ["var(--blue)","var(--red)","var(--green)","#7C3AED","var(--gold-dk)","var(--blue-md)","var(--gold)","var(--red-dk)"];
@@ -20,6 +20,8 @@ function ScheduleView({ students, teachers, currentUser, attendance, onSaveAtten
   const [editEntry, setEditEntry] = useState(null); // {studentId, studentName, instrument, originalDay, originalDate}
   const [editForm, setEditForm] = useState({ action: "move", newDay: "", newTime: "", newDate: "" });
   const [expandedGroups, setExpandedGroups] = useState({});
+  const [alimSend, setAlimSend] = useState(true);
+  const [alimToast, setAlimToast] = useState("");
 
   const canSeeAll = canManageAll(currentUser.role);
   const effectiveFilter = canSeeAll ? filterTeacherId : currentUser.id;
@@ -156,6 +158,7 @@ function ScheduleView({ students, teachers, currentUser, attendance, onSaveAtten
       : ((first.getMonth()+1) + "/" + first.getDate() + " ~ " + (last.getMonth()+1) + "/" + last.getDate());
     return (
       <div className="sched-wrap">
+        {alimToast && <div style={{position:"fixed",top:72,left:"50%",transform:"translateX(-50%)",zIndex:9999,background:"var(--paper)",border:"1px solid var(--border)",borderRadius:10,padding:"10px 20px",boxShadow:"0 4px 16px rgba(0,0,0,.14)",fontSize:13,fontWeight:600,whiteSpace:"nowrap"}}>{alimToast}</div>}
         <div className="ph"><div><h1>강사 스케줄</h1><div className="ph-sub">레슨 시간표 · 보강 현황</div></div></div>
         <div className="sched-toolbar">
           <button className={"sched-mode-btn " + (viewMode==="week"?"active":"")} onClick={() => setViewMode("week")}>주간</button>
@@ -268,6 +271,12 @@ function ScheduleView({ students, teachers, currentUser, attendance, onSaveAtten
                       <label className="fg-label">변경할 시간</label>
                       <input className="time-inp" type="time" value={editForm.newTime} onChange={e => setEditForm(f=>({...f,newTime:e.target.value}))} style={{width:"100%"}} />
                     </div>
+                    {editForm.newDate && (
+                      <label style={{display:"flex",alignItems:"center",gap:8,marginTop:4,fontSize:13,cursor:"pointer"}}>
+                        <input type="checkbox" checked={alimSend} onChange={e => setAlimSend(e.target.checked)} />
+                        💬 보강 알림톡 발송
+                      </label>
+                    )}
                   </>
                 )}
                 {editForm.action === "absent" && (
@@ -279,13 +288,25 @@ function ScheduleView({ students, teachers, currentUser, attendance, onSaveAtten
               </div>
               <div className="modal-f">
                 <button className="btn btn-secondary" onClick={() => setEditEntry(null)}>취소</button>
-                <button className="btn btn-primary" onClick={() => {
+                <button className="btn btn-primary" onClick={async () => {
                   if (editForm.action === "absent") {
                     const override = { id: uid(), studentId: editEntry.studentId, originalDate: editEntry.originalDate, type: "absent", createdAt: Date.now() };
                     onSaveScheduleOverride && onSaveScheduleOverride([...(scheduleOverrides||[]), override]);
                   } else if (editForm.action === "move" && editForm.newDate) {
                     const override = { id: uid(), studentId: editEntry.studentId, originalDate: editEntry.originalDate, type: "move", newDate: editForm.newDate, newTime: editForm.newTime, instrument: editEntry.instrument, createdAt: Date.now() };
                     onSaveScheduleOverride && onSaveScheduleOverride([...(scheduleOverrides||[]), override]);
+                    if (alimSend) {
+                      const student = (students||[]).find(s => s.id === editEntry.studentId);
+                      if (student) {
+                        setEditEntry(null);
+                        try {
+                          await sendAligoMessage("makeup_lesson", [student], { makeupDate: editForm.newDate, makeupTime: editForm.newTime });
+                          setAlimToast("💬 보강 알림톡 발송 완료");
+                        } catch { setAlimToast("💬 알림톡 발송 실패"); }
+                        setTimeout(() => setAlimToast(""), 3000);
+                        return;
+                      }
+                    }
                   }
                   setEditEntry(null);
                 }} disabled={editForm.action === "move" && !editForm.newDate}>

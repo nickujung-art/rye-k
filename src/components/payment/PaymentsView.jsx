@@ -305,7 +305,8 @@ export default function PaymentsView({
         )}
         {canManageAll(currentUser.role) && <button className="btn btn-secondary btn-sm" onClick={openBulkPrep} title="전체 수강료 일괄 확인 및 확정">📋 수강료 확정</button>}
         {canManageAll(currentUser.role) && <button className="btn btn-secondary btn-sm" onClick={openBulkPrepInst} title="기관 청구 일괄 확정">🏢 기관 청구 확정</button>}
-        {canManageAll(currentUser.role) && <button className="btn btn-secondary btn-sm" onClick={() => setAlimtalkModal("monthly_fee")} title="이달의 수강료 알림톡 발송">💬 수강료 알림톡</button>}
+        {canManageAll(currentUser.role) && <button className="btn btn-secondary btn-sm" onClick={() => setAlimtalkModal("monthly_fee")} title="이달의 수강료 안내 알림톡">💬 수강료 안내</button>}
+        {canManageAll(currentUser.role) && <button className="btn btn-secondary btn-sm" onClick={() => setAlimtalkModal("unpaid_reminder")} title="미납자 독촉 알림톡">💬 미납 독촉</button>}
         {canManageAll(currentUser.role) && <button className="btn btn-secondary btn-sm" onClick={exportCSV}>📥 엑셀</button>}
       </div></div>
       <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
@@ -429,13 +430,6 @@ export default function PaymentsView({
                   >
                     {quickPayingId === s.id ? "…" : "✓ 입금"}
                   </button>
-                )}
-                {!isPaid && (
-                  <button
-                    onClick={e => { e.stopPropagation(); setAlimtalkModal("unpaid_reminder"); }}
-                    style={{background:"var(--blue-lt)",color:"var(--blue)",border:"1px solid var(--blue)",borderRadius:8,padding:"4px 9px",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}
-                    title="ALM-07: Phase 4 AlimTalk 연동 후 활성화"
-                  >💬</button>
                 )}
               </div>
             )}

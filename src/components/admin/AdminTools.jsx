@@ -45,6 +45,9 @@ export function PendingView({ pending, teachers, categories, onApprove, onReject
   const [editTarget, setEditTarget] = useState(null);
   const [editForm, setEditForm] = useState(null);
   const [smsModal, setSmsModal] = useState(null); // { name, code, phone, msg }
+  const [submitting, setSubmitting] = useState(false);
+  const [approveErr, setApproveErr] = useState("");
+  const [rejectConfirmId, setRejectConfirmId] = useState(null);
 
   const startApprove = (p) => {
     setEditForm({
@@ -52,9 +55,14 @@ export function PendingView({ pending, teachers, categories, onApprove, onReject
       birthDate: p.birthDate || "",
       phone: p.phone || "",
       guardianPhone: p.guardianPhone || "",
-      teacherId: p.submittedById || "",
-      lessons: (p.desiredInstruments || []).map(inst => ({ instrument: inst, schedule: [{ day: p.lessonDay || "", time: p.lessonTime || "" }] })),
-      ...(p.lessons && p.lessons.length > 0 ? { lessons: p.lessons } : {}),
+      teacherId: p.teacherId || p.submittedById || "",
+      lessons: (() => {
+        const defaultTeacherId = p.teacherId || p.submittedById || "";
+        const base = (p.lessons && p.lessons.length > 0)
+          ? p.lessons
+          : (p.desiredInstruments || []).map(inst => ({ instrument: inst, schedule: [{ day: p.lessonDay || "", time: p.lessonTime || "" }] }));
+        return base.map(l => ({ ...l, teacherId: l.teacherId || defaultTeacherId }));
+      })(),
       monthlyFee: p.monthlyFee || 0,
       notes: p.notes || "",
       photo: p.photo || "",
@@ -70,22 +78,33 @@ export function PendingView({ pending, teachers, categories, onApprove, onReject
     setEditTarget(p);
   };
 
-  const confirmApprove = () => {
-    if (!editForm.name.trim()) return;
-    if (!editForm.birthDate) return;
-    // 사전에 회원코드 생성 → SMS에 포함
+  const confirmApprove = async () => {
+    if (!editForm.name.trim() || !editForm.birthDate || submitting) return;
+    setSubmitting(true);
+    setApproveErr("");
     const studentCode = generateStudentCode();
-    onApprove({ ...editTarget, ...editForm, studentCode });
-    setEditTarget(null);
-    // SMS 안내 모달 준비
-    const phone = (isMinor(editForm.birthDate) && editForm.guardianPhone) ? editForm.guardianPhone : editForm.phone;
-    if (phone) {
-      const pw = getBirthPassword(editForm.birthDate);
-      const url = window.location.origin + "/myryk/?code=" + studentCode;
-      const msg = `[My RYE-K 안내] ${editForm.name}님의 수강 등록이 완료되었습니다.\n회원코드: ${studentCode}\n비밀번호: ${pw} (생일 4자리 MMDD)\n포털 접속: ${url}`;
-      setSmsModal({ name: editForm.name, code: studentCode, phone, msg });
+    try {
+      await onApprove({ ...editTarget, ...editForm, studentCode });
+    } catch {
+      setApproveErr("회원 등록 중 오류가 발생했습니다. 다시 시도해주세요.");
+      setSubmitting(false);
+      return;
     }
+    setSubmitting(false);
+    const savedBirthDate = editForm.birthDate;
+    const savedGuardianPhone = editForm.guardianPhone;
+    const savedPhone = editForm.phone;
+    const savedName = editForm.name;
+    setEditTarget(null);
     setEditForm(null);
+    // SMS 안내 모달 준비 (DB 쓰기 성공 후)
+    const phone = (isMinor(savedBirthDate) && savedGuardianPhone) ? savedGuardianPhone : savedPhone;
+    if (phone) {
+      const pw = getBirthPassword(savedBirthDate);
+      const url = window.location.origin + "/myryk/?code=" + studentCode;
+      const msg = `[My RYE-K 안내] ${savedName}님의 수강 등록이 완료되었습니다.\n회원코드: ${studentCode}\n비밀번호: ${pw} (생일 4자리 MMDD)\n포털 접속: ${url}`;
+      setSmsModal({ name: savedName, code: studentCode, phone, msg });
+    }
   };
 
   if (pending.length === 0) return (
@@ -148,8 +167,15 @@ export function PendingView({ pending, teachers, categories, onApprove, onReject
           )}
           <div style={{ fontSize: 11, color: "var(--ink-30)", marginBottom: 10 }}>접수: {fmtDateTime(p.createdAt)}</div>
           <div style={{ display: "flex", gap: 8 }}>
-            <button className="btn btn-primary btn-sm" style={{ flex: 1 }} onClick={() => startApprove(p)}>승인 · 정보 확인</button>
-            <button className="btn btn-danger btn-sm" onClick={() => onReject(p.id)}>반려</button>
+            <button className="btn btn-primary btn-sm" style={{ flex: 1 }} onClick={() => { setRejectConfirmId(null); startApprove(p); }}>승인 · 정보 확인</button>
+            {rejectConfirmId === p.id ? (
+              <>
+                <button className="btn btn-danger btn-sm" onClick={() => { setRejectConfirmId(null); onReject(p.id); }}>반려 확인</button>
+                <button className="btn btn-secondary btn-sm" onClick={() => setRejectConfirmId(null)}>취소</button>
+              </>
+            ) : (
+              <button className="btn btn-danger btn-sm" onClick={() => setRejectConfirmId(p.id)}>반려</button>
+            )}
           </div>
         </div>
       ))}
@@ -229,7 +255,7 @@ export function PendingView({ pending, teachers, categories, onApprove, onReject
                 </div>
               </div>
               <div className="divider" />
-              <LessonEditor lessons={editForm.lessons || []} onChange={v => setEditForm(f=>({...f,lessons:v}))} categories={categories} />
+              <LessonEditor lessons={editForm.lessons || []} onChange={v => setEditForm(f=>({...f,lessons:v}))} categories={categories} teachers={teachers} />
               <div className="fg" style={{marginTop:14,display:"flex",alignItems:"center",gap:8,cursor:"pointer"}} onClick={()=>setEditForm(f=>({...f,instrumentRental:!f.instrumentRental}))}>
                 <div style={{width:20,height:20,border:"1.5px solid var(--border)",borderRadius:6,display:"flex",alignItems:"center",justifyContent:"center",background:editForm.instrumentRental?"var(--blue)":"var(--paper)",transition:"all .12s"}}>{editForm.instrumentRental && <span style={{color:"#fff",fontSize:12,fontWeight:700}}>✓</span>}</div>
                 <span style={{fontSize:13,color:"var(--ink-60)"}}>악기 대여</span>
@@ -237,8 +263,9 @@ export function PendingView({ pending, teachers, categories, onApprove, onReject
               <div className="fg" style={{marginTop:8}}><label className="fg-label">메모</label><textarea className="inp" value={editForm.notes} onChange={e => setEditForm(f=>({...f,notes:e.target.value}))} rows={2} /></div>
             </div>
             <div className="modal-f">
-              <button className="btn btn-secondary" onClick={() => setEditTarget(null)}>취소</button>
-              <button className="btn btn-primary" onClick={confirmApprove} disabled={!editForm.name.trim() || !editForm.birthDate}>승인 · 회원 등록</button>
+              {approveErr && <div className="form-err" style={{marginBottom:8,width:"100%"}}>⚠ {approveErr}</div>}
+              <button className="btn btn-secondary" onClick={() => { setEditTarget(null); setApproveErr(""); }} disabled={submitting}>취소</button>
+              <button className="btn btn-primary" onClick={confirmApprove} disabled={!editForm.name.trim() || !editForm.birthDate || submitting}>{submitting ? "처리 중..." : "승인 · 회원 등록"}</button>
             </div>
           </div>
         </div>

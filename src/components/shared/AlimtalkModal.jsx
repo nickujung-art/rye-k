@@ -153,20 +153,6 @@ export default function AlimtalkModal({ type: initialType = "monthly_fee", stude
         {step === "send" && (
           <>
             <div className="modal-b">
-              {/* 템플릿 선택 */}
-              <div className="fg">
-                <label className="fg-label">발송 유형</label>
-                <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-                  {Object.entries(TYPE_LABELS).map(([k,v]) => (
-                    <button key={k} className={`btn btn-sm ${type===k?"btn-primary":"btn-secondary"}`}
-                      onClick={() => { setType(k); setTargetMode(k==="unpaid_reminder"?"unpaid":"all"); setAiPreview(""); setAiToneError(""); }}
-                      >
-                      {v}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
               {/* 발송 대상 */}
               {type !== "unpaid_reminder" && (
                 <div className="fg">

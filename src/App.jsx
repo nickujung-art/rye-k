@@ -951,6 +951,10 @@ function MainApp() {
       monthlyFee: reg.monthlyFee || 0,
       studentCode: reg.studentCode || generateStudentCode(),
       instrumentRental: reg.instrumentRental || false,
+      rentalFee: reg.rentalFee || 0,
+      rentalType: reg.rentalType || "",
+      pendingOneTimeCharges: reg.pendingOneTimeCharges || [],
+      status: "active",
       // Preserve registration metadata
       registration: {
         experience: reg.experience || "",
@@ -964,10 +968,15 @@ function MainApp() {
       },
       createdAt: Date.now(),
     };
+    // Propagates on failure → caller (confirmApprove) handles UI
     await addStudentDoc(newStudent);
-    // Remove from pending
+    // Remove from pending — best-effort after student is created
     const updPending = pending.filter(p => p.id !== reg.id);
-    await sSet("rye-pending", updPending);
+    try {
+      await sSet("rye-pending", updPending);
+    } catch {
+      // sSet failure: local state still updated to prevent duplicate approval
+    }
     setPending(updPending);
     addLog(`${reg.name} 회원 등록 승인`);
     showToast(`${reg.name} 회원이 등록되었습니다. (코드: ${newStudent.studentCode})`);
@@ -976,7 +985,12 @@ function MainApp() {
   const rejectPending = async (regId) => {
     const reg = pending.find(p => p.id === regId);
     const updPending = pending.filter(p => p.id !== regId);
-    await sSet("rye-pending", updPending);
+    try {
+      await sSet("rye-pending", updPending);
+    } catch {
+      showToast("반려 처리 중 오류가 발생했습니다. 다시 시도해주세요.");
+      return;
+    }
     setPending(updPending);
     if (reg) addLog(`${reg.name} 등록 신청 반려`);
     showToast("등록 신청이 반려되었습니다.");
@@ -1286,7 +1300,13 @@ function MainApp() {
           // Teacher: send to pending for manager/admin approval
           const pendingReg = { ...data, id: uid(), desiredInstruments: (data.lessons||[]).map(l=>l.instrument), submittedBy: user.name, submittedById: user.id, createdAt: Date.now() };
           const updPending = [...pending, pendingReg];
-          await sSet("rye-pending", updPending); setPending(updPending);
+          try {
+            await sSet("rye-pending", updPending);
+          } catch {
+            showToast("등록 요청 저장에 실패했습니다. 다시 시도해주세요.");
+            return;
+          }
+          setPending(updPending);
           addLog(`${data.name} 회원 등록 요청 (승인 대기)`);
           setModal(null); showToast("등록 요청이 접수되었습니다. 관리자 승인 후 등록됩니다.");
         } else {
