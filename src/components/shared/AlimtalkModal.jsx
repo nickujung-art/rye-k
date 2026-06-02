@@ -160,9 +160,8 @@ export default function AlimtalkModal({ type: initialType = "monthly_fee", stude
                   {Object.entries(TYPE_LABELS).map(([k,v]) => (
                     <button key={k} className={`btn btn-sm ${type===k?"btn-primary":"btn-secondary"}`}
                       onClick={() => { setType(k); setTargetMode(k==="unpaid_reminder"?"unpaid":"all"); setAiPreview(""); setAiToneError(""); }}
-                      disabled={k === "makeup_lesson"}
-                      title={k === "makeup_lesson" ? "템플릿 재승인 대기 중" : undefined}>
-                      {v}{k === "makeup_lesson" ? " (대기)" : ""}
+                      >
+                      {v}
                     </button>
                   ))}
                 </div>

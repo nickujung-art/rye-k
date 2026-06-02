@@ -124,7 +124,6 @@ export async function sendAligoMessage(type, students, options = {}) {
 
   if (!apikey) throw new Error("알림톡 API 설정이 없습니다. 관리자에게 문의하세요.");
   if (!TPL[type]) throw new Error(`알 수 없는 타입: ${type}`);
-  if (type === "makeup_lesson") throw new Error("보강 안내 템플릿은 현재 재승인 대기 중입니다.");
 
   const valid = students.filter(s => s.phone || s.guardianPhone);
   const noPhone = students.filter(s => !s.phone && !s.guardianPhone).map(s => s.name);
@@ -141,12 +140,12 @@ export async function sendAligoMessage(type, students, options = {}) {
     if (type === "unpaid_reminder")
       return `[RYE-K K-Culture Center]\r\n\r\n ${s.name}님, ${mo} 수강료 ${amt}원이 아직 미납 상태입니다.\r\n\r\n 빠른 시일 내 납부 부탁드립니다.\r\n\r\n 계좌: 카카오뱅크 3333-34-5220544\r\n 예금주: 예케이케이컬처센터`;
     if (type === "makeup_lesson")
-      return `[RYE-K K-Culture Center]\n\n${s.name}님, 보강 수업이 예정되어 있습니다.\n\n📅 일시: ${options.makeupDate} ${options.makeupTime}`;
+      return `  [RYE-K K-Culture Center]\r\n\r\n  ${s.name}님, 현재 수강 중이신 RYE-K K-Culture Center 보강 수업 일정을 안내드립니다.\r\n\r\n  📅 보강 일시: ${options.makeupDate} ${options.makeupTime}\r\n\r\n  문의사항은 센터로 연락 주세요.\r\n  감사합니다 🎵`;
     return "";
   };
 
   const SUBJ = { monthly_fee: "수강료 안내", unpaid_reminder: "미납 독촉", makeup_lesson: "보강 안내" };
-  const buttonJson = JSON.stringify([{ name: "My RYE 포탈", linkType: "WL", linkTypeName: "웹링크", linkMo: "https://app.ryekorea.com/myryk/", linkPc: "https://app.ryekorea.com/myryk/" }]);
+  const buttonJson = JSON.stringify({ button: [{ name: "My RYE 포탈", linkType: "WL", linkTypeName: "웹링크", linkMo: "https://app.ryekorea.com/myryk/", linkPc: "" }] });
   const results = [];
   for (let i = 0; i < valid.length; i += 500) {
     const batch = valid.slice(i, i + 500);
@@ -157,8 +156,8 @@ export async function sendAligoMessage(type, students, options = {}) {
       params.append(`recvname_${n}`, s.name);
       params.append(`subject_${n}`, SUBJ[type]);
       params.append(`message_${n}`, buildMsg(s));
+      params.append(`button_${n}`, buttonJson);
     });
-    params.set("button", buttonJson);
     const res = await fetch(ALIGO_URL, {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
