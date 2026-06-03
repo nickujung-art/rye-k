@@ -13,6 +13,7 @@
 | 02 포털 완성 | ✓ COMPLETE | |
 | 03 AI 완성 | ✓ COMPLETE | |
 | 05 수납 자동화 | ✓ COMPLETE | 실제 카카오뱅크 테스트 미완 |
+| 07 입금 자동매칭 고도화 | ✓ COMPLETE | |
 | BACKUP-01 | ✓ COMPLETE | GitHub Actions 주간 백업 |
 | BUG-01 | ✓ COMPLETE | |
 | FS-fee-split | ✓ COMPLETE | 과목별 수강료 분리 |
@@ -22,7 +23,10 @@
 
 ## Active Work
 
-없음. 다음 작업 대기 중.
+**Phase 7: 입금 자동매칭 고도화** — ✓ COMPLETE (2026-06-03)
+- 07-01 ✓: guardianName 필드 + students_cache guardianName/monthlyFee + TTL 72h + 앱 마운트 auto-sync
+- 07-02 ✓: fuzzyMatchStudent guardian_exact/guardian_fuzzy + split_space + amount_match
+- 07-03 ✓: 미매칭 카드 rawText 표시 + 추천 학생 배지 + auto-select useEffect
 
 ## Pending / Blockers
 

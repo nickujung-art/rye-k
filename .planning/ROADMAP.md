@@ -12,6 +12,7 @@
 - [ ] **Phase 4: 알림톡 통합 (KakaoTalk AlimTalk)** - Solapi 연동으로 결석·수납·일정 변경 자동 알림톡 발송
 - [x] **Phase 5: 수납 자동화 (Payment Automation)** - 은행 입금 자동 매칭 + 미납 현황 대시보드 + 리마인더 자동 발송 ✓ 2026-05-09
 - [ ] **Phase 6: 분석 대시보드 고도화 (Analytics Enhancement)** - 관리자·강사·학부모용 데이터 인사이트 레이어
+- [x] **Phase 7: 입금 자동매칭 고도화 (Payment Matching Enhancement)** - guardianName 필드 추가 + 보호자 이름 매칭 + students_cache 타이밍 수정 ✓ 2026-06-03
 
 ## Phase Details
 
@@ -111,6 +112,22 @@ Plans:
 **Plans**: TBD
 **UI hint**: yes
 
+### Phase 7: 입금 자동매칭 고도화 (Payment Matching Enhancement)
+**Goal**: 보호자 이름으로 입금해도 자동 매칭되고, students_cache가 항상 최신 상태로 유지되어 Tasker 알림 수신 즉시 정확한 매칭이 이루어진다
+**Depends on**: Phase 5
+**Requirements**: PAY-07, PAY-08, PAY-09, PAY-10, PAY-11
+**Success Criteria** (what must be TRUE):
+  1. 학생 등록/수정 화면에서 보호자 이름을 입력할 수 있다
+  2. Tasker가 카카오뱅크 알림을 webhook으로 전송할 때 students_cache가 비어있지 않다 (앱 로드 시 sync)
+  3. 보호자 이름으로 입금 시 해당 학생으로 자동 매칭된다 (confidence: guardian_exact)
+  4. "홍길동 김개똥" 형태의 공백 포함 2명 이름이 각각 정확히 분리·매칭된다
+  5. 미매칭 카드에서 실제 알림 텍스트(rawText)와 금액 기반 추천 학생이 표시된다
+**Plans**: 3 plans
+Plans:
+- [x] 07-01-PLAN.md — guardianName 필드 + students_cache 개선 + sync 타이밍 수정 (PAY-07, PAY-08, PAY-09) ✓ 2026-06-03
+- [x] 07-02-PLAN.md — fuzzyMatchStudent 알고리즘 고도화 (PAY-10) ✓ 2026-06-03
+- [x] 07-03-PLAN.md — 미매칭 카드 UI 개선 (PAY-11) ✓ 2026-06-03
+
 ### Phase SHOP-01: 즉시 청구 & 상품 관리 시스템 (Instant Charge & Shop)
 **Goal**: 강사가 한복·악세사리·악기가방 등을 판매 시 즉시 청구를 요청하고, 관리자가 승인 후 알림 메시지를 클립보드 복사로 발송하며, 입금 확인 후 수납 레코드가 자동 생성된다. 상품 카탈로그는 AdminTools에서 관리한다.
 **Depends on**: Nothing (standalone feature)
@@ -139,6 +156,7 @@ Plans:
 | 4. 알림톡 통합 | 0/TBD | Not started | - |
 | 5. 수납 자동화 | 0/4 | Planned | - |
 | 6. 분석 대시보드 고도화 | 0/TBD | Not started | - |
+| 7. 입금 자동매칭 고도화 | 3/3 | ✓ COMPLETE | 2026-06-03 |
 | SHOP-01. 즉시 청구 & 상품 관리 | 5/5 | ✓ COMPLETE | 2026-05-14 |
 
 ---
@@ -185,6 +203,11 @@ Plans:
 | ANL-02 | Phase 6 | Pending |
 | ANL-03 | Phase 6 | Pending |
 | ANL-04 | Phase 6 | Pending |
+| PAY-07 | Phase 7 | Planned |
+| PAY-08 | Phase 7 | Planned |
+| PAY-09 | Phase 7 | Planned |
+| PAY-10 | Phase 7 | Planned |
+| PAY-11 | Phase 7 | Planned |
 | SHOP-01 | SHOP-01 | Planned |
 | SHOP-02 | SHOP-01 | Planned |
 | SHOP-03 | SHOP-01 | Planned |
