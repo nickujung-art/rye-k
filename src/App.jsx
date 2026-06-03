@@ -1002,7 +1002,6 @@ function MainApp() {
       instrumentRental: reg.instrumentRental || false,
       rentalFee: reg.rentalFee || 0,
       rentalType: reg.rentalType || "",
-      pendingOneTimeCharges: reg.pendingOneTimeCharges || [],
       status: "active",
       // Preserve registration metadata
       registration: {

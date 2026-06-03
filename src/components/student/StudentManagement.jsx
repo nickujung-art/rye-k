@@ -252,37 +252,6 @@ export function StudentFormModal({ student, teachers, currentUser, categories, f
               </div>
             );
           })()}
-          {canManageAll(currentUser.role) && (
-            <div className="fg">
-              <label className="fg-label">일회성 청구 예정</label>
-              <div style={{fontSize:11,color:"var(--ink-30)",marginBottom:8}}>수납 처리 시 추가 청구로 가져올 수 있습니다.</div>
-              {(form.pendingOneTimeCharges||[]).map((ch, i) => (
-                <div key={i} style={{display:"flex",gap:6,alignItems:"center",marginBottom:6}}>
-                  <select className="sel" style={{flex:"0 0 90px",fontSize:12,padding:"7px 6px"}} value={ch.type||"악기구매"} onChange={e => {
-                    const upd = form.pendingOneTimeCharges.map((x,j)=>j===i?{...x,type:e.target.value}:x);
-                    set("pendingOneTimeCharges", upd);
-                  }}>
-                    <option value="악기구매">악기구매</option>
-                    <option value="교재비">교재비</option>
-                    <option value="악세사리/기타">악세사리/기타</option>
-                  </select>
-                  <input className="inp" value={ch.title||""} onChange={e => {
-                    const upd = form.pendingOneTimeCharges.map((x,j)=>j===i?{...x,title:e.target.value}:x);
-                    set("pendingOneTimeCharges", upd);
-                  }} placeholder="세부 항목명 (선택)" style={{flex:2}} />
-                  <div style={{position:"relative",flex:"0 0 90px"}}>
-                    <input className="inp" inputMode="numeric" value={ch.amount ? ch.amount.toLocaleString("ko-KR") : ""} onChange={e => {
-                      const upd = form.pendingOneTimeCharges.map((x,j)=>j===i?{...x,amount:parseInt(e.target.value.replace(/[^\d]/g,""))||0}:x);
-                      set("pendingOneTimeCharges", upd);
-                    }} style={{paddingRight:18}} placeholder="0" />
-                    <span style={{position:"absolute",right:8,top:"50%",transform:"translateY(-50%)",fontSize:10,color:"var(--ink-30)"}}>원</span>
-                  </div>
-                  <button onClick={() => set("pendingOneTimeCharges", form.pendingOneTimeCharges.filter((_,j)=>j!==i))} style={{background:"none",border:"none",color:"var(--red)",fontSize:16,cursor:"pointer",padding:"0 4px",flexShrink:0}}>×</button>
-                </div>
-              ))}
-              <button className="btn btn-secondary btn-sm" onClick={() => set("pendingOneTimeCharges", [...(form.pendingOneTimeCharges||[]), {type:"악기구매",title:"",amount:0}])}>+ 항목 추가</button>
-            </div>
-          )}
           {isEdit && (canManageAll(currentUser.role) || currentUser.role === "teacher") && (
             <div className="fg">
               <label className="fg-label">수강 상태</label>
@@ -316,53 +285,6 @@ export function StudentFormModal({ student, teachers, currentUser, categories, f
             </div>
           </div>
         ) : (<div className="modal-f"><button className="btn btn-secondary" onClick={onClose}>취소</button><button className="btn btn-primary" onClick={handleSaveClick}>저장</button></div>)}
-      </div>
-    </div>
-  );
-}
-
-// ── CHARGE REQUEST MODAL (공통 컴포넌트) ──────────────────────────────────────
-export function ChargeRequestModal({ student, onClose, onSave }) {
-  const [charges, setCharges] = useState(student.pendingOneTimeCharges || []);
-  const [saving, setSaving] = useState(false);
-
-  const updField = (i, field, v) => setCharges(prev => prev.map((x,j) => j===i ? {...x, [field]: v} : x));
-  const updAmt = (i, v) => setCharges(prev => prev.map((x,j) => j===i ? {...x, amount: parseInt(v.replace(/[^\d]/g,""))||0} : x));
-  const remove = (i) => setCharges(prev => prev.filter((_,j) => j!==i));
-  const addRow = () => setCharges(prev => [...prev, { id: uid(), type: "악기구매", title: "", amount: 0 }]);
-  const handleSave = async () => {
-    setSaving(true);
-    await onSave({ ...student, pendingOneTimeCharges: charges });
-    setSaving(false);
-  };
-
-  return (
-    <div style={{position:"fixed",inset:0,zIndex:9999,backgroundColor:"rgba(0,0,0,0.6)",display:"flex",alignItems:"center",justifyContent:"center"}} onClick={e => e.target === e.currentTarget && onClose()}>
-      <div className="modal" style={{maxWidth:480,width:"92%",margin:0}}>
-        <div className="modal-h"><h2>비용 청구 요청</h2><button className="modal-close" onClick={onClose}>{IC.x}</button></div>
-        <div className="modal-b">
-          <div style={{fontSize:11,color:"var(--ink-30)",marginBottom:8}}>수납 처리 시 추가 청구로 가져올 수 있습니다.</div>
-          {charges.map((ch, i) => (
-            <div key={ch.id||i} style={{display:"flex",gap:6,alignItems:"center",marginBottom:6}}>
-              <select className="sel" style={{flex:"0 0 90px",fontSize:12,padding:"7px 6px"}} value={ch.type||"악기구매"} onChange={e => updField(i, "type", e.target.value)}>
-                <option value="악기구매">악기구매</option>
-                <option value="교재비">교재비</option>
-                <option value="악세사리/기타">악세사리/기타</option>
-              </select>
-              <input className="inp" value={ch.title||""} onChange={e => updField(i, "title", e.target.value)} placeholder="세부 항목명 (선택)" style={{flex:2}} />
-              <div style={{position:"relative",flex:"0 0 90px"}}>
-                <input className="inp" inputMode="numeric" value={ch.amount ? ch.amount.toLocaleString("ko-KR") : ""} onChange={e => updAmt(i, e.target.value)} style={{paddingRight:18}} placeholder="0" />
-                <span style={{position:"absolute",right:8,top:"50%",transform:"translateY(-50%)",fontSize:10,color:"var(--ink-30)"}}>원</span>
-              </div>
-              <button onClick={() => remove(i)} style={{background:"none",border:"none",color:"var(--red)",fontSize:16,cursor:"pointer",padding:"0 4px",flexShrink:0}}>×</button>
-            </div>
-          ))}
-          <button className="btn btn-secondary btn-sm" onClick={addRow}>+ 항목 추가</button>
-        </div>
-        <div className="modal-f">
-          <button className="btn btn-secondary" onClick={onClose} disabled={saving}>닫기</button>
-          <button className="btn btn-primary" disabled={saving} onClick={handleSave}>{saving ? "저장 중…" : "저장"}</button>
-        </div>
       </div>
     </div>
   );
@@ -447,7 +369,6 @@ export function StudentDetailModal({ student: s, teachers, currentUser, categori
   const [showNoteAll, setShowNoteAll] = useState(false);
   const [showPw, setShowPw] = useState(false);
   const [copyMsg, setCopyMsg] = useState("");
-  const [chargeModal, setChargeModal] = useState(false);
   const rentalOptions = Object.entries(feePresets || {}).filter(([k]) => k.startsWith("rental:"));
   const canManageRental = canManageAll(currentUser.role) || currentUser.role === "teacher";
   const pw = getBirthPassword(s.birthDate);
@@ -647,29 +568,9 @@ export function StudentDetailModal({ student: s, teachers, currentUser, categori
           </div>
         )}
 
-        {/* 비용 청구 요청 — 강사만 */}
-        {onSaveStudent && currentUser.role === "teacher" && (
-          <div style={{padding:"10px 20px 0"}}>
-            <button className="btn btn-secondary btn-sm" style={{width:"100%",marginBottom:4}} onClick={() => setChargeModal(true)}>
-              + 비용 청구 요청
-            </button>
-            {(s.pendingOneTimeCharges||[]).length > 0 && (
-              <div style={{fontSize:11,color:"var(--gold-dk)",background:"var(--gold-lt)",borderRadius:8,padding:"6px 10px",marginBottom:4}}>
-                승인 대기 {(s.pendingOneTimeCharges||[]).length}건: {(s.pendingOneTimeCharges||[]).map(c => `${c.title||c.type} ${(c.amount||0).toLocaleString()}원`).join(" · ")}
-              </div>
-            )}
-          </div>
-        )}
         <DeleteConfirmFooter label={`${s.name} 회원`} canDelete={canManageAll(currentUser.role)} onDelete={onDelete} onClose={onClose} onEdit={onEdit} />
       </div>
     </div>
-    {chargeModal && (
-      <ChargeRequestModal
-        student={s}
-        onClose={() => setChargeModal(false)}
-        onSave={async (updated) => { await onSaveStudent(updated); setChargeModal(false); }}
-      />
-    )}
     </>
   );
 }
