@@ -178,7 +178,7 @@ function ScheduleView({ students, teachers, currentUser, attendance, onSaveAtten
         <div style={{fontSize:12,color:"var(--ink-60)",marginBottom:12,textAlign:"center",fontWeight:500}}>{weekLabel}</div>
         {weekDates.map(({ dayName, date, d }) => {
           const isToday = date === TODAY_STR;
-          const lessons = scheduleByDay[dayName] || [];
+          const lessons = d.getDate() >= 29 ? [] : (scheduleByDay[dayName] || []);
           const makeups = getMakeups(date);
           const dayNotices = getNoticesForDate(date);
           const all = [...lessons, ...makeups].sort((a, b) => (a.time||"").localeCompare(b.time||""));
@@ -367,7 +367,7 @@ function ScheduleView({ students, teachers, currentUser, attendance, onSaveAtten
           const isToday = dateStr === TODAY_STR;
           const isThisMonth = d.getMonth() === viewMonth;
           const dayName = DAYS[d.getDay()===0?6:d.getDay()-1];
-          const count = (scheduleByDay[dayName]||[]).length + getMakeups(dateStr).length;
+          const count = (d.getDate() >= 29 ? 0 : (scheduleByDay[dayName]||[]).length) + getMakeups(dateStr).length;
           const cellNotices = getNoticesForDate(dateStr);
           const isSelected = dayDetail === dateStr;
           return (

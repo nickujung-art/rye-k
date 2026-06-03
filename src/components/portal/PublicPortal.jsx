@@ -908,6 +908,7 @@ export function PublicParentView() {
     for (let i = 0; i <= 7; i++) {
       const d = new Date(now);
       d.setDate(d.getDate() + i);
+      if (d.getDate() >= 29) continue;
       const dayName = ["일","월","화","수","목","금","토"][d.getDay()];
       const lessons = (student.lessons || []).filter(l => (l.schedule || []).some(sc => sc.day === dayName));
       if (lessons.length === 0) continue;
@@ -936,6 +937,7 @@ export function PublicParentView() {
     for (let i = 0; i <= 6; i++) {
       const d = new Date();
       d.setDate(d.getDate() + i);
+      if (d.getDate() >= 29) continue;
       const dayName = ["일","월","화","수","목","금","토"][d.getDay()];
       (student.lessons || []).forEach(l => {
         (l.schedule || []).filter(sc => sc.day === dayName).forEach(sc => {
