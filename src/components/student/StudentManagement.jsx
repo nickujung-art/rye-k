@@ -97,8 +97,8 @@ export function LessonEditor({ lessons, onChange, categories, teachers, feePrese
 // ── STUDENT FORM ──────────────────────────────────────────────────────────────
 export function StudentFormModal({ student, teachers, currentUser, categories, feePresets, onClose, onSave }) {
   const [form, setForm] = useState(student
-    ? { ...student, instrumentRental: student.instrumentRental ?? false, rentalType: student.rentalType ?? "", rentalFee: student.rentalFee ?? 0, pendingOneTimeCharges: student.pendingOneTimeCharges ?? [] }
-    : { name: "", birthDate: "", startDate: TODAY_STR, phone: "", guardianPhone: "", teacherId: currentUser.role === "teacher" ? currentUser.id : "", lessons: [], photo: "", notes: "", monthlyFee: 0, status: "active", instrumentRental: false, rentalType: "", rentalFee: 0, pendingOneTimeCharges: [] });
+    ? { ...student, instrumentRental: student.instrumentRental ?? false, rentalType: student.rentalType ?? "", rentalFee: student.rentalFee ?? 0, pendingOneTimeCharges: student.pendingOneTimeCharges ?? [], guardianName: student.guardianName ?? "" }
+    : { name: "", birthDate: "", startDate: TODAY_STR, phone: "", guardianPhone: "", guardianName: "", teacherId: currentUser.role === "teacher" ? currentUser.id : "", lessons: [], photo: "", notes: "", monthlyFee: 0, status: "active", instrumentRental: false, rentalType: "", rentalFee: 0, pendingOneTimeCharges: [] });
   const [err, setErr] = useState("");
   const [confirming, setConfirming] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -162,6 +162,18 @@ export function StudentFormModal({ student, teachers, currentUser, categories, f
             <div className="fg">
               <label className="fg-label">보호자 연락처{minor && <span className="req"> *</span>}{form.birthDate && <span style={{ fontWeight: 400, color: "var(--ink-30)", textTransform: "none", letterSpacing: 0 }}> ({minor ? "미성년자" : "성인"})</span>}</label>
               <input className="inp" value={form.guardianPhone} onChange={e => set("guardianPhone", fmtPhone(e.target.value))} placeholder="010-0000-0000" maxLength={13} />
+            </div>
+          )}
+          {canManageAll(currentUser.role) && (
+            <div className="fg">
+              <label className="fg-label">보호자 이름</label>
+              <input
+                className="inp"
+                value={form.guardianName}
+                onChange={e => set("guardianName", e.target.value)}
+                placeholder="홍길동"
+                maxLength={20}
+              />
             </div>
           )}
           {(() => {
