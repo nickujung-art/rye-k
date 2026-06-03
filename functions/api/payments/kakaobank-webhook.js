@@ -141,7 +141,7 @@ async function handlePost(request, env) {
     confidence,
   };
 
-  if (match && (confidence === "exact" || confidence === "fuzzy_1")) {
+  if (match && (confidence === "exact" || confidence === "fuzzy_1" || confidence === "guardian_exact" || confidence === "guardian_fuzzy")) {
     // Auto-matched — store in KV as pending with studentId for browser to confirm
     record.matchedStudentId = match.id;
     record.matchedAt = now;
@@ -305,19 +305,32 @@ function splitNameCandidates(name) {
 function fuzzyMatchStudent(inputName, students) {
   const active = students.filter(s => !s.isInstitution && (s.status || "active") === "active");
 
-  // 1. Exact match
+  // 1. Exact match on student name
   const exact = active.filter(s => s.name === inputName);
   if (exact.length === 1) return { match: exact[0], confidence: "exact" };
   if (exact.length > 1)   return { match: null,     confidence: "duplicate_exact" };
 
-  // 2. Levenshtein 1 — single closest match
+  // 2. Levenshtein ≤ 1 on student name
   const close = active
     .map(s => ({ s, dist: levenshtein(inputName, s.name) }))
     .filter(({ dist }) => dist <= 1)
     .sort((a, b) => a.dist - b.dist);
-
   if (close.length === 1) return { match: close[0].s, confidence: "fuzzy_1" };
   if (close.length > 1)   return { match: null,       confidence: "duplicate_fuzzy" };
+
+  // 3. Exact match on guardianName
+  const guardianExact = active.filter(s => s.guardianName && s.guardianName === inputName);
+  if (guardianExact.length === 1) return { match: guardianExact[0], confidence: "guardian_exact" };
+  if (guardianExact.length > 1)   return { match: null,             confidence: "duplicate_guardian" };
+
+  // 4. Levenshtein ≤ 1 on guardianName
+  const guardianClose = active
+    .filter(s => s.guardianName && s.guardianName.length >= 2)
+    .map(s => ({ s, dist: levenshtein(inputName, s.guardianName) }))
+    .filter(({ dist }) => dist <= 1)
+    .sort((a, b) => a.dist - b.dist);
+  if (guardianClose.length === 1) return { match: guardianClose[0].s, confidence: "guardian_fuzzy" };
+  if (guardianClose.length > 1)   return { match: null,               confidence: "duplicate_guardian_fuzzy" };
 
   return { match: null, confidence: "no_match" };
 }
