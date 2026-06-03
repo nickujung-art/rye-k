@@ -427,6 +427,24 @@ input[type="date"]::-webkit-date-and-time-value{text-align:left}
   .info-grid{grid-template-columns:1fr}
   .pay-summary-grid{grid-template-columns:repeat(3,1fr)}
   .tbl-hide-mobile{display:none}
+
+  /* 출석 체크 — 버튼 전폭 2행 배치 (이름 잘림 방지) */
+  .att-btns{width:100%;margin-left:0;margin-top:8px}
+  .att-btn{flex:1;min-width:0}
+
+  /* 수납 요약 카드 — 좁은 화면 오버플로우 방지 */
+  .pay-summary-card{padding:8px}
+  .pay-summary-num{font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+  /* 미매칭 입금 카드 — 매칭 패널 세로 스택 */
+  .unmatched-card{flex-direction:column}
+  .unmatched-card>div:last-child{width:100%;max-width:100%}
+
+  /* 페이지 헤더 — 버튼 줄바꿈 시 h1 상단 정렬 */
+  .ph{align-items:flex-start}
+
+  /* 소형 버튼 터치 타깃 향상 (최소 36px 높이) */
+  .btn-xs{min-height:36px}
 }
 
 /* ── Dark Mode ──────────────────────────────────────────── */
