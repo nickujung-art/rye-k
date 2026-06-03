@@ -1384,8 +1384,24 @@ function UnmatchedPaymentsTab({
                 </div>
                 <div style={{fontSize:11,color:"var(--ink-30)"}}>
                   {u.timestamp ? new Date(u.timestamp).toLocaleString("ko-KR", {month:"numeric",day:"numeric",hour:"2-digit",minute:"2-digit"}) : ""}
-                  {u.rawText ? ` · ${u.rawText.slice(0, 30)}` : ""}
                 </div>
+                {u.rawText && (
+                  <div style={{
+                    fontSize: 11,
+                    color: "var(--ink-40)",
+                    background: "var(--ink-5, #f5f5f5)",
+                    borderRadius: 6,
+                    padding: "4px 8px",
+                    marginTop: 4,
+                    marginBottom: 6,
+                    fontFamily: "monospace",
+                    wordBreak: "break-all",
+                    maxHeight: 48,
+                    overflow: "hidden",
+                  }}>
+                    {u.rawText.slice(0, 120)}{u.rawText.length > 120 ? "…" : ""}
+                  </div>
+                )}
               </div>
               <div style={{display:"flex",flexDirection:"column",gap:6,width:148,flexShrink:0}}>
                 <select
