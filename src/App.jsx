@@ -1180,7 +1180,7 @@ function MainApp() {
               feePresets={feePresets}
               instantCharges={instantCharges}
             />}
-            {view === "students" && <StudentsView students={filtered} allStudents={visible} teachers={teachers} categories={categories} filter={filter} setFilter={setFilter} search={search} setSearch={setSearch} onAdd={() => { setSelected(null); setModal("sForm"); }} onSelect={s => { setSelected(s); setModal("sDetail"); }} currentUser={user} onBulkFeeUpdate={async (updatedStudents) => { await batchStudentDocs(updatedStudents); addLog("수강료 일괄 설정"); showToast("수강료가 일괄 변경되었습니다."); }} payments={payments} />}
+            {view === "students" && <StudentsView students={filtered} allStudents={visible} teachers={teachers} categories={categories} filter={filter} setFilter={setFilter} search={search} setSearch={setSearch} onAdd={() => { setSelected(null); setModal("sForm"); }} onSelect={s => { setSelected(s); setModal("sDetail"); }} currentUser={user} payments={payments} />}
             {view === "attendance" && <AttendanceView students={allMembers} teachers={teachers} currentUser={user} attendance={attendance} onSaveAttendance={async (upd) => { await saveAttendance(upd); }} categories={categories} scheduleOverrides={scheduleOverrides} onSaveScheduleOverride={saveScheduleOverrides} onUpdateStudent={async (s) => { await updateStudentDoc(s); }} showToast={showToast} />}
             {view === "payments" && <PaymentsView students={allMembers} teachers={teachers} currentUser={user} payments={payments} attendance={attendance} onSavePayments={async (upd) => { await savePayments(upd); showToast("수납 정보가 저장되었습니다."); }} onSaveStudents={async (upd) => {
                 // inst 가상회원 제외 후 트랜잭션으로 개별 업데이트
@@ -1263,37 +1263,6 @@ function MainApp() {
               onSave={async c => { await saveCategories(c); addLog("과목 카테고리 수정"); showToast("저장되었습니다."); }}
               feePresets={feePresets}
               onSaveFees={async f => { setFeePresets(f); try { await sSet("rye-fee-presets", f); showToast("저장되었습니다."); } catch { showToast("저장에 실패했습니다. 네트워크를 확인해주세요.", true); } }}
-              onMigrateFeeSplit={async () => {
-                const targets = students.filter(s =>
-                  !s.isInstitution &&
-                  (s.status === "active" || s.status === "paused") &&
-                  (s.lessons || []).length > 0
-                );
-                const toUpdate = [];
-                let skipped = 0;
-                for (const s of targets) {
-                  const lessons = s.lessons || [];
-                  const legacyPerLesson = Math.round((s.monthlyFee || 0) / lessons.length);
-                  const updatedLessons = lessons.map(l => ({
-                    ...l,
-                    fee: l.fee != null && l.fee > 0
-                      ? l.fee
-                      : calcLessonFeeWithFallback(l, feePresets, legacyPerLesson),
-                  }));
-                  const changed = updatedLessons.some((ul, i) => ul.fee !== (lessons[i].fee ?? 0));
-                  if (changed) {
-                    toUpdate.push({ ...s, lessons: updatedLessons });
-                  } else {
-                    skipped++;
-                  }
-                }
-                if (toUpdate.length > 0) {
-                  await batchStudentDocs(toUpdate);
-                  addLog(`수강료 마이그레이션 완료 — ${toUpdate.length}명 업데이트`);
-                  showToast(`${toUpdate.length}명 수강료 마이그레이션 완료`);
-                }
-                return { updated: toUpdate.length, skipped };
-              }}
             />}
             {view === "analytics" && user.role === "admin" && <AnalyticsView students={students} teachers={teachers} attendance={attendance} payments={payments} categories={categories} institutions={institutions} />}
             {view === "profile" && <ProfileView currentUser={user} teachers={teachers} students={visible} categories={categories} onProfileSave={async form => { const upd = teachers.map(t => t.id === user.id ? { ...t, ...form } : t); await saveTeachers(upd); setUserPersist({ ...user, name: form.name || user.name }); addLog("프로필 수정"); showToast("프로필이 수정되었습니다."); }} />}

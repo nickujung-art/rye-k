@@ -575,168 +575,6 @@ export function StudentDetailModal({ student: s, teachers, currentUser, categori
   );
 }
 
-// ── BULK FEE MODAL ────────────────────────────────────────────────────────────
-export function BulkFeeModal({ allStudents, teachers, categories, onClose, onApply }) {
-  const [filterTeacher, setFilterTeacher] = useState("all");
-  const [filterInst, setFilterInst] = useState("all");
-  const [filterStatus, setFilterStatus] = useState("active");
-  const [mode, setMode] = useState("set"); // "set" | "add" | "sub"
-  const [amount, setAmount] = useState("");
-  const [applying, setApplying] = useState(false);
-
-  const allInstruments = Array.from(new Set(
-    allStudents.flatMap(s => (s.lessons||[]).map(l => l.instrument))
-  )).sort();
-
-  const baseList = allStudents.filter(s => {
-    if (filterStatus !== "all" && (s.status||"active") !== filterStatus) return false;
-    if (filterTeacher !== "all" && s.teacherId !== filterTeacher && !(s.lessons||[]).some(l=>l.teacherId===filterTeacher)) return false;
-    if (filterInst !== "all" && !(s.lessons||[]).some(l=>l.instrument===filterInst)) return false;
-    return true;
-  });
-
-  const calcNew = (cur) => {
-    const n = parseInt((amount||"0").replace(/[^\d]/g,"")) || 0;
-    if (mode === "set") return n;
-    if (mode === "add") return (cur||0) + n;
-    if (mode === "sub") return Math.max(0, (cur||0) - n);
-    return cur||0;
-  };
-
-  const changedCount = baseList.filter(s => calcNew(s.monthlyFee) !== (s.monthlyFee||0)).length;
-
-  const handleApply = async () => {
-    if (!amount) return;
-    setApplying(true);
-    try {
-      const updated = allStudents.map(s => {
-        if (s.isInstitution) return s;
-        if (!baseList.find(b => b.id === s.id)) return s;
-        return { ...s, monthlyFee: calcNew(s.monthlyFee) };
-      });
-      await onApply(updated);
-      onClose();
-    } catch {
-      // onApply 실패 시 모달 닫지 않음 (사용자가 재시도 가능)
-    } finally {
-      setApplying(false);
-    }
-  };
-
-  return (
-    <div className="bf-overlay">
-      <div className="bf-header">
-        <button className="topbar-btn" onClick={onClose}>{IC.x}</button>
-        <h2>수강료 일괄 설정</h2>
-        <span style={{fontSize:12,color:"var(--ink-30)"}}>관리자 전용</span>
-      </div>
-      <div className="bf-body">
-        {/* 필터 */}
-        <div style={{fontSize:11,color:"var(--ink-30)",fontWeight:600,letterSpacing:.5,marginBottom:6,textTransform:"uppercase"}}>필터</div>
-        <div className="bf-filters">
-          <select className="sel" style={{fontSize:12,padding:"6px 10px"}} value={filterStatus} onChange={e=>setFilterStatus(e.target.value)}>
-            <option value="active">재원생</option>
-            <option value="paused">휴원생</option>
-            <option value="all">전체 상태</option>
-          </select>
-          <select className="sel" style={{fontSize:12,padding:"6px 10px"}} value={filterTeacher} onChange={e=>setFilterTeacher(e.target.value)}>
-            <option value="all">전체 강사</option>
-            {teachers.map(t=><option key={t.id} value={t.id}>{t.name}</option>)}
-          </select>
-          <select className="sel" style={{fontSize:12,padding:"6px 10px"}} value={filterInst} onChange={e=>setFilterInst(e.target.value)}>
-            <option value="all">전체 과목</option>
-            {allInstruments.map(i=><option key={i} value={i}>{i}</option>)}
-          </select>
-        </div>
-        <div style={{fontSize:12,color:"var(--ink-60)",marginBottom:14}}>
-          조건에 해당하는 회원: <strong style={{color:"var(--ink)"}}>{baseList.length}명</strong>
-        </div>
-
-        {/* 변경 방식 */}
-        <div style={{fontSize:11,color:"var(--ink-30)",fontWeight:600,letterSpacing:.5,marginBottom:6,textTransform:"uppercase"}}>변경 방식</div>
-        <div className="bf-mode-row">
-          {[{k:"set",l:"금액 지정"},{k:"add",l:"금액 인상 (+)"},{k:"sub",l:"금액 인하 (-)"}].map(m=>(
-            <button key={m.k} className={`bf-mode-btn ${mode===m.k?"active":""}`} onClick={()=>setMode(m.k)}>{m.l}</button>
-          ))}
-        </div>
-        <div className="bf-amount-row">
-          <span style={{fontSize:12.5,color:"var(--ink-60)",fontWeight:500}}>
-            {mode==="set"?"변경할 금액":mode==="add"?"인상 금액":"인하 금액"}
-          </span>
-          <div style={{position:"relative"}}>
-            <input
-              className="inp"
-              inputMode="numeric"
-              style={{maxWidth:160,paddingRight:28}}
-              value={amount}
-              onChange={e=>setAmount(e.target.value.replace(/[^\d]/g,""))}
-              placeholder="0"
-            />
-            <span style={{position:"absolute",right:10,top:"50%",transform:"translateY(-50%)",fontSize:12,color:"var(--ink-30)"}}>원</span>
-          </div>
-          {amount && <span style={{fontSize:12.5,color:"var(--blue)",fontWeight:600}}>{parseInt(amount).toLocaleString("ko-KR")}원</span>}
-        </div>
-
-        {/* 미리보기 테이블 */}
-        {baseList.length > 0 && amount ? (
-          <>
-            <div style={{fontSize:11,color:"var(--ink-30)",fontWeight:600,letterSpacing:.5,marginBottom:8,textTransform:"uppercase"}}>
-              변경 미리보기 <span style={{color:"var(--blue)",fontWeight:700}}>{changedCount}명 변경</span>
-            </div>
-            <div className="bf-table-wrap">
-              <table className="bf-table">
-                <thead>
-                  <tr>
-                    <th>이름</th>
-                    <th>강사</th>
-                    <th>변경 전</th>
-                    <th>변경 후</th>
-                    <th>차이</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {baseList.map(s => {
-                    const cur = s.monthlyFee || 0;
-                    const next = calcNew(cur);
-                    const diff = next - cur;
-                    const t = teachers.find(t=>t.id===s.teacherId);
-                    return (
-                      <tr key={s.id}>
-                        <td style={{fontWeight:500}}>{s.name}</td>
-                        <td style={{color:"var(--ink-60)"}}>{t?.name||"-"}</td>
-                        <td style={{color:"var(--ink-60)"}}>{cur.toLocaleString("ko-KR")}원</td>
-                        <td style={{fontWeight:600,color:diff!==0?"var(--blue)":"var(--ink-30)"}}>{next.toLocaleString("ko-KR")}원</td>
-                        <td className={diff>0?"bf-diff-plus":diff<0?"bf-diff-minus":"bf-diff-none"}>
-                          {diff>0?`+${diff.toLocaleString("ko-KR")}`:diff<0?diff.toLocaleString("ko-KR"):"변동없음"}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </>
-        ) : (
-          <div className="empty" style={{padding:"32px 0"}}>
-            <div className="empty-icon">₩</div>
-            <div className="empty-txt">{!amount ? "변경 금액을 입력하세요." : "조건에 맞는 회원이 없습니다."}</div>
-          </div>
-        )}
-      </div>
-      <div className="bf-footer">
-        <button className="btn btn-secondary btn-full" onClick={onClose}>취소</button>
-        <button
-          className="btn btn-primary btn-full"
-          disabled={!amount || changedCount===0 || applying}
-          onClick={handleApply}
-          style={{fontWeight:600}}
-        >
-          {applying ? "적용 중…" : `최종 적용 (${changedCount}명)`}
-        </button>
-      </div>
-    </div>
-  );
-}
 
 // ── STUDENT CARD & VIEW ───────────────────────────────────────────────────────
 function StudentCard({ student: s, teachers, categories, onClick, payStatus }) {
@@ -771,9 +609,8 @@ function StudentCard({ student: s, teachers, categories, onClick, payStatus }) {
   );
 }
 
-export function StudentsView({ students, allStudents, teachers, categories, filter, setFilter, search, setSearch, onAdd, onSelect, currentUser, onBulkFeeUpdate, payments = [] }) {
+export function StudentsView({ students, allStudents, teachers, categories, filter, setFilter, search, setSearch, onAdd, onSelect, currentUser, payments = [] }) {
   const [statusFilter, setStatusFilter] = useState("active");
-  const [showBulkFee, setShowBulkFee] = useState(false);
   const cats = ["전체", ...Object.keys(categories)];
   const statusFiltered = statusFilter === "all" ? students : students.filter(s => (s.status || "active") === statusFilter);
   const showPay = canManageAll(currentUser?.role);
@@ -791,23 +628,9 @@ export function StudentsView({ students, allStudents, teachers, categories, filt
   const withdrawnCount = students.filter(s => s.status === "withdrawn").length;
   return (
     <div>
-      {showBulkFee && (
-        <BulkFeeModal
-          allStudents={allStudents}
-          teachers={teachers}
-          categories={categories}
-          onClose={() => setShowBulkFee(false)}
-          onApply={async (updated) => { await onBulkFeeUpdate(updated); }}
-        />
-      )}
       <div className="ph">
         <div><h1>회원 관리</h1><div className="ph-sub">재원 {activeCount}명{pausedCount > 0 && ` · 휴원 ${pausedCount}`}{withdrawnCount > 0 && ` · 퇴원 ${withdrawnCount}`}</div></div>
         <div style={{display:"flex",gap:8,alignItems:"center",flexShrink:0}}>
-          {currentUser && canManageAll(currentUser.role) && (
-            <button className="btn btn-gold btn-sm" onClick={() => setShowBulkFee(true)}>
-              ₩ 일괄 설정
-            </button>
-          )}
           <button className="btn btn-primary btn-sm" onClick={onAdd} style={{display:"flex",alignItems:"center",gap:4}}>{IC.plus}<span>추가</span></button>
         </div>
       </div>

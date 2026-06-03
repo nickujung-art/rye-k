@@ -275,13 +275,14 @@ export function PendingView({ pending, teachers, categories, onApprove, onReject
 }
 
 // ── CATEGORIES VIEW ───────────────────────────────────────────────────────────
-export function CategoriesView({ categories, onSave, feePresets, onSaveFees, onMigrateFeeSplit }) {
+export function CategoriesView({ categories, onSave, feePresets, onSaveFees }) {
   const [cats, setCats] = useState(JSON.parse(JSON.stringify(categories)));
   const [catOrder, setCatOrder] = useState(() => Object.keys(categories).sort((a, b) => a.localeCompare(b, "ko")));
   const [fees, setFees] = useState({ ...(feePresets || {}) });
   const [newCat, setNewCat] = useState("");
   const [newInst, setNewInst] = useState({});
   const [dirty, setDirty] = useState(false);
+  const [sortMode, setSortMode] = useState(false);
   const [newRentalName, setNewRentalName] = useState("");
   const [newRentalFee, setNewRentalFee] = useState("");
   // 인플레이스 에디팅 상태
@@ -296,10 +297,6 @@ export function CategoriesView({ categories, onSave, feePresets, onSaveFees, onM
   // 삭제 확인 상태
   const [confirmCat, setConfirmCat] = useState(null);
   const [confirmInst, setConfirmInst] = useState(null); // {cat, inst}
-  // 마이그레이션 상태
-  const [migrateConfirm, setMigrateConfirm] = useState(false);
-  const [migrating, setMigrating] = useState(false);
-  const [migrateResult, setMigrateResult] = useState(null); // null | { updated: number, skipped: number }
   const showErr = (msg) => { setErrMsg(msg); setTimeout(() => setErrMsg(""), 2500); };
 
   const flashSaved = (msg = "저장됨 ✓") => { setSavedFlash(msg); setTimeout(() => setSavedFlash(""), 1800); };
@@ -420,9 +417,16 @@ export function CategoriesView({ categories, onSave, feePresets, onSaveFees, onM
     <div>
       <div className="ph">
         <div><h1>과목 관리</h1><div className="ph-sub">관리자 전용</div></div>
-        <div style={{display:"flex",alignItems:"center",gap:10}}>
+        <div style={{display:"flex",alignItems:"center",gap:8}}>
           {savedFlash && <span style={{fontSize:12,color:"var(--green)",fontWeight:600}}>{savedFlash}</span>}
-          {dirty && <button className="btn btn-primary btn-sm" onClick={handleSaveAll}>저장</button>}
+          {sortMode ? (
+            <button className="btn btn-primary btn-sm" onClick={() => { handleSaveAll(); setSortMode(false); }}>저장</button>
+          ) : (
+            <>
+              <button className="btn btn-secondary btn-sm" onClick={() => setSortMode(true)}>순서 편집</button>
+              {dirty && <button className="btn btn-primary btn-sm" onClick={handleSaveAll}>저장</button>}
+            </>
+          )}
         </div>
       </div>
       {errMsg && <div style={{margin:"0 0 10px",padding:"10px 14px",background:"var(--red-lt)",border:"1px solid rgba(232,40,28,.2)",borderRadius:8,fontSize:13,color:"var(--red)",fontWeight:500}}>⚠ {errMsg}</div>}
@@ -436,10 +440,10 @@ export function CategoriesView({ categories, onSave, feePresets, onSaveFees, onM
           <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom: 10 }}>
             <div style={{ display:"flex", alignItems:"center", gap:6, flex:1 }}>
               {/* 카테고리 순서 버튼 */}
-              <div style={{display:"flex",flexDirection:"column",gap:1,flexShrink:0}}>
+              {sortMode && <div style={{display:"flex",flexDirection:"column",gap:1,flexShrink:0}}>
                 <button style={{background:"none",border:"none",cursor:catIdx===0?"default":"pointer",fontSize:10,padding:"0 3px",color:catIdx===0?"var(--ink-10)":"var(--ink-40)",lineHeight:1}} disabled={catIdx===0} onClick={()=>moveCatUp(cat)}>▲</button>
                 <button style={{background:"none",border:"none",cursor:catIdx===catOrder.length-1?"default":"pointer",fontSize:10,padding:"0 3px",color:catIdx===catOrder.length-1?"var(--ink-10)":"var(--ink-40)",lineHeight:1}} disabled={catIdx===catOrder.length-1} onClick={()=>moveCatDown(cat)}>▼</button>
-              </div>
+              </div>}
               <span style={{ width:3, height:13, background:"linear-gradient(180deg,var(--blue),var(--gold))", display:"inline-block", borderRadius:2 }} />
               {editingCat === cat ? (
                 <div style={{display:"flex",alignItems:"center",gap:6,flex:1}}>
@@ -480,10 +484,10 @@ export function CategoriesView({ categories, onSave, feePresets, onSaveFees, onM
             return (
               <div key={inst} style={{ display:"flex", alignItems:"center", gap:6, marginBottom:5 }}>
                 {/* 과목 순서 버튼 */}
-                <div style={{display:"flex",flexDirection:"column",gap:1,flexShrink:0}}>
+                {sortMode && <div style={{display:"flex",flexDirection:"column",gap:1,flexShrink:0}}>
                   <button style={{background:"none",border:"none",cursor:instIdx===0?"default":"pointer",fontSize:9,padding:"0 3px",color:instIdx===0?"var(--ink-10)":"var(--ink-40)",lineHeight:1}} disabled={instIdx===0} onClick={()=>moveInstUp(cat,instIdx)}>▲</button>
                   <button style={{background:"none",border:"none",cursor:instIdx===insts.length-1?"default":"pointer",fontSize:9,padding:"0 3px",color:instIdx===insts.length-1?"var(--ink-10)":"var(--ink-40)",lineHeight:1}} disabled={instIdx===insts.length-1} onClick={()=>moveInstDown(cat,instIdx)}>▼</button>
-                </div>
+                </div>}
                 <div style={{ display:"flex", alignItems:"center", gap:4, background:"var(--blue-lt)", padding:"5px 10px", border:"1px solid rgba(43,58,159,.15)", borderRadius:6, flex:1 }}>
                   {isEditingThis ? (
                     <div style={{display:"flex",alignItems:"center",gap:4,flex:1}}>
@@ -594,65 +598,6 @@ export function CategoriesView({ categories, onSave, feePresets, onSaveFees, onM
         </div>
       </div>
 
-      {/* ── 수강료 마이그레이션 (Admin 전용) ── */}
-      {onMigrateFeeSplit && (
-        <div style={{ marginTop: 24, padding: "14px 16px", background: "var(--gold-lt)", border: "1.5px solid rgba(245,168,0,.3)", borderRadius: 12 }}>
-          <div style={{ fontWeight: 700, fontSize: 13, color: "var(--gold-dk)", marginBottom: 4 }}>레슨별 수강료 마이그레이션</div>
-          <div style={{ fontSize: 12, color: "var(--ink-60)", marginBottom: 10, lineHeight: 1.6 }}>
-            기존 학생의 <code>monthlyFee</code>를 각 레슨의 <code>fee</code>로 분리합니다.
-            feePresets에 등록된 악기는 해당 금액, 없으면 monthlyFee를 레슨 수로 균등 분배합니다.
-            이미 fee가 설정된 레슨은 건너뜁니다.
-          </div>
-          {migrateResult && (
-            <div style={{ fontSize: 12, color: migrateResult.error ? "var(--red)" : "var(--green)", fontWeight: 600, marginBottom: 8 }}>
-              {migrateResult.error
-                ? `오류: ${migrateResult.error}`
-                : `완료: ${migrateResult.updated}명 업데이트, ${migrateResult.skipped}명 건너뜀`}
-            </div>
-          )}
-          {!migrateConfirm ? (
-            <button
-              className="btn btn-secondary btn-sm"
-              onClick={() => { setMigrateConfirm(true); setMigrateResult(null); }}
-              disabled={migrating}
-            >
-              수강료 마이그레이션 실행
-            </button>
-          ) : (
-            <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-              <span style={{ fontSize: 12, color: "var(--red)", fontWeight: 600 }}>
-                재원·휴원 학생 전체에 적용됩니다. 계속하시겠습니까?
-              </span>
-              <button
-                className="btn btn-sm"
-                style={{ background: "var(--green)", color: "#fff", border: "none" }}
-                onClick={async () => {
-                  setMigrating(true);
-                  try {
-                    const result = await onMigrateFeeSplit();
-                    setMigrateResult(result);
-                  } catch (e) {
-                    setMigrateResult({ updated: 0, skipped: 0, error: e.message });
-                  } finally {
-                    setMigrating(false);
-                    setMigrateConfirm(false);
-                  }
-                }}
-                disabled={migrating}
-              >
-                {migrating ? "실행 중…" : "확인 — 실행"}
-              </button>
-              <button
-                className="btn btn-secondary btn-sm"
-                onClick={() => setMigrateConfirm(false)}
-                disabled={migrating}
-              >
-                취소
-              </button>
-            </div>
-          )}
-        </div>
-      )}
     </div>
   );
 }
@@ -708,6 +653,7 @@ export function ShopView({ shopItems, onSave }) {
   const [newCat, setNewCat] = useState("");
   const [newItem, setNewItem] = useState({ category: "", name: "", defaultPrice: "" });
   const [dirty, setDirty] = useState(false);
+  const [sortMode, setSortMode] = useState(false);
   const [savedFlash, setSavedFlash] = useState("");
   const [errMsg, setErrMsg] = useState("");
   const [confirmCat, setConfirmCat] = useState(null);
@@ -777,9 +723,16 @@ export function ShopView({ shopItems, onSave }) {
     <div>
       <div className="ph">
         <div><h1>상품 관리</h1><div className="ph-sub">관리자 전용</div></div>
-        <div style={{display:"flex",alignItems:"center",gap:10}}>
+        <div style={{display:"flex",alignItems:"center",gap:8}}>
           {savedFlash && <span style={{fontSize:12,color:"var(--green)",fontWeight:600}}>{savedFlash}</span>}
-          {dirty && <button className="btn btn-primary btn-sm" onClick={handleSave}>저장</button>}
+          {sortMode ? (
+            <button className="btn btn-primary btn-sm" onClick={() => { handleSave(); setSortMode(false); }}>저장</button>
+          ) : (
+            <>
+              <button className="btn btn-secondary btn-sm" onClick={() => setSortMode(true)}>순서 편집</button>
+              {dirty && <button className="btn btn-primary btn-sm" onClick={handleSave}>저장</button>}
+            </>
+          )}
         </div>
       </div>
       {errMsg && <div style={{margin:"0 0 10px",padding:"10px 14px",background:"var(--red-lt)",border:"1px solid rgba(232,40,28,.2)",borderRadius:8,fontSize:13,color:"var(--red)",fontWeight:500}}>⚠ {errMsg}</div>}
@@ -791,10 +744,10 @@ export function ShopView({ shopItems, onSave }) {
           <div key={cat} className="card" style={{marginBottom:10,padding:16}}>
             <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
               <div style={{display:"flex",alignItems:"center",gap:6}}>
-                <div style={{display:"flex",flexDirection:"column",gap:1,flexShrink:0}}>
+                {sortMode && <div style={{display:"flex",flexDirection:"column",gap:1,flexShrink:0}}>
                   <button style={{background:"none",border:"none",cursor:catIdx===0?"default":"pointer",fontSize:10,padding:"0 3px",color:catIdx===0?"var(--ink-10)":"var(--ink-40)",lineHeight:1}} disabled={catIdx===0} onClick={()=>moveCatUp(catIdx)}>▲</button>
                   <button style={{background:"none",border:"none",cursor:catIdx===shopCats.length-1?"default":"pointer",fontSize:10,padding:"0 3px",color:catIdx===shopCats.length-1?"var(--ink-10)":"var(--ink-40)",lineHeight:1}} disabled={catIdx===shopCats.length-1} onClick={()=>moveCatDown(catIdx)}>▼</button>
-                </div>
+                </div>}
                 <span style={{width:3,height:13,background:"linear-gradient(180deg,var(--blue),var(--gold))",display:"inline-block",borderRadius:2}} />
                 <span style={{fontFamily:"'Noto Serif KR',serif",fontSize:14,fontWeight:600}}>{cat}</span>
                 <span className="cat-count">{catItems.length}</span>
@@ -815,10 +768,10 @@ export function ShopView({ shopItems, onSave }) {
               <div style={{marginBottom:10}}>
                 {catItems.map((item, itemIdx) => (
                   <div key={item.id} style={{display:"flex",alignItems:"center",gap:8,padding:"6px 0",borderBottom:"1px solid var(--border)"}}>
-                    <div style={{display:"flex",flexDirection:"column",gap:1,flexShrink:0}}>
+                    {sortMode && <div style={{display:"flex",flexDirection:"column",gap:1,flexShrink:0}}>
                       <button style={{background:"none",border:"none",cursor:itemIdx===0?"default":"pointer",fontSize:9,padding:"0 3px",color:itemIdx===0?"var(--ink-10)":"var(--ink-40)",lineHeight:1}} disabled={itemIdx===0} onClick={()=>moveItemUp(cat,item.id)}>▲</button>
                       <button style={{background:"none",border:"none",cursor:itemIdx===catItems.length-1?"default":"pointer",fontSize:9,padding:"0 3px",color:itemIdx===catItems.length-1?"var(--ink-10)":"var(--ink-40)",lineHeight:1}} disabled={itemIdx===catItems.length-1} onClick={()=>moveItemDown(cat,item.id)}>▼</button>
-                    </div>
+                    </div>}
                     <span style={{flex:1,fontSize:13,fontWeight:500,color:item.active?"var(--ink)":"var(--ink-30)",textDecoration:item.active?"none":"line-through"}}>{item.name}</span>
                     <span style={{fontSize:12,color:"var(--ink-60)"}}>{item.defaultPrice > 0 ? `${item.defaultPrice.toLocaleString()}원` : "가격 미정"}</span>
                     <button className="btn btn-secondary btn-xs" onClick={() => toggleActive(item.id)}>{item.active ? "비활성" : "활성"}</button>
