@@ -225,6 +225,7 @@ function MainApp() {
   const [view, setView] = useState("dashboard");
   const [teachers, setTeachers] = useState([]);
   const teachersRef = useRef([]);
+  const syncedOnMount = useRef(false);
   const [students, setStudents] = useState([]);
   const [notices, setNotices] = useState([]);
   const [categories, setCategories] = useState(DEFAULT_CATEGORIES);
@@ -288,6 +289,36 @@ function MainApp() {
 
   // teachersRef — login() async 함수에서 stale closure 없이 최신 teachers 접근용
   useEffect(() => { teachersRef.current = teachers; }, [teachers]);
+
+  // 앱 마운트 후 students 로드 시 1회 best-effort students_cache sync
+  // payments 탭 미진입 상태에서도 webhook 매칭이 가능하도록 캐시 선제 갱신
+  useEffect(() => {
+    if (!user || !canManageAll(user.role) || students.length === 0) return;
+    if (syncedOnMount.current) return;
+    syncedOnMount.current = true;
+    (async () => {
+      try {
+        const currentUser = auth.currentUser;
+        if (!currentUser) return;
+        const token = await currentUser.getIdToken();
+        await fetch("/api/payments/sync-students", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify({
+            role: user.role,
+            students: students.map(s => ({
+              id: s.id,
+              name: s.name,
+              status: s.status || "active",
+              isInstitution: s.isInstitution || false,
+              guardianName: s.guardianName || "",
+              monthlyFee: s.monthlyFee || 0,
+            })),
+          }),
+        });
+      } catch { /* silent — cache sync failure must not block app */ }
+    })();
+  }, [user?.role, students.length > 0]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // 레슨노트 읽음 시각 — 로그인한 사용자별 localStorage 복원
   useEffect(() => {
@@ -578,6 +609,8 @@ function MainApp() {
                   name: s.name,
                   status: s.status || "active",
                   isInstitution: s.isInstitution || false,
+                  guardianName: s.guardianName || "",
+                  monthlyFee: s.monthlyFee || 0,
                 })),
               }),
             });
