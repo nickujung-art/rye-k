@@ -160,7 +160,7 @@ async function handlePost(request, env) {
         const m2 = fuzzyMatchStudent(tokens[1], students);
         const ok1 = m1.match && (m1.confidence === "exact" || m1.confidence === "fuzzy_1" || m1.confidence === "guardian_exact" || m1.confidence === "guardian_fuzzy");
         const ok2 = m2.match && (m2.confidence === "exact" || m2.confidence === "fuzzy_1" || m2.confidence === "guardian_exact" || m2.confidence === "guardian_fuzzy");
-        if (ok1 && ok2) {
+        if (ok1 && ok2 && m1.match.id !== m2.match.id) {
           for (const [nm, mt] of [[tokens[0], m1], [tokens[1], m2]]) {
             const rid = crypto.randomUUID();
             const splitRec = {
@@ -217,8 +217,9 @@ async function handlePost(request, env) {
     }
 
     // amount_match — 이름 no_match이지만 monthlyFee 일치 학생이 1명이면 suggestedStudentId 추가
+    // duplicate_* 신뢰도는 제외 — 동명이인 상황에서 무관한 학생을 추천하는 오류 방지
     let suggestedStudentId = null;
-    if (amount > 0) {
+    if (amount > 0 && confidence === "no_match") {
       const activeStudents = students.filter(s => !s.isInstitution && (s.status || "active") === "active");
       const feeMatches = activeStudents.filter(s => s.monthlyFee > 0 && s.monthlyFee === amount);
       if (feeMatches.length === 1) {

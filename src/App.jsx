@@ -647,8 +647,10 @@ function MainApp() {
           const _paymentsRef = doc(db, "appData", "rye-payments");
           let txAutoUnmatched = [];
           let mergedForShortfall = [];
+          let processedCount = 0;
           await runTransaction(db, async (tx) => {
             txAutoUnmatched = [];
+            processedCount = 0;
             const snap = await tx.get(_paymentsRef);
             const cur = snap.exists() ? (snap.data().value || []) : [];
             const merged = [...cur];
@@ -677,9 +679,11 @@ function MainApp() {
                     amount: expectedAmount,
                     paidAmount: np.paidAmount,
                   };
+                  processedCount++;
                 }
               } else {
                 merged.push(np);
+                processedCount++;
               }
             }
             tx.set(_paymentsRef, { value: merged, updatedAt: Date.now() });
@@ -698,7 +702,7 @@ function MainApp() {
             }).join(", ");
             showToast(`⚠ 금액 부족 입금 — ${names}`, true);
           } else {
-            showToast(`카카오뱅크 입금 ${matched.length}건 자동 처리되었습니다.`);
+            showToast(`카카오뱅크 입금 ${processedCount}건 자동 처리되었습니다.`);
           }
         }
 

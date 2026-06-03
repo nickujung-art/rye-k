@@ -1296,17 +1296,6 @@ function UnmatchedPaymentsTab({
   const pending = unmatchedPayments.filter(u => !u.matchedAt);
   const matched = unmatchedPayments.filter(u => u.matchedAt);
 
-  useEffect(() => {
-    const autoSelections = {};
-    pending.forEach(u => {
-      if (u.suggestedStudentId && u.confidence !== "amount_match" && !selectedStudentId[u.id]) {
-        autoSelections[u.id] = u.suggestedStudentId;
-      }
-    });
-    if (Object.keys(autoSelections).length > 0) {
-      setSelectedStudentId(prev => ({ ...prev, ...autoSelections }));
-    }
-  }, [pending.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (pending.length === 0 && matched.length === 0) {
     return (
@@ -1337,7 +1326,6 @@ function UnmatchedPaymentsTab({
       const existing = payments.find(p => p.studentId === sid && p.month === month);
       if (existing?.paid) {
         onLog(`미매칭 매칭 실패 — ${s.name} 이미 납부 완료`);
-        setMatchingId(null);
         return;
       }
       const amount = unmatched.amount || (autoFee ? autoFee(s) : (s.monthlyFee || 0));
