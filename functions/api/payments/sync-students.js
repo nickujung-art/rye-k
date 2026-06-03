@@ -43,14 +43,20 @@ export async function onRequest(context) {
   const filtered = raw
     .filter(s => s && typeof s.id === "string" && typeof s.name === "string")
     .filter(s => !s.isInstitution && (s.status || "active") === "active")
-    .map(s => ({ id: s.id, name: s.name, status: s.status || "active" }));
+    .map(s => ({
+      id: s.id,
+      name: s.name,
+      status: s.status || "active",
+      guardianName: (s.guardianName || "").trim(),
+      monthlyFee: typeof s.monthlyFee === "number" ? s.monthlyFee : 0,
+    }));
 
   // 5. KV 저장 — TTL 24h (webhook이 같은 TTL 사용)
   try {
     await env.RATE_LIMIT_KV.put(
       "students_cache",
       JSON.stringify(filtered),
-      { expirationTtl: 86400 }
+      { expirationTtl: 259200 }
     );
   } catch (e) {
     return json({ error: "KV write failed", detail: e.message }, 500);
