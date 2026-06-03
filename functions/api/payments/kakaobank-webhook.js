@@ -152,6 +152,36 @@ async function handlePost(request, env) {
     );
     return json({ ok: true, matched: true, studentId: match.id, confidence });
   } else {
+    // Try split-name match for space-separated multi-child names (e.g. "홍길동 김개똥")
+    if (confidence === "no_match" && name.includes(" ")) {
+      const tokens = name.split(/\s+/).filter(t => t.length >= 2);
+      if (tokens.length === 2) {
+        const m1 = fuzzyMatchStudent(tokens[0], students);
+        const m2 = fuzzyMatchStudent(tokens[1], students);
+        const ok1 = m1.match && (m1.confidence === "exact" || m1.confidence === "fuzzy_1" || m1.confidence === "guardian_exact" || m1.confidence === "guardian_fuzzy");
+        const ok2 = m2.match && (m2.confidence === "exact" || m2.confidence === "fuzzy_1" || m2.confidence === "guardian_exact" || m2.confidence === "guardian_fuzzy");
+        if (ok1 && ok2) {
+          for (const [nm, mt] of [[tokens[0], m1], [tokens[1], m2]]) {
+            const rid = crypto.randomUUID();
+            const splitRec = {
+              id: rid,
+              senderName: nm,
+              amount: mt.match.monthlyFee || 0,
+              timestamp: ts,
+              source: "kakaobank",
+              rawText,
+              createdAt: now,
+              matchedAt: now,
+              matchedStudentId: mt.match.id,
+              confidence: "split_space",
+            };
+            await env.RATE_LIMIT_KV.put(`pending:matched:${rid}`, JSON.stringify(splitRec), { expirationTtl: 604800 });
+          }
+          return json({ ok: true, matched: true, split: true, names: tokens });
+        }
+      }
+    }
+
     // Try split-name match for concatenated multi-child names (e.g. "홍길동김개똥")
     if (confidence === "no_match" && name.length >= 4) {
       const candidates = splitNameCandidates(name);
