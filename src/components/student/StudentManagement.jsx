@@ -170,7 +170,7 @@ export function StudentFormModal({ student, teachers, currentUser, categories, f
               <input
                 className="inp"
                 value={form.guardianName}
-                onChange={e => set("guardianName", e.target.value)}
+                onChange={e => set("guardianName", e.target.value.trim())}
                 placeholder="홍길동"
                 maxLength={20}
               />

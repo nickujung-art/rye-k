@@ -1299,7 +1299,7 @@ function UnmatchedPaymentsTab({
   useEffect(() => {
     const autoSelections = {};
     pending.forEach(u => {
-      if (u.suggestedStudentId && !selectedStudentId[u.id]) {
+      if (u.suggestedStudentId && u.confidence !== "amount_match" && !selectedStudentId[u.id]) {
         autoSelections[u.id] = u.suggestedStudentId;
       }
     });
@@ -1335,6 +1335,11 @@ function UnmatchedPaymentsTab({
     setMatchingId(unmatched.id);
     try {
       const existing = payments.find(p => p.studentId === sid && p.month === month);
+      if (existing?.paid) {
+        onLog(`미매칭 매칭 실패 — ${s.name} 이미 납부 완료`);
+        setMatchingId(null);
+        return;
+      }
       const amount = unmatched.amount || (autoFee ? autoFee(s) : (s.monthlyFee || 0));
       const record = {
         ...(existing || {}),

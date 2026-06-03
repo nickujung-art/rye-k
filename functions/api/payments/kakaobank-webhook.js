@@ -188,8 +188,8 @@ async function handlePost(request, env) {
       for (const [n1, n2] of candidates) {
         const m1 = fuzzyMatchStudent(n1, students);
         const m2 = fuzzyMatchStudent(n2, students);
-        const ok1 = m1.confidence === "exact" || m1.confidence === "fuzzy_1";
-        const ok2 = m2.confidence === "exact" || m2.confidence === "fuzzy_1";
+        const ok1 = m1.confidence === "exact" || m1.confidence === "fuzzy_1" || m1.confidence === "guardian_exact" || m1.confidence === "guardian_fuzzy";
+        const ok2 = m2.confidence === "exact" || m2.confidence === "fuzzy_1" || m2.confidence === "guardian_exact" || m2.confidence === "guardian_fuzzy";
         if (ok1 && ok2) {
           for (const [nm, mt] of [[n1, m1], [n2, m2]]) {
             const rid = crypto.randomUUID();
@@ -234,7 +234,7 @@ async function handlePost(request, env) {
       JSON.stringify(record),
       { expirationTtl: 604800 }
     );
-    return json({ ok: true, matched: false, confidence });
+    return json({ ok: true, matched: false, confidence: record.confidence });
   }
 }
 
@@ -306,7 +306,7 @@ async function timingSafeEqual(a, b) {
 
 // Inline rate limiter (mirrors _utils/ratelimit.js — avoids cross-function import)
 async function checkRateLimit(kv, userId, limit) {
-  if (!kv) return false; // fail closed — KV 미바인딩 시 차단
+  if (!kv) { console.error("[webhook] RATE_LIMIT_KV not bound — rejecting request"); return false; }
   const bucket = Math.floor(Date.now() / 60000);
   const key = `rl:${userId}:${bucket}`;
   const val = await kv.get(key);

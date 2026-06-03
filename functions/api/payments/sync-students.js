@@ -51,7 +51,7 @@ export async function onRequest(context) {
       monthlyFee: typeof s.monthlyFee === "number" ? s.monthlyFee : 0,
     }));
 
-  // 5. KV 저장 — TTL 24h (webhook이 같은 TTL 사용)
+  // 5. KV 저장 — TTL 72h (3일, webhook이 같은 TTL 사용)
   try {
     await env.RATE_LIMIT_KV.put(
       "students_cache",

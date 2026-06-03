@@ -318,7 +318,7 @@ function MainApp() {
         });
       } catch { /* silent — cache sync failure must not block app */ }
     })();
-  }, [user?.role, students.length > 0]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [user?.id, students.length > 0]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // 레슨노트 읽음 시각 — 로그인한 사용자별 localStorage 복원
   useEffect(() => {
@@ -644,39 +644,51 @@ function MainApp() {
             source: "kakaobank",
             createdAt: record.createdAt,
           }));
-          const merged = [...payments];
-          for (const np of newPayments) {
-            const idx = merged.findIndex(p => p.studentId === np.studentId && p.month === np.month);
-            if (idx >= 0) {
-              if (merged[idx].paid) {
-                autoUnmatched.push({
-                  id: np.id,
-                  senderName: np.senderName || "알 수 없음",
-                  amount: np.amount,
-                  timestamp: np.createdAt,
-                  source: "kakaobank",
-                  rawText: np.note || "",
-                  createdAt: np.createdAt,
-                  confidence: "duplicate_paid",
-                  matchedAt: null,
-                  matchedStudentId: null,
-                });
+          const _paymentsRef = doc(db, "appData", "rye-payments");
+          let txAutoUnmatched = [];
+          let mergedForShortfall = [];
+          await runTransaction(db, async (tx) => {
+            txAutoUnmatched = [];
+            const snap = await tx.get(_paymentsRef);
+            const cur = snap.exists() ? (snap.data().value || []) : [];
+            const merged = [...cur];
+            for (const np of newPayments) {
+              if (merged.some(p => p.id === np.id)) continue;
+              const idx = merged.findIndex(p => p.studentId === np.studentId && p.month === np.month);
+              if (idx >= 0) {
+                if (merged[idx].paid) {
+                  txAutoUnmatched.push({
+                    id: np.id,
+                    senderName: np.senderName || "알 수 없음",
+                    amount: np.amount,
+                    timestamp: np.createdAt,
+                    source: "kakaobank",
+                    rawText: np.note || "",
+                    createdAt: np.createdAt,
+                    confidence: "duplicate_paid",
+                    matchedAt: null,
+                    matchedStudentId: null,
+                  });
+                } else {
+                  const expectedAmount = merged[idx].amount || np.amount;
+                  merged[idx] = {
+                    ...merged[idx],
+                    ...np,
+                    amount: expectedAmount,
+                    paidAmount: np.paidAmount,
+                  };
+                }
               } else {
-                const expectedAmount = merged[idx].amount || np.amount;
-                merged[idx] = {
-                  ...merged[idx],
-                  ...np,
-                  amount: expectedAmount,
-                  paidAmount: np.paidAmount,
-                };
+                merged.push(np);
               }
-            } else {
-              merged.push(np);
             }
-          }
-          await savePayments(merged);
+            tx.set(_paymentsRef, { value: merged, updatedAt: Date.now() });
+            mergedForShortfall = merged;
+          });
+          autoUnmatched.push(...txAutoUnmatched);
+          setPayments(mergedForShortfall);
 
-          const shortfalls = merged.filter(p =>
+          const shortfalls = mergedForShortfall.filter(p =>
             p.source === "kakaobank" && p.paidAmount > 0 && p.paidAmount < p.amount
           );
           if (shortfalls.length > 0) {
