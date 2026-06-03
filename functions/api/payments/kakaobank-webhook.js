@@ -216,6 +216,18 @@ async function handlePost(request, env) {
       }
     }
 
+    // amount_match — 이름 no_match이지만 monthlyFee 일치 학생이 1명이면 suggestedStudentId 추가
+    let suggestedStudentId = null;
+    if (amount > 0) {
+      const activeStudents = students.filter(s => !s.isInstitution && (s.status || "active") === "active");
+      const feeMatches = activeStudents.filter(s => s.monthlyFee > 0 && s.monthlyFee === amount);
+      if (feeMatches.length === 1) {
+        suggestedStudentId = feeMatches[0].id;
+        record.confidence = "amount_match";
+      }
+    }
+    if (suggestedStudentId) record.suggestedStudentId = suggestedStudentId;
+
     // Unmatched — store for manual review
     await env.RATE_LIMIT_KV.put(
       `pending:unmatched:${id}`,
