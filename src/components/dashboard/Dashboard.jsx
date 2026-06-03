@@ -44,6 +44,7 @@ function Sparkline({ data }) {
 export default function Dashboard({ students, teachers, currentUser, notices, categories, attendance, payments, pending, institutions, nav, onUnpaidCardClick, feePresets = {}, instantCharges = [] }) {
   const [todayListModal, setTodayListModal] = useState(false);
   const [expandedNotices, setExpandedNotices] = useState(new Set());
+  const [notiCollapsed, setNotiCollapsed] = useState(true);
   const toggleNotice = (id) => setExpandedNotices(prev => { const next = new Set(prev); if (next.has(id)) next.delete(id); else next.add(id); return next; });
   const catCounts = Object.entries(categories).map(([cat, insts]) => ({ cat, count: students.filter(s => (s.lessons || []).some(l => insts.includes(l.instrument))).length })).filter(x => x.count > 0).sort((a, b) => b.count - a.count);
   const todayStudents = students.filter(s => (s.lessons || []).some(l => (l.schedule || []).some(sc => sc.day === TODAY_DAY)));
@@ -156,15 +157,25 @@ export default function Dashboard({ students, teachers, currentUser, notices, ca
     <div>
       <div className="ph"><div><h1>대시보드</h1><div className="ph-sub">{new Date().toLocaleDateString("ko-KR", { month: "long", day: "numeric", weekday: "short" })} · {currentUser.name}님</div></div></div>
 
-      {/* ── Notifications ── */}
+      {/* ── Stat Grid ── */}
+      <div className="stat-grid">
+        <div className="stat-card" onClick={() => nav("students")} style={{cursor:"pointer"}}><div className="stat-num">{students.length}</div><div className="stat-label">수강생</div><div className="stat-sub">활성 {students.filter(s=>(s.status||"active")==="active").length}명 · 미성년 {students.filter(s => isMinor(s.birthDate)).length}명</div></div>
+        <div className="stat-card" onClick={() => nav("attendance")} style={{cursor:"pointer"}}><div className="stat-num">{todayStudents.length}</div><div className="stat-label">오늘 수업</div><div className="stat-sub">출석 {todayChecked.length}/{todayStudents.length}</div></div>
+        {canManageAll(currentUser.role) && <div className="stat-card" onClick={() => onUnpaidCardClick ? onUnpaidCardClick() : nav("payments")} style={{cursor:"pointer"}}><div className="stat-num" style={{color: unpaidThisMonth > 0 ? "var(--red)" : "var(--green)"}}>{unpaidThisMonth}</div><div className="stat-label">이번달 미납</div><div className="stat-sub">{unpaidAmount > 0 ? fmtMoney(unpaidAmount) : monthLabel(THIS_MONTH)}</div></div>}
+        {canManageAll(currentUser.role) && <div className="stat-card" onClick={() => nav("institutions")} style={{cursor:"pointer"}}>{(() => { const active = (institutions || []).filter(i => (i.status || "active") === "active").length; const totalClasses = (institutions || []).reduce((s, i) => s + (i.classes || []).length, 0); return (<><div className="stat-num">{active}</div><div className="stat-label">기관</div><div className="stat-sub">{totalClasses}개 반</div></>); })()}</div>}
+        {canManageAll(currentUser.role) && <div className="stat-card" onClick={() => nav("teachers")} style={{cursor:"pointer"}}><div className="stat-num">{teachers.length}</div><div className="stat-label">강사/매니저</div><div className="stat-sub">강사·매니저 목록</div></div>}
+      </div>
+
+      {/* ── 알림 (접기/펼치기) ── */}
       {notifications.length > 0 && (
         <div className="notif-card" style={{marginBottom:16}}>
-          <div className="notif-hd">
+          <div className="notif-hd" style={{cursor:"pointer"}} onClick={() => setNotiCollapsed(x => !x)}>
             {IC.notif}
             <span className="notif-hd-title">알림</span>
             <span className="notif-badge">{notifications.length}</span>
+            <span style={{marginLeft:"auto",fontSize:12,color:"var(--ink-30)",userSelect:"none"}}>{notiCollapsed ? "펼치기 ▾" : "접기 ▴"}</span>
           </div>
-          {notifications.map(n => (
+          {!notiCollapsed && notifications.map(n => (
             <div key={n.key} className="notif-item" onClick={n.onClick} style={n.onClick ? {cursor:"pointer"} : {}}>
               <div className={`notif-dot ${n.type}`} />
               <div className="notif-text">{n.text}</div>
@@ -173,14 +184,39 @@ export default function Dashboard({ students, teachers, currentUser, notices, ca
           ))}
         </div>
       )}
-      <div className="stat-grid">
-        <div className="stat-card" onClick={() => nav("students")} style={{cursor:"pointer"}}><div className="stat-num">{students.length}</div><div className="stat-label">수강생</div><div className="stat-sub">미성년 {students.filter(s => isMinor(s.birthDate)).length}명</div></div>
-        <div className="stat-card" onClick={() => nav("attendance")} style={{cursor:"pointer"}}><div className="stat-num">{todayStudents.length}</div><div className="stat-label">오늘 수업</div><div className="stat-sub">출석 {todayChecked.length}/{todayStudents.length}</div></div>
-        {canManageAll(currentUser.role) && <div className="stat-card" onClick={() => onUnpaidCardClick ? onUnpaidCardClick() : nav("payments")} style={{cursor:"pointer"}}><div className="stat-num" style={{color: unpaidThisMonth > 0 ? "var(--red)" : "var(--green)"}}>{unpaidThisMonth}</div><div className="stat-label">이번달 미납</div><div className="stat-sub">{unpaidAmount > 0 ? fmtMoney(unpaidAmount) : monthLabel(THIS_MONTH)}</div></div>}
-        {canManageAll(currentUser.role) && <div className="stat-card">{(() => { const active = (institutions || []).filter(i => (i.status || "active") === "active").length; const totalClasses = (institutions || []).reduce((s, i) => s + (i.classes || []).length, 0); return (<><div className="stat-num" onClick={() => nav("institutions")} style={{cursor:"pointer"}}>{active}</div><div className="stat-label">기관</div><div className="stat-sub">{totalClasses}개 반</div></>); })()}</div>}
-        {canManageAll(currentUser.role) && <div className="stat-card"><div className="stat-num">{teachers.length}</div><div className="stat-label">강사/매니저</div></div>}
-      </div>
 
+      {/* ── 오늘 레슨 ── */}
+      {todayStudents.length > 0 && (
+        <div className="dash-card">
+          <div className="dash-card-title">
+            오늘 레슨 ({TODAY_DAY}요일)
+            <span style={{fontSize:12,color:"var(--gold-dk)",fontFamily:"inherit"}}>{todayStudents.length}명</span>
+          </div>
+          <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+            {todayStudents.slice(0,8).map(s => {
+              const att = todayAtt.find(a => a.studentId === s.id);
+              return (
+                <div key={s.id} onClick={() => nav("attendance")} style={{display:"flex",alignItems:"center",gap:6,background:"var(--bg)",padding:"6px 10px",border:"1px solid var(--border)",borderRadius:"var(--radius-sm)",cursor:"pointer",transition:"all .12s"}} onMouseEnter={e=>e.currentTarget.style.background="var(--blue-lt)"} onMouseLeave={e=>e.currentTarget.style.background="var(--bg)"}>
+                  <Av photo={s.photo} name={s.name} size="av-sm" />
+                  <div>
+                    <div style={{fontSize:12,fontWeight:500}}>{s.name}</div>
+                    <div style={{fontSize:10,color: att ? (att.status === "present" ? "var(--green)" : att.status === "absent" ? "var(--red)" : "var(--gold-dk)") : "var(--ink-30)"}}>
+                      {att ? ATT_STATUS[att.status] : "미체크"}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+            {todayStudents.length > 8 && (
+              <button className="tl-plus-btn" onClick={() => setTodayListModal(true)}>
+                +{todayStudents.length - 8}명 전체보기
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── 이번달 수납 현황 ── */}
       {canManageAll(currentUser.role) && students.length > 0 && (() => {
         const paidCount = students.filter(s => monthPayments.find(p => p.studentId === s.id && p.paid)).length;
         const unpaidCount = students.length - paidCount;
@@ -216,170 +252,7 @@ export default function Dashboard({ students, teachers, currentUser, notices, ca
         );
       })()}
 
-      {canManageAll(currentUser.role) && newStudents.length > 0 && (
-        <div className="dash-card" style={{marginBottom:12}}>
-          <div className="dash-card-title">
-            이달 신규 등록
-            <span style={{fontSize:11,color:"var(--blue)",background:"var(--blue-lt)",padding:"2px 8px",borderRadius:10,fontWeight:700}}>{newStudents.length}명</span>
-          </div>
-          <div style={{display:"flex",flexDirection:"column",gap:8}}>
-            {newStudents.map(s => {
-              const t = teachers.find(t => t.id === s.teacherId);
-              const insts = (s.lessons || []).map(l => l.instrument).filter(Boolean);
-              return (
-                <div key={s.id} onClick={() => nav("students")} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 10px",background:"var(--bg)",borderRadius:8,border:"1px solid var(--border)",cursor:"pointer",transition:"background .12s"}} onMouseEnter={e=>e.currentTarget.style.background="var(--blue-lt)"} onMouseLeave={e=>e.currentTarget.style.background="var(--bg)"}>
-                  <Av photo={s.photo} name={s.name} size="av-sm" />
-                  <div style={{flex:1,minWidth:0}}>
-                    <div style={{fontSize:13,fontWeight:600,color:"var(--ink)"}}>{s.name}</div>
-                    <div style={{fontSize:11,color:"var(--ink-60)"}}>{insts.join(" · ")}{t ? ` · ${t.name}` : ""}</div>
-                  </div>
-                  <span style={{fontSize:10,color:"var(--ink-30)",flexShrink:0}}>{fmtDateShort(new Date(s.createdAt).toISOString().slice(0,10))}</span>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {pinnedNotices.length > 0 && (
-        <div className="dash-section">
-          {pinnedNotices.map(n => {
-            const isExp = expandedNotices.has(n.id);
-            const needsExp = n.content.length > 100 || !!n.imageBase64;
-            return (
-              <div key={n.id} className="notice-card pinned" style={{cursor:"default"}}>
-                <div className="notice-title"><span className="pin-icon">📌</span>{n.title}</div>
-                <div className="notice-meta">{n.authorName} · {fmtDateTime(n.createdAt)}</div>
-                <div className="notice-body" style={{marginTop:6,...(!isExp && needsExp ? {display:"-webkit-box",WebkitLineClamp:3,WebkitBoxOrient:"vertical",overflow:"hidden"} : {})}}>{n.content}</div>
-                {n.imageBase64 && (
-                  <img src={n.imageBase64} alt="공지 이미지" style={{width:"100%",borderRadius:8,marginTop:8,objectFit:"cover",height:isExp?"auto":120}} />
-                )}
-                {needsExp && (
-                  <button onClick={() => toggleNotice(n.id)} style={{background:"none",border:"none",color:"var(--blue)",fontSize:12,cursor:"pointer",padding:"4px 0",fontFamily:"inherit",marginTop:2}}>
-                    {isExp ? "접기 ▴" : "더보기 ▾"}
-                  </button>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      {todayStudents.length > 0 && (
-        <div className="dash-card">
-          <div className="dash-card-title">
-            오늘 레슨 ({TODAY_DAY}요일)
-            <span style={{fontSize:12,color:"var(--gold-dk)",fontFamily:"inherit"}}>{todayStudents.length}명</span>
-          </div>
-          <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
-            {todayStudents.slice(0,8).map(s => {
-              const att = todayAtt.find(a => a.studentId === s.id);
-              return (
-                <div key={s.id} onClick={() => nav("attendance")} style={{display:"flex",alignItems:"center",gap:6,background:"var(--bg)",padding:"6px 10px",border:"1px solid var(--border)",borderRadius:"var(--radius-sm)",cursor:"pointer",transition:"all .12s"}} onMouseEnter={e=>e.currentTarget.style.background="var(--blue-lt)"} onMouseLeave={e=>e.currentTarget.style.background="var(--bg)"}>
-                  <Av photo={s.photo} name={s.name} size="av-sm" />
-                  <div>
-                    <div style={{fontSize:12,fontWeight:500}}>{s.name}</div>
-                    <div style={{fontSize:10,color: att ? (att.status === "present" ? "var(--green)" : att.status === "absent" ? "var(--red)" : "var(--gold-dk)") : "var(--ink-30)"}}>
-                      {att ? ATT_STATUS[att.status] : "미체크"}
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-            {todayStudents.length > 8 && (
-              <button className="tl-plus-btn" onClick={() => setTodayListModal(true)}>
-                +{todayStudents.length - 8}명 전체보기
-              </button>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* 오늘 레슨 전체 목록 모달 */}
-      {todayListModal && (
-        <div className="mb" onClick={e => e.target === e.currentTarget && setTodayListModal(false)}>
-          <div className="modal">
-            <div className="modal-h">
-              <h2>오늘 레슨 · {TODAY_DAY}요일 <span style={{fontSize:13,color:"var(--gold-dk)",fontWeight:400}}>{todayStudents.length}명</span></h2>
-              <button className="modal-close" onClick={() => setTodayListModal(false)}>{IC.x}</button>
-            </div>
-            <div className="modal-b" style={{paddingBottom:20}}>
-              <div style={{fontSize:11.5,color:"var(--blue)",background:"var(--blue-lt)",padding:"8px 14px",borderRadius:8,marginBottom:12}}>
-                학생을 클릭하면 출석 체크 화면으로 이동합니다.
-              </div>
-              {todayStudents.map(s => {
-                const att = todayAtt.find(a => a.studentId === s.id);
-                const t = teachers.find(t => t.id === s.teacherId);
-                const insts = allLessonInsts(s);
-                return (
-                  <div key={s.id} className="tl-student-item" onClick={() => { nav("attendance"); setTodayListModal(false); }}>
-                    <Av photo={s.photo} name={s.name} size="av-sm" />
-                    <div style={{flex:1,minWidth:0}}>
-                      <div style={{fontSize:13.5,fontWeight:600,color:"var(--ink)"}}>{s.name}</div>
-                      <div style={{fontSize:11,color:"var(--ink-60)"}}>{insts.join(" · ")}{t && ` · ${t.name}`}</div>
-                    </div>
-                    <div style={{textAlign:"right",flexShrink:0}}>
-                      <div style={{fontSize:11.5,fontWeight:600,color: att ? (att.status==="present"?"var(--green)":att.status==="absent"?"var(--red)":"var(--gold-dk)") : "var(--ink-30)"}}>
-                        {att ? ATT_STATUS[att.status] : "미체크"}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {students.length > 0 && (
-        <div className="dash-card">
-          <div className="dash-card-title">분야별 수강 현황</div>
-          {catCounts.map(({ cat, count }) => (
-            <div key={cat} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-              <div style={{ width: 64, fontSize: 11, color: "var(--ink-60)", flexShrink: 0 }}>{cat}</div>
-              <div style={{ flex: 1, background: "var(--ink-10)", height: 6, borderRadius: 3 }}><div style={{ width: `${Math.min(100, (count / students.length) * 100)}%`, height: "100%", background: "linear-gradient(90deg,var(--blue),var(--blue-md))", borderRadius: 3 }} /></div>
-              <div style={{ width: 24, textAlign: "right", fontSize: 13, fontWeight: 600, color: "var(--blue)" }}>{count}</div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Churn Risk */}
-      {canManageAll(currentUser.role) && (
-        <ChurnWidget students={students} attendance={attendance} teachers={teachers} />
-      )}
-
-      {/* Manager Reports — 매니저 보고사항 */}
-      {canManageAll(currentUser.role) && (() => {
-        const reports = attendance
-          .filter(a => a.lessonNote && typeof a.lessonNote === "object" && a.lessonNote.managerReport && a.lessonNote.managerReport.trim())
-          .sort((a, b) => (b.date || "").localeCompare(a.date || ""))
-          .slice(0, 15)
-          .map(a => {
-            const s = students.find(st => st.id === a.studentId);
-            const t = teachers.find(t => t.id === a.teacherId);
-            return { ...a, studentName: s?.name || "?", teacherName: t?.name || "?" };
-          });
-        if (reports.length === 0) return null;
-        return (
-          <div className="dash-card">
-            <div className="dash-card-title">매니저 보고사항</div>
-            <div style={{fontSize:11,color:"var(--ink-30)",marginBottom:10}}>강사가 남긴 보고 내용 (최근 {reports.length}건)</div>
-            {reports.map(r => (
-              <div key={r.id} style={{background:"var(--gold-lt)",border:"1px solid rgba(245,168,0,.2)",borderRadius:8,padding:"10px 12px",marginBottom:6}}>
-                <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:4}}>
-                  <span style={{fontSize:12,fontWeight:600,color:"var(--ink)"}}>{r.studentName}</span>
-                  <span style={{fontSize:10.5,color:"var(--ink-30)"}}>· {r.teacherName} 강사 · {fmtDateShort(r.date)}</span>
-                </div>
-                <div style={{fontSize:12.5,color:"var(--ink-60)",lineHeight:1.6,whiteSpace:"pre-wrap"}}>{r.lessonNote.managerReport}</div>
-                {r.lessonNote.progress && <div style={{fontSize:11,color:"var(--blue)",marginTop:4}}>진도: {r.lessonNote.progress}</div>}
-              </div>
-            ))}
-          </div>
-        );
-      })()}
-
-      {/* Monthly Attendance Stats */}
+      {/* ── 이번달 출석 현황 ── */}
       {attendance.length > 0 && (
         <div className="dash-card">
           <div className="dash-card-title">이번달 출석 현황</div>
@@ -425,6 +298,143 @@ export default function Dashboard({ students, teachers, currentUser, notices, ca
               </>
             );
           })()}
+        </div>
+      )}
+
+      {/* ── 분야별 수강 현황 ── */}
+      {students.length > 0 && (
+        <div className="dash-card">
+          <div className="dash-card-title">분야별 수강 현황</div>
+          {catCounts.map(({ cat, count }) => (
+            <div key={cat} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+              <div style={{ width: 64, fontSize: 11, color: "var(--ink-60)", flexShrink: 0 }}>{cat}</div>
+              <div style={{ flex: 1, background: "var(--ink-10)", height: 6, borderRadius: 3 }}><div style={{ width: `${Math.min(100, (count / students.length) * 100)}%`, height: "100%", background: "linear-gradient(90deg,var(--blue),var(--blue-md))", borderRadius: 3 }} /></div>
+              <div style={{ width: 24, textAlign: "right", fontSize: 13, fontWeight: 600, color: "var(--blue)" }}>{count}</div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* ── 이달 신규 등록 ── */}
+      {canManageAll(currentUser.role) && newStudents.length > 0 && (
+        <div className="dash-card" style={{marginBottom:12}}>
+          <div className="dash-card-title">
+            이달 신규 등록
+            <span style={{fontSize:11,color:"var(--blue)",background:"var(--blue-lt)",padding:"2px 8px",borderRadius:10,fontWeight:700}}>{newStudents.length}명</span>
+          </div>
+          <div style={{display:"flex",flexDirection:"column",gap:8}}>
+            {newStudents.map(s => {
+              const t = teachers.find(t => t.id === s.teacherId);
+              const insts = (s.lessons || []).map(l => l.instrument).filter(Boolean);
+              return (
+                <div key={s.id} onClick={() => nav("students")} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 10px",background:"var(--bg)",borderRadius:8,border:"1px solid var(--border)",cursor:"pointer",transition:"background .12s"}} onMouseEnter={e=>e.currentTarget.style.background="var(--blue-lt)"} onMouseLeave={e=>e.currentTarget.style.background="var(--bg)"}>
+                  <Av photo={s.photo} name={s.name} size="av-sm" />
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontSize:13,fontWeight:600,color:"var(--ink)"}}>{s.name}</div>
+                    <div style={{fontSize:11,color:"var(--ink-60)"}}>{insts.join(" · ")}{t ? ` · ${t.name}` : ""}</div>
+                  </div>
+                  <span style={{fontSize:10,color:"var(--ink-30)",flexShrink:0}}>{fmtDateShort(new Date(s.createdAt).toISOString().slice(0,10))}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Churn Risk */}
+      {canManageAll(currentUser.role) && (
+        <ChurnWidget students={students} attendance={attendance} teachers={teachers} />
+      )}
+
+      {/* Manager Reports — 매니저 보고사항 */}
+      {canManageAll(currentUser.role) && (() => {
+        const reports = attendance
+          .filter(a => a.lessonNote && typeof a.lessonNote === "object" && a.lessonNote.managerReport && a.lessonNote.managerReport.trim())
+          .sort((a, b) => (b.date || "").localeCompare(a.date || ""))
+          .slice(0, 15)
+          .map(a => {
+            const s = students.find(st => st.id === a.studentId);
+            const t = teachers.find(t => t.id === a.teacherId);
+            return { ...a, studentName: s?.name || "?", teacherName: t?.name || "?" };
+          });
+        if (reports.length === 0) return null;
+        return (
+          <div className="dash-card">
+            <div className="dash-card-title">매니저 보고사항</div>
+            <div style={{fontSize:11,color:"var(--ink-30)",marginBottom:10}}>강사가 남긴 보고 내용 (최근 {reports.length}건)</div>
+            {reports.map(r => (
+              <div key={r.id} style={{background:"var(--gold-lt)",border:"1px solid rgba(245,168,0,.2)",borderRadius:8,padding:"10px 12px",marginBottom:6}}>
+                <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:4}}>
+                  <span style={{fontSize:12,fontWeight:600,color:"var(--ink)"}}>{r.studentName}</span>
+                  <span style={{fontSize:10.5,color:"var(--ink-30)"}}>· {r.teacherName} 강사 · {fmtDateShort(r.date)}</span>
+                </div>
+                <div style={{fontSize:12.5,color:"var(--ink-60)",lineHeight:1.6,whiteSpace:"pre-wrap"}}>{r.lessonNote.managerReport}</div>
+                {r.lessonNote.progress && <div style={{fontSize:11,color:"var(--blue)",marginTop:4}}>진도: {r.lessonNote.progress}</div>}
+              </div>
+            ))}
+          </div>
+        );
+      })()}
+
+      {/* ── 고정 공지 ── */}
+      {pinnedNotices.length > 0 && (
+        <div className="dash-section">
+          {pinnedNotices.map(n => {
+            const isExp = expandedNotices.has(n.id);
+            const needsExp = n.content.length > 100 || !!n.imageBase64;
+            return (
+              <div key={n.id} className="notice-card pinned" style={{cursor:"default"}}>
+                <div className="notice-title"><span className="pin-icon">📌</span>{n.title}</div>
+                <div className="notice-meta">{n.authorName} · {fmtDateTime(n.createdAt)}</div>
+                <div className="notice-body" style={{marginTop:6,...(!isExp && needsExp ? {display:"-webkit-box",WebkitLineClamp:3,WebkitBoxOrient:"vertical",overflow:"hidden"} : {})}}>{n.content}</div>
+                {n.imageBase64 && (
+                  <img src={n.imageBase64} alt="공지 이미지" style={{width:"100%",borderRadius:8,marginTop:8,objectFit:"cover",height:isExp?"auto":120}} />
+                )}
+                {needsExp && (
+                  <button onClick={() => toggleNotice(n.id)} style={{background:"none",border:"none",color:"var(--blue)",fontSize:12,cursor:"pointer",padding:"4px 0",fontFamily:"inherit",marginTop:2}}>
+                    {isExp ? "접기 ▴" : "더보기 ▾"}
+                  </button>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+
+      {/* 오늘 레슨 전체 목록 모달 */}
+      {todayListModal && (
+        <div className="mb" onClick={e => e.target === e.currentTarget && setTodayListModal(false)}>
+          <div className="modal">
+            <div className="modal-h">
+              <h2>오늘 레슨 · {TODAY_DAY}요일 <span style={{fontSize:13,color:"var(--gold-dk)",fontWeight:400}}>{todayStudents.length}명</span></h2>
+              <button className="modal-close" onClick={() => setTodayListModal(false)}>{IC.x}</button>
+            </div>
+            <div className="modal-b" style={{paddingBottom:20}}>
+              <div style={{fontSize:11.5,color:"var(--blue)",background:"var(--blue-lt)",padding:"8px 14px",borderRadius:8,marginBottom:12}}>
+                학생을 클릭하면 출석 체크 화면으로 이동합니다.
+              </div>
+              {todayStudents.map(s => {
+                const att = todayAtt.find(a => a.studentId === s.id);
+                const t = teachers.find(t => t.id === s.teacherId);
+                const insts = allLessonInsts(s);
+                return (
+                  <div key={s.id} className="tl-student-item" onClick={() => { nav("attendance"); setTodayListModal(false); }}>
+                    <Av photo={s.photo} name={s.name} size="av-sm" />
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{fontSize:13.5,fontWeight:600,color:"var(--ink)"}}>{s.name}</div>
+                      <div style={{fontSize:11,color:"var(--ink-60)"}}>{insts.join(" · ")}{t && ` · ${t.name}`}</div>
+                    </div>
+                    <div style={{textAlign:"right",flexShrink:0}}>
+                      <div style={{fontSize:11.5,fontWeight:600,color: att ? (att.status==="present"?"var(--green)":att.status==="absent"?"var(--red)":"var(--gold-dk)") : "var(--ink-30)"}}>
+                        {att ? ATT_STATUS[att.status] : "미체크"}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         </div>
       )}
     </div>
