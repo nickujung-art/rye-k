@@ -1296,6 +1296,18 @@ function UnmatchedPaymentsTab({
   const pending = unmatchedPayments.filter(u => !u.matchedAt);
   const matched = unmatchedPayments.filter(u => u.matchedAt);
 
+  useEffect(() => {
+    const autoSelections = {};
+    pending.forEach(u => {
+      if (u.suggestedStudentId && !selectedStudentId[u.id]) {
+        autoSelections[u.id] = u.suggestedStudentId;
+      }
+    });
+    if (Object.keys(autoSelections).length > 0) {
+      setSelectedStudentId(prev => ({ ...prev, ...autoSelections }));
+    }
+  }, [pending.length]); // eslint-disable-line react-hooks/exhaustive-deps
+
   if (pending.length === 0 && matched.length === 0) {
     return (
       <div className="empty" style={{paddingTop:40}}>
@@ -1404,6 +1416,16 @@ function UnmatchedPaymentsTab({
                 )}
               </div>
               <div style={{display:"flex",flexDirection:"column",gap:6,width:148,flexShrink:0}}>
+                {u.confidence === "amount_match" && u.suggestedStudentId && (
+                  <div style={{
+                    fontSize: 11,
+                    color: "var(--blue, #1976d2)",
+                    marginBottom: 4,
+                    fontWeight: 600,
+                  }}>
+                    💡 금액 기반 추천: {students.find(s => s.id === u.suggestedStudentId)?.name || "알 수 없음"}
+                  </div>
+                )}
                 <select
                   className="sel"
                   style={{fontSize:12}}
@@ -1415,7 +1437,9 @@ function UnmatchedPaymentsTab({
                     .filter(s => !s.isInstitution && (s.status || "active") === "active")
                     .sort((a, b) => a.name.localeCompare(b.name, "ko"))
                     .map(s => (
-                      <option key={s.id} value={s.id}>{s.name}</option>
+                      <option key={s.id} value={s.id}>
+                        {s.name}{u.suggestedStudentId === s.id && u.confidence === "amount_match" ? " (추천)" : ""}
+                      </option>
                     ))
                   }
                 </select>
