@@ -86,6 +86,11 @@
 | PAY-04 | Toss Payments 가상계좌 Webhook Worker — HMAC-SHA256 검증 | P1 | 5 |
 | PAY-05 | 입금 자동 매칭 — 학생 이름 + 금액 기반 fuzzy 매칭 | P1 | 5 |
 | PAY-06 | 미매칭 입금 리뷰 화면 — 수동 매칭 UI | P1 | 5 |
+| PAY-07 | 학생 폼에 보호자 이름(guardianName) 입력 필드 추가 | P0 | 7 |
+| PAY-08 | students_cache에 guardianName + monthlyFee 포함 — sync-students.js 확장 + KV TTL 72h | P0 | 7 |
+| PAY-09 | App 로드 시 students_cache 자동 갱신 — payments 탭 외 앱 마운트 시에도 sync 실행 | P0 | 7 |
+| PAY-10 | webhook 매칭 알고리즘 고도화 — guardianName 매칭 + 공백 구분 이름 split + monthlyFee 보조 매칭 | P1 | 7 |
+| PAY-11 | 미매칭 카드 UI 개선 — rawText 표시 + 금액 기반 추천 학생 표시 | P1 | 7 |
 
 ---
 
@@ -185,3 +190,8 @@
 | ANL-02 | Phase 6 | Pending |
 | ANL-03 | Phase 6 | Pending |
 | ANL-04 | Phase 6 | Pending |
+| PAY-07 | Phase 7 | ✓ Complete |
+| PAY-08 | Phase 7 | ✓ Complete |
+| PAY-09 | Phase 7 | ✓ Complete |
+| PAY-10 | Phase 7 | ✓ Complete |
+| PAY-11 | Phase 7 | ✓ Complete |
