@@ -50,7 +50,7 @@ function ScheduleView({ students, teachers, currentUser, attendance, onSaveAtten
   DAYS.forEach(d => { scheduleByDay[d] = []; });
   visibleStudents.forEach(s => {
     (s.lessons || []).forEach(lesson => {
-      if (lesson.paused) return;
+      if (s.status === "paused") return;
       const lessonTid = lesson.teacherId || s.teacherId;
       if (effectiveFilter !== "all" && lessonTid !== effectiveFilter) return;
       const teacher = teachers.find(t => t.id === lessonTid);
@@ -300,7 +300,9 @@ function ScheduleView({ students, teachers, currentUser, attendance, onSaveAtten
                       if (student) {
                         setEditEntry(null);
                         try {
-                          await sendAligoMessage("makeup_lesson", [student], { makeupDate: editForm.newDate, makeupTime: editForm.newTime });
+                          const lesson = (student.lessons||[]).find(l => l.instrument === editEntry.instrument);
+                          const tName = teachers?.find(t => t.id === lesson?.teacherId)?.name || "강사";
+                          await sendAligoMessage("makeup_lesson", [student], { makeupDate: editForm.newDate, makeupTime: editForm.newTime, instrument: editEntry.instrument, teacherName: tName });
                           setAlimToast("💬 보강 알림톡 발송 완료");
                         } catch { setAlimToast("💬 알림톡 발송 실패"); }
                         setTimeout(() => setAlimToast(""), 3000);

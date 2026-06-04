@@ -116,7 +116,7 @@ export function formatLessonNoteSummary(note) {
 
 export async function sendAligoMessage(type, students, options = {}) {
   const ALIGO_URL = "https://kakaoapi.aligo.in/akv10/alimtalk/send/";
-  const TPL = { monthly_fee: "UI_1525", unpaid_reminder: "UI_1526", makeup_lesson: "UI_1527" };
+  const TPL = { monthly_fee: "UI_3889", unpaid_reminder: "UI_3890", makeup_lesson: "UI_3891", charge_request: "UI_3892" };
   const apikey   = import.meta.env.VITE_ALIGO_APIKEY;
   const userid   = import.meta.env.VITE_ALIGO_USERID;
   const senderkey = import.meta.env.VITE_ALIGO_SENDERKEY;
@@ -132,19 +132,21 @@ export async function sendAligoMessage(type, students, options = {}) {
   const fmtAmt = n => String(Math.round(n || 0)).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
   const monthKr = ym => ym ? `${parseInt(ym.split("-")[1], 10)}월` : "";
   const buildMsg = s => {
-    const { month, deadline, makeupDate, makeupTime } = options;
+    const { month, deadline, makeupDate, makeupTime, instrument, teacherName, itemName } = options;
     const mo = monthKr(month);
     const amt = fmtAmt(s.amount);
     if (type === "monthly_fee")
-      return `[RYE-K K-Culture Center]\r\n\r\n  안녕하세요, ${s.name}님!\r\n  ${mo} 수강료를 안내드립니다.\r\n\r\n  💰 수강료: ${amt}원\r\n  📅 납부 기한: ${deadline}\r\n\r\n  계좌: 카카오뱅크 3333-34-5220544\r\n  예금주: 예케이케이컬처센터\r\n\r\n  감사합니다 🎵`;
+      return `[RYE-K K-Culture Center]\r\n\r\n 안녕하세요, ${s.name}님!\r\n ${mo} 수강료를 안내드립니다.\r\n\r\n 💰 수강료: ${amt}원\r\n 📅 납부 기한: ${deadline}\r\n\r\n 계좌: 카카오뱅크 3333-34-5220544\r\n 예금주: 예케이케이컬처센터\r\n\r\n 감사합니다 🎵`;
     if (type === "unpaid_reminder")
       return `[RYE-K K-Culture Center]\r\n\r\n ${s.name}님, ${mo} 수강료 ${amt}원이 아직 미납 상태입니다.\r\n\r\n 빠른 시일 내 납부 부탁드립니다.\r\n\r\n 계좌: 카카오뱅크 3333-34-5220544\r\n 예금주: 예케이케이컬처센터`;
     if (type === "makeup_lesson")
-      return `  [RYE-K K-Culture Center]\r\n\r\n  ${s.name}님, 현재 수강 중이신 RYE-K K-Culture Center 보강 수업 일정을 안내드립니다.\r\n\r\n  📅 보강 일시: ${options.makeupDate} ${options.makeupTime}\r\n\r\n  문의사항은 센터로 연락 주세요.\r\n  감사합니다 🎵`;
+      return `[RYE-K K-Culture Center]\r\n\r\n ${s.name}님, ${instrument} 보강 수업 일정을 안내드립니다.\r\n\r\n 📅 보강 일시: ${makeupDate} ${makeupTime}\r\n 담당 강사: ${teacherName || "강사"}\r\n\r\n 문의사항은 센터로 연락 주세요.\r\n 감사합니다 🎵`;
+    if (type === "charge_request")
+      return `[RYE-K K-Culture Center]\r\n\r\n 안녕하세요, ${s.name}님!\r\n ${itemName} 비용을 안내드립니다.\r\n\r\n 🔥 청구 금액: ${amt}원\r\n\r\n 계좌: 카카오뱅크 3333-34-5220544\r\n 예금주: 예케이케이컬처센터\r\n\r\n 감사합니다 🎵`;
     return "";
   };
 
-  const SUBJ = { monthly_fee: "수강료 안내", unpaid_reminder: "미납 독촉", makeup_lesson: "보강 안내" };
+  const SUBJ = { monthly_fee: "수강료 안내", unpaid_reminder: "미납 독촉", makeup_lesson: "보강 안내", charge_request: "즉시청구 안내" };
   const buttonJson = JSON.stringify({ button: [{ name: "My RYE 포탈", linkType: "WL", linkTypeName: "웹링크", linkMo: "https://app.ryekorea.com/myryk/", linkPc: "" }] });
   const results = [];
   for (let i = 0; i < valid.length; i += 500) {
@@ -168,6 +170,17 @@ export async function sendAligoMessage(type, students, options = {}) {
     if (data.code !== 0) throw new Error(data.message || "Aligo API 오류");
   }
   return { success: true, sent: valid.length, noPhone, details: results };
+}
+
+export async function fetchAligoRemain() {
+  const apikey = import.meta.env.VITE_ALIGO_APIKEY;
+  const userid = import.meta.env.VITE_ALIGO_USERID;
+  if (!apikey) throw new Error("Aligo API 설정 없음");
+  const params = new URLSearchParams({ apikey, userid });
+  const res = await fetch("https://kakaoapi.aligo.in/akv10/remain/", { method: "POST", body: params });
+  const data = await res.json();
+  if (data.code !== 0) throw new Error(data.message || "잔여포인트 조회 실패");
+  return Math.floor(parseFloat(data.kakaoPoint || "0"));
 }
 
 // ── Phase 0: 출석률 헬퍼 (Phase 2·3 공통 기반) ────────────────────────────────

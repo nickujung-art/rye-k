@@ -1,7 +1,7 @@
 ﻿import { useState, useEffect } from "react";
 import knotLineSvg from "../../assets/heritage/knot-line.svg";
 import { PAY_METHODS, IC, TODAY_STR, THIS_MONTH } from "../../constants.jsx";
-import { canManageAll, monthLabel, fmtMoney, fmtDateShort, fmtDate, calcAge, isMinor, instTypeLabel, uid, sendAligoMessage, calcTotalFee } from "../../utils.js";
+import { canManageAll, monthLabel, fmtMoney, fmtDateShort, fmtDate, calcAge, isMinor, instTypeLabel, uid, sendAligoMessage, fetchAligoRemain, calcTotalFee } from "../../utils.js";
 import { Av } from "../shared/CommonUI.jsx";
 import AlimtalkModal from "../shared/AlimtalkModal.jsx";
 
@@ -63,6 +63,8 @@ export default function PaymentsView({
   const [bulkInstData, setBulkInstData] = useState({});
   const [bulkInstSaving, setBulkInstSaving] = useState(false);
   const [activeTab, setActiveTab] = useState("payments");
+  const [aligoRemain, setAligoRemain] = useState(null);
+  const [aligoRemainLoading, setAligoRemainLoading] = useState(false);
 
   const pendingInstantCount = instantCharges.filter(c => c.status === "pending").length;
 
@@ -296,6 +298,13 @@ export default function PaymentsView({
         {canManageAll(currentUser.role) && <button className="btn btn-secondary btn-sm" onClick={openBulkPrepInst} title="기관 청구 일괄 확정">🏢 기관 청구 확정</button>}
         {canManageAll(currentUser.role) && <button className="btn btn-secondary btn-sm" onClick={() => setAlimtalkModal("monthly_fee")} title="이달의 수강료 안내 알림톡">💬 수강료 안내</button>}
         {canManageAll(currentUser.role) && <button className="btn btn-secondary btn-sm" onClick={() => setAlimtalkModal("unpaid_reminder")} title="미납자 독촉 알림톡">💬 미납 독촉</button>}
+        {canManageAll(currentUser.role) && (
+          <button className="btn btn-secondary btn-sm" title="알림톡 잔여포인트 확인"
+            style={aligoRemain !== null && aligoRemain < 5000 ? {color:"var(--red)",borderColor:"var(--red)"} : {}}
+            onClick={async () => { setAligoRemainLoading(true); try { setAligoRemain(await fetchAligoRemain()); } catch { setAligoRemain(-1); } finally { setAligoRemainLoading(false); } }}>
+            {aligoRemainLoading ? "..." : aligoRemain === null ? "💬 잔여P" : aligoRemain < 0 ? "💬 조회 실패" : `💬 ${aligoRemain.toLocaleString("ko-KR")}P`}
+          </button>
+        )}
         {canManageAll(currentUser.role) && <button className="btn btn-secondary btn-sm" onClick={exportCSV}>📥 엑셀</button>}
       </div></div>
       <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
@@ -995,14 +1004,32 @@ export default function PaymentsView({
                       </div>
                     )}
                     {approveInstantMsg && (
-                      <button className="btn btn-secondary btn-sm" style={{marginTop:8,width:"100%"}}
-                        onClick={async () => {
-                          try { await navigator.clipboard.writeText(approveInstantMsg); } catch { const ta = document.createElement("textarea"); ta.value = approveInstantMsg; document.body.appendChild(ta); ta.select(); document.execCommand("copy"); document.body.removeChild(ta); }
-                          setApproveInstantCopied("modal");
-                          setTimeout(() => setApproveInstantCopied(null), 2500);
-                        }}>
-                        {approveInstantCopied === "modal" ? "✓ 복사됨" : "알림 메시지 복사"}
-                      </button>
+                      <div style={{display:"flex",gap:6,marginTop:8}}>
+                        <button className="btn btn-secondary btn-sm" style={{flex:1}}
+                          onClick={async () => {
+                            try { await navigator.clipboard.writeText(approveInstantMsg); } catch { const ta = document.createElement("textarea"); ta.value = approveInstantMsg; document.body.appendChild(ta); ta.select(); document.execCommand("copy"); document.body.removeChild(ta); }
+                            setApproveInstantCopied("modal");
+                            setTimeout(() => setApproveInstantCopied(null), 2500);
+                          }}>
+                          {approveInstantCopied === "modal" ? "✓ 복사됨" : "메시지 복사"}
+                        </button>
+                        <button className="btn btn-primary btn-sm" style={{flex:1}}
+                          onClick={async () => {
+                            const student = students.find(s => s.id === approveInstantModal?.studentId);
+                            if (!student) return;
+                            const amt = parseInt(approveInstantAmount, 10);
+                            const itemLabel = approveInstantModal.itemName
+                              ? `${approveInstantModal.itemCategory} — ${approveInstantModal.itemName}`
+                              : approveInstantModal.itemCategory;
+                            try {
+                              await sendAligoMessage("charge_request", [{ ...student, amount: amt }], { itemName: itemLabel });
+                              setApproveInstantCopied("alim");
+                              setTimeout(() => setApproveInstantCopied(null), 2500);
+                            } catch (e) { setApproveInstantErr(`알림톡 발송 실패: ${e.message}`); setTimeout(() => setApproveInstantErr(""), 4000); }
+                          }}>
+                          {approveInstantCopied === "alim" ? "✓ 발송됨" : "💬 알림톡 발송"}
+                        </button>
+                      </div>
                     )}
                   </>
                 );
