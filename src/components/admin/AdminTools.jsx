@@ -1,7 +1,7 @@
 import { useState } from "react";
 import knotLineSvg from "../../assets/heritage/knot-line.svg";
 import { IC, TODAY_STR } from "../../constants.jsx";
-import { fmtDate, fmtDateTime, fmtMoney, fmtPhone, isMinor, calcAge, getBirthPassword, generateStudentCode } from "../../utils.js";
+import { fmtDate, fmtDateTime, fmtMoney, fmtPhone, isMinor, calcAge, generateStudentCode, sendAligoMessage } from "../../utils.js";
 import { Av } from "../shared/CommonUI.jsx";
 import { LessonEditor } from "../student/StudentManagement.jsx";
 
@@ -44,7 +44,6 @@ export function ActivityView({ activity, onFullBackup }) {
 export function PendingView({ pending, teachers, categories, onApprove, onReject }) {
   const [editTarget, setEditTarget] = useState(null);
   const [editForm, setEditForm] = useState(null);
-  const [smsModal, setSmsModal] = useState(null); // { name, code, phone, msg }
   const [submitting, setSubmitting] = useState(false);
   const [approveErr, setApproveErr] = useState("");
   const [rejectConfirmId, setRejectConfirmId] = useState(null);
@@ -86,24 +85,25 @@ export function PendingView({ pending, teachers, categories, onApprove, onReject
     try {
       await onApprove({ ...editTarget, ...editForm, studentCode });
     } catch {
-      setApproveErr("회원 등록 중 오류가 발생했습니다. 다시 시도해주세요.");
+      setApproveErr("회원 등록 중 오류가 발생했습니다. 인터넷 연결을 확인하고 다시 눌러주세요.");
       setSubmitting(false);
       return;
     }
-    setSubmitting(false);
     const savedBirthDate = editForm.birthDate;
     const savedGuardianPhone = editForm.guardianPhone;
     const savedPhone = editForm.phone;
     const savedName = editForm.name;
     setEditTarget(null);
     setEditForm(null);
-    // SMS 안내 모달 준비 (DB 쓰기 성공 후)
+    setSubmitting(false);
+    // 알림톡 발송 (전화번호 있는 경우)
     const phone = (isMinor(savedBirthDate) && savedGuardianPhone) ? savedGuardianPhone : savedPhone;
     if (phone) {
-      const pw = getBirthPassword(savedBirthDate);
-      const url = window.location.origin + "/myryk/?code=" + studentCode;
-      const msg = `[My RYE-K 안내] ${savedName}님의 수강 등록이 완료되었습니다.\n회원코드: ${studentCode}\n비밀번호: ${pw} (생일 4자리 MMDD)\n포털 접속: ${url}`;
-      setSmsModal({ name: savedName, code: studentCode, phone, msg });
+      try {
+        await sendAligoMessage("enrollment_complete", [{ name: savedName, phone, studentCode }]);
+      } catch {
+        // 알림톡 실패해도 등록 자체는 완료 — 무음 처리
+      }
     }
   };
 
@@ -179,36 +179,6 @@ export function PendingView({ pending, teachers, categories, onApprove, onReject
           </div>
         </div>
       ))}
-
-      {/* SMS 안내 발송 모달 */}
-      {smsModal && (
-        <div className="mb" onClick={e => e.target === e.currentTarget && setSmsModal(null)}>
-          <div className="modal" style={{maxWidth:420}}>
-            <div className="modal-h">
-              <h2>📱 등록 안내 문자 발송</h2>
-              <button className="modal-close" onClick={() => setSmsModal(null)}>{IC.x}</button>
-            </div>
-            <div className="modal-b" style={{paddingBottom:20}}>
-              <div style={{background:"var(--green-lt)",border:"1px solid rgba(26,122,64,.15)",borderRadius:8,padding:"12px 14px",marginBottom:14,fontSize:13,color:"var(--green)",fontWeight:500}}>
-                ✓ {smsModal.name}님 회원 등록 완료!
-              </div>
-              <div style={{fontSize:11.5,color:"var(--ink-60)",marginBottom:8}}>발신 번호: <strong style={{color:"var(--ink)",fontFamily:"monospace"}}>{smsModal.phone}</strong></div>
-              <div style={{background:"var(--bg)",border:"1px solid var(--border)",borderRadius:8,padding:"12px 14px",fontSize:12.5,lineHeight:1.8,color:"var(--ink)",whiteSpace:"pre-wrap",marginBottom:14,fontFamily:"'Noto Sans KR',sans-serif"}}>
-                {smsModal.msg}
-              </div>
-              <div style={{fontSize:11,color:"var(--ink-30)"}}>※ 문자 앱을 열면 내용이 자동 입력됩니다. (일부 기기에서 지원 안 될 수 있습니다)</div>
-            </div>
-            <div className="modal-f">
-              <button className="btn btn-secondary" onClick={() => setSmsModal(null)}>건너뛰기</button>
-              <button className="btn btn-primary" onClick={() => {
-                const rawPhone = smsModal.phone.replace(/\D/g,"");
-                window.location.href = `sms:${rawPhone}?body=${encodeURIComponent(smsModal.msg)}`;
-                setSmsModal(null);
-              }}>문자 앱 열기</button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {editTarget && editForm && (
         <div className="mb" onClick={e => e.target === e.currentTarget && setEditTarget(null)}>

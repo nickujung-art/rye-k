@@ -116,7 +116,7 @@ export function formatLessonNoteSummary(note) {
 
 export async function sendAligoMessage(type, students, options = {}) {
   const ALIGO_URL = "https://kakaoapi.aligo.in/akv10/alimtalk/send/";
-  const TPL = { monthly_fee: "UI_3889", unpaid_reminder: "UI_3890", makeup_lesson: "UI_3891", charge_request: "UI_3892" };
+  const TPL = { monthly_fee: "UI_3889", unpaid_reminder: "UI_3890", makeup_lesson: "UI_3891", charge_request: "UI_3892", enrollment_complete: "UI_4625" };
   const apikey   = import.meta.env.VITE_ALIGO_APIKEY;
   const userid   = import.meta.env.VITE_ALIGO_USERID;
   const senderkey = import.meta.env.VITE_ALIGO_SENDERKEY;
@@ -143,10 +143,12 @@ export async function sendAligoMessage(type, students, options = {}) {
       return `[RYE-K K-Culture Center]\r\n\r\n ${s.name}님, ${instrument} 보강 수업 일정을 안내드립니다.\r\n\r\n 📅 보강 일시: ${makeupDate} ${makeupTime}\r\n 담당 강사: ${teacherName || "강사"}\r\n\r\n 문의사항은 센터로 연락 주세요.\r\n 감사합니다 🎵`;
     if (type === "charge_request")
       return `[RYE-K K-Culture Center]\r\n\r\n 안녕하세요, ${s.name}님!\r\n ${itemName} 비용을 안내드립니다.\r\n\r\n 🔥 청구 금액: ${amt}원\r\n\r\n 계좌: 카카오뱅크 3333-34-5220544\r\n 예금주: 예케이케이컬처센터\r\n\r\n 감사합니다 🎵`;
+    if (type === "enrollment_complete")
+      return `[RYE-K K-Culture Center]\r\n\r\n 안녕하세요, ${s.name}님!\r\n 수강 등록이 완료되었습니다. 🎵\r\n\r\n ■ 회원코드: ${s.studentCode}\r\n ■ 비밀번호: 생년월일 4자리 (MMDD)\r\n\r\n My RYE-K 포털에서 출석·레슨노트를 확인하세요.\r\n\r\n 감사합니다 🎵`;
     return "";
   };
 
-  const SUBJ = { monthly_fee: "수강료 안내", unpaid_reminder: "미납 독촉", makeup_lesson: "보강 안내", charge_request: "즉시청구 안내" };
+  const SUBJ = { monthly_fee: "수강료 안내", unpaid_reminder: "미납 독촉", makeup_lesson: "보강 안내", charge_request: "즉시청구 안내", enrollment_complete: "수강 등록 완료" };
   const buttonJson = JSON.stringify({ button: [{ name: "My RYE 포탈", linkType: "WL", linkTypeName: "웹링크", linkMo: "https://app.ryekorea.com/myryk/", linkPc: "" }] });
   const results = [];
   for (let i = 0; i < valid.length; i += 500) {

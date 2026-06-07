@@ -438,14 +438,23 @@ export function StudentDetailModal({ student: s, teachers, currentUser, categori
             {visibleLessons.map(l => (
               <div key={l.instrument} className="lesson-detail-row">
                 <div className="lesson-detail-inst">
-                  <span style={{ width: 3, height: 12, background: "var(--blue)", display: "inline-block", flexShrink: 0, borderRadius: 2 }} />
+                  <span style={{ width: 3, height: 12, background: l.pausedAt ? "var(--gold)" : "var(--blue)", display: "inline-block", flexShrink: 0, borderRadius: 2 }} />
                   {l.instrument}
                   <span className="tag tag-cat" style={{ fontSize: 10 }}>{getCat(l.instrument, categories)}</span>
+                  {l.pausedAt && <span className="tag" style={{background:"var(--gold-lt)",color:"var(--gold-dk)",fontSize:10,padding:"1px 6px"}}>휴원</span>}
                 </div>
                 <div style={{ display: "flex", flexWrap: "wrap" }}>
                   {(l.schedule || []).filter(sc => sc.day).map((sc, i) => (<span key={i} className="sched-chip">{sc.day}요일{sc.time && <span className="sched-chip-time"> {sc.time}</span>}</span>))}
                   {(l.schedule || []).filter(sc => sc.day).length === 0 && <span style={{ color: "var(--ink-30)", fontSize: 12 }}>요일 미지정</span>}
                 </div>
+                {canManageAll(currentUser.role) && onSaveStudent && s.status !== "withdrawn" && (
+                  <button type="button" onClick={() => {
+                    const updLessons = (s.lessons || []).map(ll => ll.instrument === l.instrument ? { ...ll, pausedAt: ll.pausedAt ? null : TODAY_STR } : ll);
+                    onSaveStudent({ ...s, lessons: updLessons });
+                  }} style={{background:l.pausedAt?"var(--green-lt)":"var(--gold-lt)",border:"none",borderRadius:6,color:l.pausedAt?"var(--green)":"var(--gold-dk)",cursor:"pointer",fontSize:11,fontWeight:600,padding:"3px 10px",fontFamily:"inherit",marginTop:4,alignSelf:"flex-start"}}>
+                    {l.pausedAt ? "▶ 이 레슨 복귀" : "⏸ 이 레슨 휴원"}
+                  </button>
+                )}
               </div>
             ))}
           </div>
