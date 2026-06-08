@@ -29,7 +29,7 @@ const MonthlyReportsView  = lazy(() => import("./components/aireports/MonthlyRep
 // ── Storage (Firestore — 실시간 크로스플랫폼 동기화) ─────────────────────────
 const COLLECTION = "appData";
 const SESSION_V = 2; // bump to force all clients to re-login
-async function sSet(k,v){try{await setDoc(doc(db,COLLECTION,k),{value:v,updatedAt:Date.now()});}catch(e){console.error("sSet error:",k,e);throw e;}}
+async function sSet(k,v){try{await setDoc(doc(db,COLLECTION,k),{value:v,updatedAt:Date.now()});}catch(e){console.error("sSet error:",k,e);if(e?.code==="permission-denied")throw Object.assign(new Error("쓰기 권한이 없습니다. 재로그인 후 다시 시도하세요."),{code:"permission-denied"});throw e;}}
 
 
 // ── SAMPLE DATA SEED ──────────────────────────────────────────────────────────
@@ -517,7 +517,8 @@ function MainApp() {
   }, [listenersKey]);
 
   const showToast = (msg, isError = false) => { setToast({msg, isError}); setTimeout(() => setToast(null), 2400); };
-  const saveTeachers = async u => { setTeachers(u); try { await sSet("rye-teachers", u); } catch { showToast("저장에 실패했습니다. 네트워크를 확인해주세요.", true); } };
+  const saveErrMsg = (e) => e?.code === "permission-denied" || e?.message?.includes("권한") ? e.message : `저장에 실패했습니다. (${e?.code || "네트워크 오류"})`;
+  const saveTeachers = async u => { setTeachers(u); try { await sSet("rye-teachers", u); } catch (e) { showToast(saveErrMsg(e), true); } };
   // 배열 전체 덮어쓰기 금지 — 아래 per-op 함수만 사용
   const saveStudents = () => { throw new Error("saveStudents 직접 호출 금지 — addStudentDoc/updateStudentDoc/deleteStudentDoc/batchStudentDocs 사용"); };
   const _studentsRef = doc(db, COLLECTION, "rye-students");
@@ -560,24 +561,24 @@ function MainApp() {
       return prev.map(s => updMap[s.id] || s);
     });
   };
-  const saveNotices = async u => { setNotices(u); try { await sSet("rye-notices", u); } catch { showToast("저장에 실패했습니다. 네트워크를 확인해주세요.", true); } };
-  const saveCategories = async u => { setCategories(u); try { await sSet("rye-categories", u); } catch { showToast("저장에 실패했습니다. 네트워크를 확인해주세요.", true); } };
+  const saveNotices = async u => { setNotices(u); try { await sSet("rye-notices", u); } catch (e) { showToast(saveErrMsg(e), true); } };
+  const saveCategories = async u => { setCategories(u); try { await sSet("rye-categories", u); } catch (e) { showToast(saveErrMsg(e), true); } };
   const saveShopItems = async u => {
     setShopItems(u);
     try { await sSet("rye-shop-items", u); showToast("저장되었습니다."); }
-    catch { showToast("저장에 실패했습니다. 네트워크를 확인해주세요.", true); }
+    catch (e) { showToast(saveErrMsg(e), true); }
   };
-  const saveAttendance = async u => { setAttendance(u); try { await sSet("rye-attendance", u); } catch { showToast("저장에 실패했습니다. 네트워크를 확인해주세요.", true); } };
-  const savePayments = async u => { setPayments(u); try { await sSet("rye-payments", u); } catch (e) { showToast("저장에 실패했습니다. 네트워크를 확인해주세요.", true); throw e; } };
+  const saveAttendance = async u => { setAttendance(u); try { await sSet("rye-attendance", u); } catch (e) { showToast(saveErrMsg(e), true); } };
+  const savePayments = async u => { setPayments(u); try { await sSet("rye-payments", u); } catch (e) { showToast(saveErrMsg(e), true); throw e; } };
   const saveUnmatchedPayments = async u => {
     setUnmatchedPayments(u);
     try { await sSet("rye-unmatched-payments", u); }
-    catch (e) { showToast("저장에 실패했습니다. 네트워크를 확인해주세요.", true); throw e; }
+    catch (e) { showToast(saveErrMsg(e), true); throw e; }
   };
   const savePaymentLog = async u => {
     setPaymentLog(u);
     try { await sSet("rye-payment-log", u); }
-    catch (e) { showToast("저장에 실패했습니다. 네트워크를 확인해주세요.", true); throw e; }
+    catch (e) { showToast(saveErrMsg(e), true); throw e; }
   };
 
   // PAY-05: Drain Worker KV buffer → rye-payments when PaymentsView opens
@@ -746,12 +747,12 @@ function MainApp() {
     drainPending();
   }, [view]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const saveScheduleOverrides = async u => { setScheduleOverrides(u); try { await sSet("rye-schedule-overrides", u); } catch { showToast("저장에 실패했습니다. 네트워크를 확인해주세요.", true); } };
-  const saveTrash = async u => { setTrash(u); try { await sSet("rye-trash", u); } catch (e) { showToast("저장에 실패했습니다. 네트워크를 확인해주세요.", true); throw e; } };
-  const saveStudentNotices = async u => { setStudentNotices(u); try { await sSet("rye-student-notices", u); } catch { showToast("저장에 실패했습니다. 네트워크를 확인해주세요.", true); } };
-  const saveInstitutions = async u => { setInstitutions(u); try { await sSet("rye-institutions", u); } catch { showToast("저장에 실패했습니다. 네트워크를 확인해주세요.", true); } };
-  const saveAiReports = async u => { setAiReports(u); try { await sSet("rye-ai-reports", u); } catch { showToast("저장에 실패했습니다. 네트워크를 확인해주세요.", true); } };
-  const saveRyeSettings = async u => { setRyeSettings(u); try { await sSet("rye-settings", u); showToast("AI 설정이 저장되었습니다."); } catch { showToast("저장에 실패했습니다. 네트워크를 확인해주세요.", true); } };
+  const saveScheduleOverrides = async u => { setScheduleOverrides(u); try { await sSet("rye-schedule-overrides", u); } catch (e) { showToast(saveErrMsg(e), true); } };
+  const saveTrash = async u => { setTrash(u); try { await sSet("rye-trash", u); } catch (e) { showToast(saveErrMsg(e), true); throw e; } };
+  const saveStudentNotices = async u => { setStudentNotices(u); try { await sSet("rye-student-notices", u); } catch (e) { showToast(saveErrMsg(e), true); } };
+  const saveInstitutions = async u => { setInstitutions(u); try { await sSet("rye-institutions", u); } catch (e) { showToast(saveErrMsg(e), true); } };
+  const saveAiReports = async u => { setAiReports(u); try { await sSet("rye-ai-reports", u); } catch (e) { showToast(saveErrMsg(e), true); } };
+  const saveRyeSettings = async u => { setRyeSettings(u); try { await sSet("rye-settings", u); showToast("AI 설정이 저장되었습니다."); } catch (e) { showToast(saveErrMsg(e), true); } };
 
   // Sync AI enabled flag to module-level singleton (aiClient.js)
   useEffect(() => { setAiEnabled(ryeSettings?.aiEnabled !== false); }, [ryeSettings]);
@@ -1262,7 +1263,7 @@ function MainApp() {
               categories={categories}
               onSave={async c => { await saveCategories(c); addLog("과목 카테고리 수정"); showToast("저장되었습니다."); }}
               feePresets={feePresets}
-              onSaveFees={async f => { setFeePresets(f); try { await sSet("rye-fee-presets", f); showToast("저장되었습니다."); } catch { showToast("저장에 실패했습니다. 네트워크를 확인해주세요.", true); } }}
+              onSaveFees={async f => { setFeePresets(f); try { await sSet("rye-fee-presets", f); showToast("저장되었습니다."); } catch (e) { showToast(saveErrMsg(e), true); } }}
             />}
             {view === "analytics" && user.role === "admin" && <AnalyticsView students={students} teachers={teachers} attendance={attendance} payments={payments} categories={categories} institutions={institutions} />}
             {view === "profile" && <ProfileView currentUser={user} teachers={teachers} students={visible} categories={categories} onProfileSave={async form => { const upd = teachers.map(t => t.id === user.id ? { ...t, ...form } : t); await saveTeachers(upd); setUserPersist({ ...user, name: form.name || user.name }); addLog("프로필 수정"); showToast("프로필이 수정되었습니다."); }} />}

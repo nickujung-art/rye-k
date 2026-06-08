@@ -185,6 +185,31 @@ export default function Dashboard({ students, teachers, currentUser, notices, ca
         </div>
       )}
 
+      {/* ── 고정 공지 ── */}
+      {pinnedNotices.length > 0 && (
+        <div className="dash-section">
+          {pinnedNotices.map(n => {
+            const isExp = expandedNotices.has(n.id);
+            const needsExp = n.content.length > 100 || !!n.imageBase64;
+            return (
+              <div key={n.id} className="notice-card pinned" style={{cursor:"default"}}>
+                <div className="notice-title"><span className="pin-icon">📌</span>{n.title}</div>
+                <div className="notice-meta">{n.authorName} · {fmtDateTime(n.createdAt)}</div>
+                <div className="notice-body" style={{marginTop:6,...(!isExp && needsExp ? {display:"-webkit-box",WebkitLineClamp:3,WebkitBoxOrient:"vertical",overflow:"hidden"} : {})}}>{n.content}</div>
+                {n.imageBase64 && (
+                  <img src={n.imageBase64} alt="공지 이미지" style={{width:"100%",borderRadius:8,marginTop:8,objectFit:"cover",height:isExp?"auto":120}} />
+                )}
+                {needsExp && (
+                  <button onClick={() => toggleNotice(n.id)} style={{background:"none",border:"none",color:"var(--blue)",fontSize:12,cursor:"pointer",padding:"4px 0",fontFamily:"inherit",marginTop:2}}>
+                    {isExp ? "접기 ▴" : "더보기 ▾"}
+                  </button>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
       {/* ── 오늘 레슨 ── */}
       {todayStudents.length > 0 && (
         <div className="dash-card">
@@ -375,32 +400,6 @@ export default function Dashboard({ students, teachers, currentUser, notices, ca
           </div>
         );
       })()}
-
-      {/* ── 고정 공지 ── */}
-      {pinnedNotices.length > 0 && (
-        <div className="dash-section">
-          {pinnedNotices.map(n => {
-            const isExp = expandedNotices.has(n.id);
-            const needsExp = n.content.length > 100 || !!n.imageBase64;
-            return (
-              <div key={n.id} className="notice-card pinned" style={{cursor:"default"}}>
-                <div className="notice-title"><span className="pin-icon">📌</span>{n.title}</div>
-                <div className="notice-meta">{n.authorName} · {fmtDateTime(n.createdAt)}</div>
-                <div className="notice-body" style={{marginTop:6,...(!isExp && needsExp ? {display:"-webkit-box",WebkitLineClamp:3,WebkitBoxOrient:"vertical",overflow:"hidden"} : {})}}>{n.content}</div>
-                {n.imageBase64 && (
-                  <img src={n.imageBase64} alt="공지 이미지" style={{width:"100%",borderRadius:8,marginTop:8,objectFit:"cover",height:isExp?"auto":120}} />
-                )}
-                {needsExp && (
-                  <button onClick={() => toggleNotice(n.id)} style={{background:"none",border:"none",color:"var(--blue)",fontSize:12,cursor:"pointer",padding:"4px 0",fontFamily:"inherit",marginTop:2}}>
-                    {isExp ? "접기 ▴" : "더보기 ▾"}
-                  </button>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      )}
-
 
       {/* 오늘 레슨 전체 목록 모달 */}
       {todayListModal && (

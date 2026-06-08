@@ -25,6 +25,10 @@ const _LEGACY_PW = (u) => `ryek!${u}#2024`;    // 구 스킴 (fallback용)
 const _SALTED_PW = (u) => `ryek2!${u}#${_SALT}`; // 신 스킴 (SALT 설정 후)
 
 async function firebaseSignIn(username, _appPassword) {
+  // 익명 세션이 살아있으면 이메일 로그인 전에 정리
+  if (auth.currentUser?.isAnonymous) {
+    try { await signOut(auth); } catch {}
+  }
   const email = toAuthEmail(username);
 
   // 1차: 솔트 비밀번호 시도 (SALT가 설정된 경우에만)
