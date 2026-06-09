@@ -99,7 +99,7 @@ export default function Dashboard({ students, teachers, currentUser, notices, ca
   monthAtt.filter(a => a.status === "absent").forEach(a => { absentMap[a.studentId] = (absentMap[a.studentId] || 0) + 1; });
   // Check consecutive absences
   students.forEach(s => {
-    const sAtts = attendance.filter(a => a.studentId === s.id).sort((a, b) => b.date.localeCompare(a.date));
+    const sAtts = attendance.filter(a => a.studentId === s.id).sort((a, b) => (b.date || "").localeCompare(a.date || ""));
     let consecutive = 0;
     for (const a of sAtts.slice(0, 5)) { if (a.status === "absent") consecutive++; else break; }
     if (consecutive >= 2) {

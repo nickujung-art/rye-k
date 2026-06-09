@@ -138,8 +138,7 @@ export function TeacherFormModal({ teacher, categories, onClose, onSave, shopIte
 
 // ── TEACHER DETAIL ────────────────────────────────────────────────────────────
 export function TeacherDetailModal({ teacher: t, students, currentUser, categories, onClose, onEdit, onDelete, onPhotoUpdate }) {
-  const allInsts = categories ? Object.values(categories).flat() : null;
-  const insts = (t.instruments || []).filter(Boolean).filter(i => !allInsts || allInsts.includes(i));
+  const insts = (t.instruments || []).filter(Boolean);
   const [showPw, setShowPw] = useState(false);
   const [copyMsg, setCopyMsg] = useState("");
   const initialPw = getPhoneInitialPassword(t.phone);
@@ -221,8 +220,7 @@ export function TeachersView({ teachers, students, categories, onAdd, onSelect, 
         <div className="s-grid">
           {filtered.map(t => {
             const cnt = students.filter(s => s.teacherId === t.id || (s.lessons||[]).some(l => l.teacherId === t.id)).length;
-            const allInsts = categories ? Object.values(categories).flat() : null;
-            const insts = (t.instruments || []).filter(Boolean).filter(i => !allInsts || allInsts.includes(i));
+            const insts = (t.instruments || []).filter(Boolean);
             const todayCount = students.filter(s =>
               (s.teacherId === t.id || (s.lessons||[]).some(l => l.teacherId === t.id)) &&
               (s.lessons||[]).some(l => (l.schedule||[]).some(sc => sc.day === todayDayName))

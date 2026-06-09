@@ -65,6 +65,7 @@ export default function PaymentsView({
   const [activeTab, setActiveTab] = useState("payments");
   const [aligoRemain, setAligoRemain] = useState(null);
   const [aligoRemainLoading, setAligoRemainLoading] = useState(false);
+  const [editSaveError, setEditSaveError] = useState("");
 
   const pendingInstantCount = instantCharges.filter(c => c.status === "pending").length;
 
@@ -110,16 +111,21 @@ export default function PaymentsView({
 
   const openEdit = (s) => {
     const p = getPayment(s.id);
-    const base = autoFee(s);
+    const autoBase = autoFee(s);
+    const extraCharges = p?.extraCharges ?? [];
+    const extraSum = extraCharges.reduce((acc, x) => acc + (x.amount || 0), 0);
+    // baseAmount: 저장된 값 우선, 없으면 total - extras, 그것도 없으면 autoFee
+    const baseAmount = p?.baseAmount ?? ((p?.amount != null) ? p.amount - extraSum : autoBase);
     setEditForm({
       studentId: s.id,
-      amount: p?.amount ?? base,
+      baseAmount,
+      amount: baseAmount + extraSum,
       paid: p?.paid ?? false,
-      paidAmount: p?.paidAmount ?? p?.amount ?? base,
+      paidAmount: p?.paidAmount ?? (baseAmount + extraSum),
       paidDate: p?.paidDate ?? TODAY_STR,
       method: p?.method ?? "transfer",
       note: p?.note ?? "",
-      extraCharges: p?.extraCharges ?? [],
+      extraCharges,
       newChargeTitle: "",
       newChargeAmount: "",
     });
@@ -127,6 +133,7 @@ export default function PaymentsView({
   };
 
   const saveEdit = async () => {
+    setEditSaveError("");
     const existing = getPayment(editForm.studentId);
     const record = {
       ...(existing || {}),
@@ -134,6 +141,7 @@ export default function PaymentsView({
       studentId: editForm.studentId,
       month,
       amount: editForm.amount,
+      baseAmount: editForm.baseAmount,
       paid: editForm.paid,
       paidAmount: editForm.paid ? editForm.paidAmount : 0,
       paidDate: editForm.paid ? editForm.paidDate : "",
@@ -148,8 +156,11 @@ export default function PaymentsView({
       await onSavePayments(upd);
       const sName = visibleStudents.find(s => s.id === editForm.studentId)?.name;
       if (editForm.paid && !existing?.paid) onLog(`${sName} 회원 ${monthLabel(month)} 수강료 입금 확인`);
-      setEditingId(null);
-    } catch (e) { console.error("수납 저장 실패:", e); }
+      setEditSaveError(""); setEditingId(null);;
+    } catch (e) {
+      console.error("수납 저장 실패:", e);
+      setEditSaveError(e?.message || "저장에 실패했습니다. 다시 시도해주세요.");
+    }
   };
 
   const prevMonth = () => { const d = new Date(month + "-01"); d.setMonth(d.getMonth() - 1); setMonth(d.toISOString().slice(0,7)); };
@@ -595,20 +606,24 @@ export default function PaymentsView({
       {editingId && (() => {
         const s = visibleStudents.find(st => st.id === editingId);
         const extraSum = (editForm.extraCharges || []).reduce((acc, x) => acc + (x.amount || 0), 0);
-        const baseAmount = editForm.amount - extraSum;
         const absenceCount = attendance.filter(a =>
           a.studentId === editForm.studentId &&
           (a.date || "").startsWith(prevMonthStr) &&
           a.status === "absent"
         ).length;
         return (
-          <div className="mb" onClick={e => e.target === e.currentTarget && setEditingId(null)}>
+          <div className="mb" onClick={e => { if (e.target === e.currentTarget) { setEditSaveError(""); setEditingId(null); } }}>
             <div className="modal">
               <div className="modal-h">
                 <h2>수강료 관리</h2>
-                <button className="modal-close" onClick={() => setEditingId(null)}>{IC.x}</button>
+                <button className="modal-close" onClick={() => { setEditSaveError(""); setEditingId(null); }}>{IC.x}</button>
               </div>
               <div className="modal-b">
+                {editSaveError && (
+                  <div style={{background:"var(--red-lt)",border:"1px solid rgba(232,40,28,.2)",borderRadius:8,padding:"10px 14px",marginBottom:12,fontSize:13,color:"var(--red)",display:"flex",alignItems:"center",gap:8}}>
+                    <span style={{flexShrink:0}}>⚠</span><span>{editSaveError}</span>
+                  </div>
+                )}
                 {(() => { const pt = s ? teachers.find(t=>t.id===s.teacherId) : null; return (
                   <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:12}}>
                     <div style={{fontSize:15,fontWeight:600,flex:1}}>{s?.name} · {monthLabel(month)}</div>
@@ -621,7 +636,10 @@ export default function PaymentsView({
                   <div className="fg">
                     <label className="fg-label">수강료{extraSum > 0 ? <span style={{fontWeight:400,color:"var(--ink-30)",marginLeft:4,textTransform:"none",letterSpacing:0}}>(기본 + 추가 청구 합계)</span> : ""}</label>
                     <div style={{position:"relative"}}>
-                      <input className="inp" inputMode="numeric" value={editForm.amount ? editForm.amount.toLocaleString("ko-KR") : ""} onChange={e => setEditForm(f => ({...f, amount: parseInt(e.target.value.replace(/[^\d]/g,"")) || 0}))} style={{paddingRight:30}} />
+                      <input className="inp" inputMode="numeric" value={editForm.amount ? editForm.amount.toLocaleString("ko-KR") : ""} onChange={e => {
+                        const newTotal = parseInt(e.target.value.replace(/[^\d]/g,"")) || 0;
+                        setEditForm(f => ({...f, amount: newTotal, baseAmount: Math.max(0, newTotal - (f.extraCharges||[]).reduce((s,x)=>s+(x.amount||0),0))}));
+                      }} style={{paddingRight:30}} />
                       <span style={{position:"absolute",right:12,top:"50%",transform:"translateY(-50%)",fontSize:13,color:"var(--ink-30)",pointerEvents:"none"}}>원</span>
                     </div>
                     {absenceCount > 0 && (
@@ -679,22 +697,19 @@ export default function PaymentsView({
                       <div key={i} style={{display:"flex",gap:6,alignItems:"center",marginBottom:6}}>
                         <input className="inp" value={ec.title} onChange={e => {
                           const upd = editForm.extraCharges.map((x,j) => j===i ? {...x,title:e.target.value} : x);
-                          const total = baseAmount + upd.reduce((sum,x)=>sum+(x.amount||0),0);
-                          setEditForm(f => ({...f, extraCharges: upd, amount: total}));
+                          setEditForm(f => ({...f, extraCharges: upd, amount: f.baseAmount + upd.reduce((sum,x)=>sum+(x.amount||0),0)}));
                         }} placeholder="항목명" style={{flex:2}} />
                         <div style={{position:"relative",flex:1}}>
                           <input className="inp" inputMode="numeric" value={ec.amount ? ec.amount.toLocaleString("ko-KR") : ""} onChange={e => {
                             const amt = parseInt(e.target.value.replace(/[^\d]/g,"")) || 0;
                             const upd = editForm.extraCharges.map((x,j) => j===i ? {...x,amount:amt} : x);
-                            const total = baseAmount + upd.reduce((sum,x)=>sum+(x.amount||0),0);
-                            setEditForm(f => ({...f, extraCharges: upd, amount: total}));
+                            setEditForm(f => ({...f, extraCharges: upd, amount: f.baseAmount + upd.reduce((sum,x)=>sum+(x.amount||0),0)}));
                           }} style={{paddingRight:22}} />
                           <span style={{position:"absolute",right:8,top:"50%",transform:"translateY(-50%)",fontSize:11,color:"var(--ink-30)"}}>원</span>
                         </div>
                         <button onClick={() => {
                           const upd = editForm.extraCharges.filter((_,j)=>j!==i);
-                          const total = baseAmount + upd.reduce((sum,x)=>sum+(x.amount||0),0);
-                          setEditForm(f => ({...f, extraCharges: upd, amount: total}));
+                          setEditForm(f => ({...f, extraCharges: upd, amount: f.baseAmount + upd.reduce((sum,x)=>sum+(x.amount||0),0)}));
                         }} style={{background:"none",border:"none",color:"var(--red)",fontSize:16,cursor:"pointer",padding:"0 4px",flexShrink:0}}>×</button>
                       </div>
                     ))}
@@ -709,8 +724,7 @@ export default function PaymentsView({
                         const amount = parseInt(editForm.newChargeAmount) || 0;
                         if (!title) return;
                         const upd = [...(editForm.extraCharges||[]), {title, amount}];
-                        const total = baseAmount + upd.reduce((sum,x)=>sum+(x.amount||0),0);
-                        setEditForm(f => ({...f, extraCharges: upd, amount: total, newChargeTitle: "", newChargeAmount: ""}));
+                        setEditForm(f => ({...f, extraCharges: upd, amount: f.baseAmount + upd.reduce((sum,x)=>sum+(x.amount||0),0), newChargeTitle: "", newChargeAmount: ""}));
                       }} className="btn btn-secondary btn-sm" style={{flexShrink:0}}>+ 추가</button>
                     </div>
                   </div>
@@ -738,7 +752,7 @@ export default function PaymentsView({
                 {canManageAll(currentUser.role) && !isTeacher && extraSum > 0 && (
                   <div style={{background:"var(--ink-5,#F8F8F8)",border:"1px solid var(--border)",borderRadius:10,padding:"10px 14px",marginBottom:8,fontSize:12.5}}>
                     <div style={{display:"flex",justifyContent:"space-between",color:"var(--ink-60)",marginBottom:4}}>
-                      <span>기본 수강료</span><span>{fmtMoney(baseAmount)}</span>
+                      <span>기본 수강료</span><span>{fmtMoney(editForm.baseAmount ?? 0)}</span>
                     </div>
                     <div style={{display:"flex",justifyContent:"space-between",color:"var(--gold-dk)",marginBottom:6}}>
                       <span>추가 청구 합계</span><span>+ {fmtMoney(extraSum)}</span>
@@ -763,7 +777,7 @@ export default function PaymentsView({
                 )}
               </div>
               <div className="modal-f">
-                <button className="btn btn-secondary" onClick={() => setEditingId(null)}>취소</button>
+                <button className="btn btn-secondary" onClick={() => { setEditSaveError(""); setEditingId(null); }}>취소</button>
                 <button className="btn btn-primary" onClick={saveEdit}>저장</button>
               </div>
             </div>
@@ -1446,6 +1460,30 @@ function PaymentLogTab({ paymentLog, students, onSavePaymentLog }) {
   const totalAmount = sorted.reduce((s, e) => s + (e.amount || 0), 0);
   const matchedCount = sorted.filter(e => e.matched).length;
 
+  // 학생별 그룹핑: 같은 학생이 여러 건 있을 때 시각적으로 묶기
+  const buildGroups = () => {
+    const byStudent = {};
+    const others = [];
+    sorted.forEach(e => {
+      if (e.matched && e.studentId) {
+        if (!byStudent[e.studentId]) byStudent[e.studentId] = [];
+        byStudent[e.studentId].push(e);
+      } else {
+        others.push(e);
+      }
+    });
+    const groups = Object.entries(byStudent).map(([sid, entries]) => ({
+      sid, entries,
+      student: students.find(s => s.id === sid),
+      total: entries.reduce((sum, e) => sum + (e.amount||0), 0),
+      isMulti: entries.length >= 2,
+      latestTs: Math.max(...entries.map(e => e.timestamp||0)),
+    }));
+    groups.sort((a, b) => b.latestTs - a.latestTs);
+    return { groups, others: others.sort((a, b) => (b.timestamp||0) - (a.timestamp||0)) };
+  };
+  const { groups, others } = buildGroups();
+
   const handleDeleteLog = async (id) => {
     if (!onSavePaymentLog) return;
     await onSavePaymentLog(paymentLog.filter(e => e.id !== id));
@@ -1520,7 +1558,51 @@ function PaymentLogTab({ paymentLog, students, onSavePaymentLog }) {
                 </tr>
               </thead>
               <tbody>
-                {sorted.map(e => {
+                {groups.map(({ sid, entries, student, total, isMulti }) => [
+                  isMulti && (
+                    <tr key={`grp_${sid}`} style={{background:"var(--blue-lt)",borderTop:"2px solid rgba(43,58,159,.12)"}}>
+                      <td colSpan={3} style={{fontWeight:700,fontSize:13,color:"var(--blue)",paddingTop:8,paddingBottom:8}}>
+                        {student?.name || "?"} <span style={{fontWeight:400,fontSize:11,color:"var(--ink-60)"}}>· {entries.length}건 입금</span>
+                      </td>
+                      <td style={{textAlign:"right",fontWeight:700,color:"var(--green)",whiteSpace:"nowrap",paddingTop:8,paddingBottom:8}}>
+                        {total.toLocaleString()}원
+                      </td>
+                      <td colSpan={3} />
+                    </tr>
+                  ),
+                  ...entries.map(e => {
+                    const d = e.timestamp ? new Date(e.timestamp) : null;
+                    return (
+                      <tr key={e.id} style={isMulti ? {background:"rgba(43,58,159,.02)"} : {}}>
+                        <td style={{color:"var(--ink-60)",whiteSpace:"nowrap",paddingLeft: isMulti ? 20 : undefined}}>
+                          {d ? `${d.getMonth()+1}/${d.getDate()}` : "—"}
+                        </td>
+                        <td style={{color:"var(--ink-60)",whiteSpace:"nowrap"}}>
+                          {d ? d.toLocaleTimeString("ko-KR",{hour:"2-digit",minute:"2-digit"}) : "—"}
+                        </td>
+                        <td style={{fontWeight:600}}>{e.senderName || "알 수 없음"}</td>
+                        <td style={{textAlign:"right",fontWeight:700,color:"var(--green)",whiteSpace:"nowrap"}}>
+                          {(e.amount||0).toLocaleString()}원
+                        </td>
+                        <td>
+                          <span style={{fontSize:10,fontWeight:700,padding:"2px 6px",borderRadius:8,background:"var(--green)",color:"#fff"}}>매칭</span>
+                        </td>
+                        <td style={{color:"var(--ink-60)"}}>{student?.name || "—"}</td>
+                        <td style={{textAlign:"center",whiteSpace:"nowrap"}}>
+                          {onSavePaymentLog && (confirmId === e.id ? (
+                            <span style={{display:"inline-flex",gap:3,alignItems:"center"}}>
+                              <button style={{background:"var(--red)",border:"none",borderRadius:4,color:"#fff",fontSize:10,padding:"2px 6px",cursor:"pointer"}} onClick={() => handleDeleteLog(e.id)}>확인</button>
+                              <button style={{background:"var(--ink-10)",border:"none",borderRadius:4,color:"var(--ink-60)",fontSize:10,padding:"2px 6px",cursor:"pointer"}} onClick={() => setConfirmId(null)}>취소</button>
+                            </span>
+                          ) : (
+                            <button title="삭제" style={{background:"none",border:"none",color:"var(--ink-20)",cursor:"pointer",fontSize:14,padding:"2px 4px",lineHeight:1}} onClick={() => setConfirmId(e.id)} onMouseEnter={ev=>ev.currentTarget.style.color="var(--red)"} onMouseLeave={ev=>ev.currentTarget.style.color="var(--ink-20)"}>×</button>
+                          ))}
+                        </td>
+                      </tr>
+                    );
+                  }),
+                ])}
+                {others.map(e => {
                   const s = e.studentId ? students.find(st => st.id === e.studentId) : null;
                   const d = e.timestamp ? new Date(e.timestamp) : null;
                   return (
@@ -1536,13 +1618,7 @@ function PaymentLogTab({ paymentLog, students, onSavePaymentLog }) {
                         {(e.amount||0).toLocaleString()}원
                       </td>
                       <td>
-                        <span style={{
-                          fontSize:10,fontWeight:700,padding:"2px 6px",borderRadius:8,
-                          background: e.matched ? "var(--green)" : "rgba(232,40,28,.12)",
-                          color: e.matched ? "#fff" : "var(--red)",
-                        }}>
-                          {e.matched ? "매칭" : "미매칭"}
-                        </span>
+                        <span style={{fontSize:10,fontWeight:700,padding:"2px 6px",borderRadius:8,background:"rgba(232,40,28,.12)",color:"var(--red)"}}>미매칭</span>
                       </td>
                       <td style={{color:"var(--ink-60)"}}>{s ? s.name : "—"}</td>
                       <td style={{textAlign:"center",whiteSpace:"nowrap"}}>
@@ -1571,7 +1647,43 @@ function PaymentLogTab({ paymentLog, students, onSavePaymentLog }) {
 
           {/* 모바일: 카드 */}
           <div className="log-mobile-cards">
-            {sorted.map(e => {
+            {groups.map(({ sid, entries, student, total, isMulti }) => (
+              <div key={`mg_${sid}`}>
+                {isMulti && (
+                  <div style={{display:"flex",alignItems:"center",gap:6,padding:"8px 12px",background:"var(--blue-lt)",borderRadius:"var(--radius-sm) var(--radius-sm) 0 0",border:"1px solid rgba(43,58,159,.12)",borderBottom:"none",marginTop:4}}>
+                    <span style={{fontWeight:700,fontSize:13,color:"var(--blue)",flex:1}}>{student?.name || "?"}</span>
+                    <span style={{fontSize:11,color:"var(--ink-60)"}}>{entries.length}건</span>
+                    <span style={{fontWeight:700,fontSize:13,color:"var(--green)"}}>{total.toLocaleString()}원</span>
+                  </div>
+                )}
+                {entries.map((e, idx) => {
+                  const d = e.timestamp ? new Date(e.timestamp) : null;
+                  return (
+                    <div key={e.id} className="unmatched-card" style={isMulti ? {borderRadius: idx === entries.length-1 ? "0 0 var(--radius-sm) var(--radius-sm)" : 0, border:"1px solid rgba(43,58,159,.08)", borderTop:"none", background:"rgba(43,58,159,.02)", marginTop:0} : {}}>
+                      <div style={{flex:1,minWidth:0}}>
+                        <div style={{display:"flex",alignItems:"center",gap:6}}>
+                          <span style={{fontSize:13.5,fontWeight:700}}>{e.senderName || "알 수 없음"}</span>
+                          {!isMulti && <span style={{fontSize:10,fontWeight:700,padding:"1px 5px",borderRadius:8,background:"var(--green)",color:"#fff"}}>→ {student?.name || "자동매칭"}</span>}
+                        </div>
+                        <div style={{fontSize:12,color:"var(--green)",fontWeight:600}}>{(e.amount||0).toLocaleString()}원</div>
+                        <div style={{fontSize:11,color:"var(--ink-30)"}}>
+                          {d ? `${d.getMonth()+1}/${d.getDate()} ${d.toLocaleTimeString("ko-KR",{hour:"2-digit",minute:"2-digit"})}` : ""}
+                        </div>
+                      </div>
+                      {onSavePaymentLog && (confirmId === e.id ? (
+                        <div style={{display:"flex",flexDirection:"column",gap:3,alignSelf:"center",flexShrink:0}}>
+                          <button style={{background:"var(--red)",border:"none",borderRadius:4,color:"#fff",fontSize:10,padding:"3px 7px",cursor:"pointer"}} onClick={() => handleDeleteLog(e.id)}>확인</button>
+                          <button style={{background:"var(--ink-10)",border:"none",borderRadius:4,color:"var(--ink-60)",fontSize:10,padding:"3px 7px",cursor:"pointer"}} onClick={() => setConfirmId(null)}>취소</button>
+                        </div>
+                      ) : (
+                        <button style={{background:"none",border:"none",color:"var(--ink-20)",cursor:"pointer",fontSize:18,padding:"2px 6px",alignSelf:"center",flexShrink:0}} onClick={() => setConfirmId(e.id)} title="삭제">×</button>
+                      ))}
+                    </div>
+                  );
+                })}
+              </div>
+            ))}
+            {others.map(e => {
               const s = e.studentId ? students.find(st => st.id === e.studentId) : null;
               const d = e.timestamp ? new Date(e.timestamp) : null;
               return (
@@ -1587,9 +1699,7 @@ function PaymentLogTab({ paymentLog, students, onSavePaymentLog }) {
                         {e.matched ? (s ? `→ ${s.name}` : "자동매칭") : "미매칭"}
                       </span>
                     </div>
-                    <div style={{fontSize:12,color:"var(--green)",fontWeight:600}}>
-                      {(e.amount||0).toLocaleString()}원
-                    </div>
+                    <div style={{fontSize:12,color:"var(--green)",fontWeight:600}}>{(e.amount||0).toLocaleString()}원</div>
                     <div style={{fontSize:11,color:"var(--ink-30)"}}>
                       {d ? `${d.getMonth()+1}/${d.getDate()} ${d.toLocaleTimeString("ko-KR",{hour:"2-digit",minute:"2-digit"})}` : ""}
                     </div>

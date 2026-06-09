@@ -35,17 +35,23 @@ export function LessonEditor({ lessons, onChange, categories, teachers, feePrese
       {lessons.length > 0 && (
         <div style={{ marginTop: 14 }}>
           <div className="section-label">레슨 요일 · 시간 설정</div>
-          {lessons.map(l => {
+          {lessons.some(l => !Object.values(categories).flat().includes(l.instrument)) && (
+            <div style={{background:"rgba(232,40,28,.08)",border:"1px solid rgba(232,40,28,.25)",borderRadius:8,padding:"8px 12px",marginBottom:10,fontSize:12,color:"var(--red)",display:"flex",alignItems:"flex-start",gap:8}}>
+              <span style={{flexShrink:0,fontWeight:700}}>⚠</span>
+              <span>저장된 과목 중 현재 카테고리에 없는 <strong>구버전 과목</strong>이 있습니다. 빨간 테두리 항목의 <strong>× 제거</strong> 버튼을 눌러 정리해주세요.</span>
+            </div>
+          )}
+          {lessons.map((l, lessonIdx) => {
             const isGhost = !Object.values(categories).flat().includes(l.instrument);
             return (
-            <div key={l.instrument} className="lesson-item">
+            <div key={lessonIdx} className="lesson-item" style={isGhost ? {border:"2px solid rgba(232,40,28,.4)",borderRadius:8,background:"rgba(232,40,28,.03)"} : {}}>
               <div className="lesson-item-head" style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
                 <div style={{display:"flex",alignItems:"center",gap:6}}>
-                  <div className="lesson-inst-label">{l.instrument}</div>
-                  {isGhost && <span style={{fontSize:10,color:"var(--gold-dk)",background:"var(--gold-lt)",padding:"1px 6px",borderRadius:4,fontWeight:600}}>삭제된 과목</span>}
+                  <div className="lesson-inst-label" style={isGhost ? {color:"var(--red)"} : {}}>{l.instrument}</div>
+                  {isGhost && <span style={{fontSize:10,color:"var(--red)",background:"rgba(232,40,28,.12)",padding:"1px 6px",borderRadius:4,fontWeight:700}}>구버전 과목 — 삭제 필요</span>}
                 </div>
                 <div style={{display:"flex",gap:4}}>
-                  <button type="button" style={{background:"none",border:"1px solid var(--border)",borderRadius:4,color:"var(--red)",cursor:"pointer",fontSize:11,padding:"2px 8px",lineHeight:1.5,fontFamily:"inherit"}} onClick={()=>onChange(lessons.filter(x=>x.instrument!==l.instrument))} title="과목 제거">× 제거</button>
+                  <button type="button" style={{background: isGhost ? "var(--red)" : "none", border: isGhost ? "none" : "1px solid var(--border)", borderRadius:4, color: isGhost ? "#fff" : "var(--red)", cursor:"pointer", fontSize:11, padding:"2px 8px", lineHeight:1.5, fontFamily:"inherit", fontWeight: isGhost ? 700 : 400}} onClick={()=>onChange(lessons.filter((_, i) => i !== lessonIdx))} title="과목 제거">× 제거</button>
                 </div>
               </div>
               {teachers && teachers.length > 0 && (
@@ -115,6 +121,7 @@ export function StudentFormModal({ student, teachers, currentUser, categories, f
   const validate = () => {
     if (!form.name.trim()) { setErr("이름을 입력하세요."); return false; }
     if (!isEdit && !form.birthDate) { setErr("생년월일을 입력하세요. (회원코드 비밀번호 생성에 필요)"); return false; }
+    if (canManageAll(currentUser.role) && isMinor(form.birthDate) && !form.guardianPhone?.trim()) { setErr("미성년자 회원은 보호자 연락처가 필수입니다."); return false; }
     if (!form.lessons || form.lessons.length === 0) { setErr("악기/과목을 하나 이상 선택해주세요."); return false; }
     return true;
   };
@@ -123,15 +130,21 @@ export function StudentFormModal({ student, teachers, currentUser, categories, f
     if (saving) return; setSaving(true);
     try {
       const totalFee = calcTotalFee(form, feePresets);
-      await onSave({ ...form, monthlyFee: totalFee, createdAt: form.createdAt || Date.now() });
+      // root teacherId → lesson별 teacherId가 없는 경우에만 전파
+      const finalLessons = (form.lessons || []).map(l => ({
+        ...l,
+        teacherId: l.teacherId || form.teacherId || "",
+      }));
+      await onSave({ ...form, lessons: finalLessons, monthlyFee: totalFee, createdAt: form.createdAt || Date.now() });
     }
     catch(e) { setErr("저장 중 오류가 발생했습니다."); setConfirming(false); }
     finally { setSaving(false); }
   };
   const minor = isMinor(form.birthDate);
   const isTeacherEdit = currentUser.role === "teacher" && isEdit;
+  // teacherId가 비어있지만 root teacherId가 자신인 경우도 포함 (DB 미동기화 대비)
   const editorLessons = isTeacherEdit
-    ? (form.lessons || []).filter(l => l.teacherId === currentUser.id)
+    ? (form.lessons || []).filter(l => l.teacherId === currentUser.id || (!l.teacherId && form.teacherId === currentUser.id))
     : (form.lessons || []);
   return (
     <div className="mb" onClick={e => e.target === e.currentTarget && onClose()}>
@@ -348,6 +361,8 @@ function AttHeatmap({ sAtt }) {
 export function StudentDetailModal({ student: s, teachers, currentUser, categories, feePresets, attendance, payments, onClose, onEdit, onDelete, onPhotoUpdate, onSaveStudent, onStatusChange }) {
   const lessonTeacherIds = [...new Set((s.lessons || []).map(l => l.teacherId).filter(Boolean))];
   const lessonTeachers = lessonTeacherIds.map(tid => teachers.find(t => t.id === tid)).filter(Boolean);
+  // lesson별 teacher 없으면 root teacherId로 fallback
+  const displayTeachers = lessonTeachers.length > 0 ? lessonTeachers : (s.teacherId ? [teachers.find(t => t.id === s.teacherId)].filter(Boolean) : []);
   const minor = isMinor(s.birthDate); const age = calcAge(s.birthDate);
   const days = allLessonDays(s);
   // Attendance history — teacher role sees only their own records
@@ -413,7 +428,7 @@ export function StudentDetailModal({ student: s, teachers, currentUser, categori
             </>)}
             <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginBottom: 6 }}>
               <span className={`tag ${minor ? "tag-minor" : "tag-adult"}`}>{minor ? "미성년자" : "성인"}{age !== null ? ` · ${age}세` : ""}</span>
-              {lessonTeachers.map(t => <span key={t.id} className="tag tag-gold">{t.name} 강사</span>)}
+              {displayTeachers.map(t => <span key={t.id} className="tag tag-gold">{t.name} 강사</span>)}
             </div>
             {days.length > 0 && <div className="day-row">{DAYS.map(d => <div key={d} className={`day-chip ${days.includes(d) ? "on" : ""}`}>{d}</div>)}</div>}
             {onStatusChange && s.status !== "withdrawn" && (
@@ -591,6 +606,8 @@ export function StudentDetailModal({ student: s, teachers, currentUser, categori
 function StudentCard({ student: s, teachers, categories, onClick, payStatus }) {
   const lessonTeacherIds = [...new Set((s.lessons || []).map(l => l.teacherId).filter(Boolean))];
   const lessonTeachers = lessonTeacherIds.map(tid => teachers.find(t => t.id === tid)).filter(Boolean);
+  // lesson별 teacher 없으면 root teacherId로 fallback (DB 미동기화 대비)
+  const displayTeachers = lessonTeachers.length > 0 ? lessonTeachers : (s.teacherId ? [teachers.find(t => t.id === s.teacherId)].filter(Boolean) : []);
   const minor = isMinor(s.birthDate); const age = calcAge(s.birthDate);
   const insts = allLessonInsts(s); const days = allLessonDays(s);
   const allValidInsts = categories ? Object.values(categories).flat() : null;
@@ -603,7 +620,7 @@ function StudentCard({ student: s, teachers, categories, onClick, payStatus }) {
         <div className="s-inst">{insts.join(" · ") || "과목 미지정"}</div>
         <div className="s-meta">
           <span className={`tag ${minor ? "tag-minor" : "tag-adult"}`} style={{padding:"1px 6px",fontSize:10}}>{minor ? "미성년" : "성인"}{age !== null ? ` ${age}세` : ""}</span>
-          {lessonTeachers.map(t => <span key={t.id} style={{color:"var(--gold-dk)",fontSize:11,fontWeight:500}}>{t.name}</span>)}
+          {displayTeachers.map(t => <span key={t.id} style={{color:"var(--gold-dk)",fontSize:11,fontWeight:500}}>{t.name}</span>)}
           {s.status === "paused" && <span className="tag" style={{background:"var(--gold-lt)",color:"var(--gold-dk)",padding:"1px 6px",fontSize:10}}>휴원</span>}
           {s.status === "withdrawn" && <span className="tag" style={{background:"var(--ink-10)",color:"var(--ink-30)",padding:"1px 6px",fontSize:10}}>퇴원</span>}
           {payStatus === "unpaid" && <span style={{background:"var(--gold-lt)",color:"var(--gold-dk)",padding:"1px 6px",fontSize:10,borderRadius:4,fontWeight:700}}>미납</span>}

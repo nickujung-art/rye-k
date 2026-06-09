@@ -53,16 +53,16 @@ function generateSeedData() {
     { id:"t2",  name:"이상윤", username:"leesy",    password:"AUTO", role:"teacher", phone:"010-9385-3026", instruments:["해금"],                                       birthDate:"1997-03-19", hireDate:"2025-01-01", photo:"", bio:"", notes:"" },
     { id:"t3",  name:"이예림", username:"leeyrl",   password:"AUTO", role:"teacher", phone:"",              instruments:["해금"],                                       birthDate:"2000-06-21", hireDate:"2025-01-01", photo:"", bio:"", notes:"" },
     { id:"t4",  name:"김태린", username:"kimtr",    password:"AUTO", role:"teacher", phone:"",              instruments:["해금"],                                       birthDate:"1998-02-10", hireDate:"2024-01-01", photo:"", bio:"", notes:"" },
-    { id:"t5",  name:"채영훈", username:"chaeyh",   password:"AUTO", role:"teacher", phone:"010-9392-3211", instruments:["대금 · 소금 · 단소"],                         birthDate:"1992-05-28", hireDate:"2020-01-01", photo:"", bio:"", notes:"" },
-    { id:"t6",  name:"이소영", username:"leesy2",   password:"AUTO", role:"teacher", phone:"010-2007-4969", instruments:["대금 · 소금 · 단소"],                         birthDate:"1996-11-27", hireDate:"2025-08-04", photo:"", bio:"", notes:"" },
-    { id:"t7",  name:"임하영", username:"limhy",    password:"AUTO", role:"teacher", phone:"",              instruments:["대금 · 소금 · 단소"],                         birthDate:"1996-09-06", hireDate:"2025-01-01", photo:"", bio:"", notes:"" },
-    { id:"t8",  name:"김병재", username:"kimbj",    password:"AUTO", role:"teacher", phone:"",              instruments:["대금 · 소금 · 단소"],                         birthDate:"",          hireDate:"2025-01-01", photo:"", bio:"", notes:"꿈장학금" },
-    { id:"t9",  name:"김보현", username:"kimbh",    password:"AUTO", role:"teacher", phone:"010-5117-4173", instruments:["가야금"],                                     birthDate:"2000-10-23", hireDate:"2025-01-01", photo:"", bio:"", notes:"" },
-    { id:"t10", name:"유선화", username:"yush",     password:"AUTO", role:"teacher", phone:"",              instruments:["가야금","장구 · 북 · 꽹과리 · 징"],            birthDate:"1989-09-09", hireDate:"2026-01-01", photo:"", bio:"", notes:"" },
-    { id:"t11", name:"김동영", username:"kimdy",    password:"AUTO", role:"teacher", phone:"010-5643-3123", instruments:["판소리","정가"],                              birthDate:"1989-06-27", hireDate:"2023-01-01", photo:"", bio:"", notes:"" },
-    { id:"t12", name:"하태우", username:"hatw",     password:"AUTO", role:"teacher", phone:"",              instruments:["판소리"],                                     birthDate:"",          hireDate:"2026-01-01", photo:"", bio:"", notes:"" },
-    { id:"t13", name:"정동주", username:"jungdj",   password:"AUTO", role:"teacher", phone:"010-2830-7487", instruments:["장구 · 북 · 꽹과리 · 징"],                   birthDate:"1984-03-06", hireDate:"2021-01-01", photo:"", bio:"", notes:"반주" },
-    { id:"t14", name:"임승빈", username:"limsb",    password:"AUTO", role:"teacher", phone:"",              instruments:["장구 · 북 · 꽹과리 · 징"],                   birthDate:"",          hireDate:"2026-01-01", photo:"", bio:"", notes:"꿈장학금" },
+    { id:"t5",  name:"채영훈", username:"chaeyh",   password:"AUTO", role:"teacher", phone:"010-9392-3211", instruments:["대금","소금","단소"],                          birthDate:"1992-05-28", hireDate:"2020-01-01", photo:"", bio:"", notes:"" },
+    { id:"t6",  name:"이소영", username:"leesy2",   password:"AUTO", role:"teacher", phone:"010-2007-4969", instruments:["대금","소금","단소"],                          birthDate:"1996-11-27", hireDate:"2025-08-04", photo:"", bio:"", notes:"" },
+    { id:"t7",  name:"임하영", username:"limhy",    password:"AUTO", role:"teacher", phone:"",              instruments:["대금"],                                        birthDate:"1996-09-06", hireDate:"2025-01-01", photo:"", bio:"", notes:"" },
+    { id:"t8",  name:"김병재", username:"kimbj",    password:"AUTO", role:"teacher", phone:"",              instruments:["초등 대금","대금"],                             birthDate:"",          hireDate:"2025-01-01", photo:"", bio:"", notes:"꿈장학금" },
+    { id:"t9",  name:"김보현", username:"kimbh",    password:"AUTO", role:"teacher", phone:"010-5117-4173", instruments:["가야금"],                                      birthDate:"2000-10-23", hireDate:"2025-01-01", photo:"", bio:"", notes:"" },
+    { id:"t10", name:"유선화", username:"yush",     password:"AUTO", role:"teacher", phone:"",              instruments:["가야금","장단장구","사물놀이"],                  birthDate:"1989-09-09", hireDate:"2026-01-01", photo:"", bio:"", notes:"" },
+    { id:"t11", name:"김동영", username:"kimdy",    password:"AUTO", role:"teacher", phone:"010-5643-3123", instruments:["판소리","정가"],                               birthDate:"1989-06-27", hireDate:"2023-01-01", photo:"", bio:"", notes:"" },
+    { id:"t12", name:"하태우", username:"hatw",     password:"AUTO", role:"teacher", phone:"",              instruments:["판소리"],                                      birthDate:"",          hireDate:"2026-01-01", photo:"", bio:"", notes:"" },
+    { id:"t13", name:"정동주", username:"jungdj",   password:"AUTO", role:"teacher", phone:"010-2830-7487", instruments:["장단장구","사물놀이"],                          birthDate:"1984-03-06", hireDate:"2021-01-01", photo:"", bio:"", notes:"반주" },
+    { id:"t14", name:"임승빈", username:"limsb",    password:"AUTO", role:"teacher", phone:"",              instruments:["장단장구","사물놀이"],                          birthDate:"",          hireDate:"2026-01-01", photo:"", bio:"", notes:"꿈장학금" },
   ];
 
   const seedStudents = [
@@ -710,8 +710,15 @@ function MainApp() {
         // Process unmatched records → add to rye-unmatched-payments
         const allNew = [...autoUnmatched, ...unmatched];
         if (allNew.length > 0) {
-          const mergedUnmatched = [...unmatchedPayments, ...allNew];
-          await saveUnmatchedPayments(mergedUnmatched);
+          // stale closure 방어: 실시간 리스너로 갱신된 최신 state 사용
+          setUnmatchedPayments(prev => {
+            const existingIds = new Set(prev.map(e => e.id));
+            const deduped = allNew.filter(e => !existingIds.has(e.id));
+            if (deduped.length === 0) return prev;
+            const merged = [...prev, ...deduped];
+            saveUnmatchedPayments(merged).catch(() => {});
+            return merged;
+          });
         }
 
         // Append all processed transfers to payment log
@@ -738,7 +745,15 @@ function MainApp() {
           })),
         ];
         if (logEntries.length > 0) {
-          await savePaymentLog([...paymentLog, ...logEntries]);
+          // stale closure 방어 + id 기반 중복 제거
+          setPaymentLog(prev => {
+            const existingIds = new Set(prev.map(e => e.id));
+            const deduped = logEntries.filter(e => !existingIds.has(e.id));
+            if (deduped.length === 0) return prev;
+            const merged = [...prev, ...deduped];
+            savePaymentLog(merged).catch(() => {});
+            return merged;
+          });
         }
       } catch {
         // Silent fail — drain is best-effort, never block the UI
