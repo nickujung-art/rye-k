@@ -195,6 +195,7 @@ function LessonNoteModal({ student, teacher, date, existingNote, onSave, onClose
 function NoteCommentsPanel({ comments = [], onAddComment, onDeleteComment, authorType, authorName, authorId, viewerRole, compact, student }) {
   const [text, setText] = useState("");
   const [saving, setSaving] = useState(false);
+  const [saveErr, setSaveErr] = useState("");
   const [confirmDel, setConfirmDel] = useState(null);
   const [aiReplyLoading, setAiReplyLoading] = useState(false);
   const [aiReplyError, setAiReplyError] = useState("");
@@ -216,9 +217,12 @@ function NoteCommentsPanel({ comments = [], onAddComment, onDeleteComment, autho
   const handleSend = async () => {
     if (!text.trim() || saving) return;
     setSaving(true);
+    setSaveErr("");
     try {
       await onAddComment({ id: uid(), text: text.trim(), authorType, authorName, authorId, createdAt: Date.now() });
       setText("");
+    } catch {
+      setSaveErr("댓글 저장에 실패했습니다. 다시 시도해 주세요.");
     } finally { setSaving(false); }
   };
 
@@ -320,7 +324,7 @@ function NoteCommentsPanel({ comments = [], onAddComment, onDeleteComment, autho
               style={{flex:1,fontSize:12.5,padding:"8px 12px",borderRadius:8}}
               placeholder="댓글을 입력하세요..."
               value={text}
-              onChange={e => setText(e.target.value)}
+              onChange={e => { setText(e.target.value); setSaveErr(""); }}
               onKeyDown={e => e.key === "Enter" && !e.shiftKey && handleSend()}
               maxLength={200}
             />
@@ -331,6 +335,7 @@ function NoteCommentsPanel({ comments = [], onAddComment, onDeleteComment, autho
               disabled={!text.trim() || saving}
             >{saving ? "…" : "전송"}</button>
           </div>
+          {saveErr && <div style={{fontSize:12,color:"var(--red)",marginTop:4}}>⚠ {saveErr}</div>}
         </div>
       )}
     </div>
@@ -373,6 +378,7 @@ function AttendanceView({ students, teachers, currentUser, attendance, onSaveAtt
   const dayName = ["일","월","화","수","목","금","토"][new Date(date + "T00:00:00").getDay()];
 
   const dayStudents = students.filter(s => {
+    if (s.status === "paused" || s.status === "withdrawn") return false;
     if (filterTeacher !== "all" && s.teacherId !== filterTeacher && !(s.lessons||[]).some(l=>l.teacherId===filterTeacher)) return false;
     return (s.lessons || []).some(l => (l.schedule || []).some(sc => sc.day === dayName));
   });
@@ -860,8 +866,9 @@ function LessonNotesView({ students, teachers, currentUser, attendance, onSaveAt
     const noteDate = newNoteTarget?.date || TODAY_STR;
     const { practiceGuideText, sharePracticeGuide, ...cleanNote } = noteData;
     const theStudent = students.find(x => x.id === studentId);
+    const activeTeacherId = filterTeacher !== "all" ? filterTeacher : null;
     const lessonTeacherId = theStudent
-      ? ((theStudent.lessons || []).find(l => l.teacherId)?.teacherId || theStudent.teacherId || currentUser.id)
+      ? (activeTeacherId || (theStudent.lessons || []).find(l => l.teacherId)?.teacherId || theStudent.teacherId || currentUser.id)
       : currentUser.id;
     const existing = attendance.find(a => a.studentId === studentId && a.date === noteDate);
     if (existing) {

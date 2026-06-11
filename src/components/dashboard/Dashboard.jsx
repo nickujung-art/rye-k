@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { THIS_MONTH, TODAY_DAY, TODAY_STR, ATT_STATUS, IC } from "../../constants.jsx";
-import { canManageAll, fmtDateTime, fmtDateShort, fmtMoney, isMinor, monthLabel, getContractDaysLeft, allLessonInsts, computeMonthlyAttStats, computeWeeklyAttRates, calcTotalFee } from "../../utils.js";
+import { canManageAll, fmtDateTime, fmtDateShort, fmtMoney, isMinor, monthLabel, getContractDaysLeft, allLessonInsts, computeMonthlyAttStats, computeWeeklyAttRates, calcTotalFee, uid } from "../../utils.js";
 import { Av } from "../shared/CommonUI.jsx";
 import ChurnWidget from "./ChurnWidget.jsx";
 
@@ -41,19 +41,104 @@ function Sparkline({ data }) {
   );
 }
 
-export default function Dashboard({ students, teachers, currentUser, notices, categories, attendance, payments, pending, institutions, nav, onUnpaidCardClick, feePresets = {}, instantCharges = [] }) {
+const CARE_TYPES = ["전화", "문자", "알림톡", "기타"];
+const RESPONSE_OPTS = ["응답없음", "복귀 의향 있음", "복귀 의향 없음", "추후 연락"];
+const PAUSE_REASONS = ["스케줄 충돌", "재정 부담", "동기 저하", "강사 불만", "이사·건강", "기타"];
+
+function CareLogModal({ student, currentUser, onClose, onSave }) {
+  const [form, setForm] = useState({ careType: "전화", responseStatus: "응답없음", note: "" });
+  const [saving, setSaving] = useState(false);
+  const logs = [...(student.careLogs || [])].sort((a, b) => b.createdAt - a.createdAt);
+  const submit = async () => {
+    setSaving(true);
+    try {
+      await onSave({ id: uid(), createdAt: Date.now(), authorId: currentUser.id, authorName: currentUser.name || currentUser.email || "관리자", ...form });
+    } finally {
+      setSaving(false);
+    }
+  };
+  return (
+    <div className="mb" onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="modal" style={{ maxWidth: 400 }}>
+        <div className="modal-h"><h2>{student.name} 케어 기록</h2><button className="modal-close" onClick={onClose}>{IC.x}</button></div>
+        <div className="modal-b">
+          <div style={{ marginBottom: 14 }}>
+            <div style={{ fontSize: 12, fontWeight: 600, color: "var(--ink-60)", marginBottom: 6 }}>연락 방법</div>
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+              {CARE_TYPES.map(t => (
+                <button key={t} type="button" onClick={() => setForm(f => ({ ...f, careType: t }))}
+                  style={{ fontSize: 12, padding: "4px 12px", borderRadius: 12, border: "1px solid", fontFamily: "inherit", cursor: "pointer",
+                    borderColor: form.careType === t ? "var(--blue)" : "var(--border)",
+                    background: form.careType === t ? "var(--blue)" : "var(--bg)",
+                    color: form.careType === t ? "#fff" : "var(--ink-60)" }}>
+                  {t}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div style={{ marginBottom: 14 }}>
+            <div style={{ fontSize: 12, fontWeight: 600, color: "var(--ink-60)", marginBottom: 6 }}>응답 결과</div>
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+              {RESPONSE_OPTS.map(r => (
+                <button key={r} type="button" onClick={() => setForm(f => ({ ...f, responseStatus: r }))}
+                  style={{ fontSize: 12, padding: "4px 12px", borderRadius: 12, border: "1px solid", fontFamily: "inherit", cursor: "pointer",
+                    borderColor: form.responseStatus === r ? "var(--blue)" : "var(--border)",
+                    background: form.responseStatus === r ? "var(--blue-lt)" : "var(--bg)",
+                    color: form.responseStatus === r ? "var(--blue)" : "var(--ink-60)" }}>
+                  {r}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div style={{ marginBottom: 14 }}>
+            <div style={{ fontSize: 12, fontWeight: 600, color: "var(--ink-60)", marginBottom: 6 }}>메모</div>
+            <textarea value={form.note} onChange={e => setForm(f => ({ ...f, note: e.target.value }))}
+              placeholder="통화 내용, 특이 사항 등..." rows={3}
+              style={{ width: "100%", fontSize: 12.5, padding: "8px 10px", borderRadius: 6, border: "1px solid var(--border)", background: "var(--paper)", color: "var(--ink)", fontFamily: "inherit", boxSizing: "border-box", resize: "vertical" }} />
+          </div>
+          <button onClick={submit} disabled={saving}
+            style={{ width: "100%", padding: "10px", borderRadius: 8, border: "none", background: "var(--blue)", color: "#fff", fontFamily: "inherit", cursor: "pointer", fontWeight: 700, fontSize: 13, opacity: saving ? 0.6 : 1 }}>
+            {saving ? "저장 중..." : "저장"}
+          </button>
+          {logs.length > 0 && (
+            <div style={{ marginTop: 14, borderTop: "1px solid var(--border)", paddingTop: 12 }}>
+              <div style={{ fontSize: 12, fontWeight: 600, color: "var(--ink-60)", marginBottom: 8 }}>이전 케어 기록</div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 6, maxHeight: 160, overflowY: "auto" }}>
+                {logs.map(l => (
+                  <div key={l.id} style={{ fontSize: 11.5, padding: "7px 10px", background: "var(--bg)", borderRadius: 6, border: "1px solid var(--border)" }}>
+                    <div style={{ display: "flex", gap: 6, alignItems: "center", marginBottom: 2 }}>
+                      <span style={{ fontWeight: 600, color: "var(--ink)" }}>{l.careType}</span>
+                      <span style={{ color: "var(--ink-30)" }}>·</span>
+                      <span style={{ color: l.responseStatus === "복귀 의향 있음" ? "var(--green)" : "var(--ink-60)" }}>{l.responseStatus}</span>
+                      <span style={{ marginLeft: "auto", color: "var(--ink-30)" }}>{fmtDateShort(new Date(l.createdAt).toISOString().slice(0, 10))}</span>
+                    </div>
+                    {l.note && <div style={{ color: "var(--ink-60)", whiteSpace: "pre-wrap" }}>{l.note}</div>}
+                    <div style={{ fontSize: 10, color: "var(--ink-30)", marginTop: 2 }}>{l.authorName}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default function Dashboard({ students, teachers, currentUser, notices, categories, attendance, payments, pending, institutions, nav, onUnpaidCardClick, feePresets = {}, instantCharges = [], onUpdateStudent = null }) {
   const [todayListModal, setTodayListModal] = useState(false);
   const [expandedNotices, setExpandedNotices] = useState(new Set());
+  const [careModal, setCareModal] = useState(null);
   const [notiCollapsed, setNotiCollapsed] = useState(true);
   const toggleNotice = (id) => setExpandedNotices(prev => { const next = new Set(prev); if (next.has(id)) next.delete(id); else next.add(id); return next; });
   const catCounts = Object.entries(categories).map(([cat, insts]) => ({ cat, count: students.filter(s => (s.lessons || []).some(l => insts.includes(l.instrument))).length })).filter(x => x.count > 0).sort((a, b) => b.count - a.count);
-  const todayStudents = students.filter(s => (s.lessons || []).some(l => (l.schedule || []).some(sc => sc.day === TODAY_DAY)));
+  const todayStudents = students.filter(s => (s.status === "paused" || s.status === "withdrawn") ? false : (s.lessons || []).some(l => (l.schedule || []).some(sc => sc.day === TODAY_DAY)));
   const todayAtt = attendance.filter(a => a.date === TODAY_STR);
   const todayChecked = todayStudents.filter(s => todayAtt.find(a => a.studentId === s.id));
   const pinnedNotices = notices.filter(n => n.pinned).slice(0, 2);
   const monthPayments = payments.filter(p => p.month === THIS_MONTH);
-  const unpaidThisMonth = students.filter(s => !monthPayments.find(p => p.studentId === s.id && p.paid)).length;
-  const activeStudents = students.filter(s => !s.isInstitution);
+  const unpaidThisMonth = students.filter(s => (s.status || "active") === "active" && !monthPayments.find(p => p.studentId === s.id && p.paid)).length;
+  const activeStudents = students.filter(s => !s.isInstitution && (s.status || "active") === "active");
   const unpaidAmount = activeStudents.reduce((sum, s) => {
     const p = monthPayments.find(mp => mp.studentId === s.id);
     if (p?.paid) return sum;
@@ -73,17 +158,18 @@ export default function Dashboard({ students, teachers, currentUser, notices, ca
   // 1. 미납 경고: 이번 달 3일 이후도 미납인 학생
   if (canManageAll(currentUser.role)) {
     if (todayDayKST >= 3) {
-      const unpaidStudents = students.filter(s => !monthPayments.find(p => p.studentId === s.id && p.paid));
+      const unpaidStudents = students.filter(s => (s.status || "active") === "active" && !monthPayments.find(p => p.studentId === s.id && p.paid));
       if (unpaidStudents.length > 0) {
         notifications.push({ type: "red", text: <><strong>미납 {unpaidStudents.length}명</strong> — {monthLabel(THIS_MONTH)} 수강료 미납 (3일 경과)</>, key: "unpaid", onClick: () => nav("payments") });
       }
     }
   }
-  // 2. 생일 알림: 오늘 & 이번 주
+  // 2. 생일 알림: 오늘 & 이번 주 (재원 학생만)
   const todayMd = TODAY_STR.slice(5); // MM-DD
   const nextWeek = new Date(); nextWeek.setDate(nextWeek.getDate() + 7);
-  const birthdayToday = students.filter(s => s.birthDate && s.birthDate.slice(5) === todayMd);
+  const birthdayToday = students.filter(s => (s.status || "active") === "active" && s.birthDate && s.birthDate.slice(5) === todayMd);
   const birthdayWeek = students.filter(s => {
+    if ((s.status || "active") !== "active") return false;
     if (!s.birthDate || s.birthDate.slice(5) === todayMd) return false;
     const bd = new Date(new Date().getFullYear() + "-" + s.birthDate.slice(5));
     return bd >= new Date(TODAY_STR) && bd <= nextWeek;
@@ -93,12 +179,12 @@ export default function Dashboard({ students, teachers, currentUser, notices, ca
     const daysLeft = Math.ceil((new Date(new Date().getFullYear() + "-" + s.birthDate.slice(5)) - new Date(TODAY_STR)) / 86400000);
     notifications.push({ type: "gold", text: <><strong>{s.name}</strong>님 생일 D-{daysLeft} 🎂</>, key: "bdw-" + s.id });
   });
-  // 3. 장기 결석 알림: 이번 달 연속 2회 이상 결석
+  // 3. 장기 결석 알림: 이번 달 연속 2회 이상 결석 (재원 학생만)
   const monthAtt = attendance.filter(a => a.date?.startsWith(THIS_MONTH));
   const absentMap = {};
   monthAtt.filter(a => a.status === "absent").forEach(a => { absentMap[a.studentId] = (absentMap[a.studentId] || 0) + 1; });
   // Check consecutive absences
-  students.forEach(s => {
+  students.filter(s => (s.status || "active") === "active").forEach(s => {
     const sAtts = attendance.filter(a => a.studentId === s.id).sort((a, b) => (b.date || "").localeCompare(a.date || ""));
     let consecutive = 0;
     for (const a of sAtts.slice(0, 5)) { if (a.status === "absent") consecutive++; else break; }
@@ -111,7 +197,7 @@ export default function Dashboard({ students, teachers, currentUser, notices, ca
     notifications.push({ type: "blue", text: <><strong>💬 알림톡 발송 안내</strong> — 이번 달 수강료 안내를 발송할 수 있습니다</>, key: "alim-remind", onClick: () => nav("payments") });
   }
   if (canManageAll(currentUser.role) && todayDayKST === 8) {
-    const unpaidStudents = students.filter(s => !monthPayments.find(p => p.studentId === s.id && p.paid));
+    const unpaidStudents = students.filter(s => (s.status || "active") === "active" && !monthPayments.find(p => p.studentId === s.id && p.paid));
     if (unpaidStudents.length > 0) {
       notifications.push({ type: "red", text: <><strong>💬 미납 독촉 알림톡</strong> — {unpaidStudents.length}명 미납, 독촉 발송을 권장합니다</>, key: "alim-overdue", onClick: () => nav("payments") });
     }
@@ -243,15 +329,16 @@ export default function Dashboard({ students, teachers, currentUser, notices, ca
 
       {/* ── 이번달 수납 현황 ── */}
       {canManageAll(currentUser.role) && students.length > 0 && (() => {
-        const paidCount = students.filter(s => monthPayments.find(p => p.studentId === s.id && p.paid)).length;
-        const unpaidCount = students.length - paidCount;
+        const payableStudents = students.filter(s => (s.status || "active") === "active" && !s.isInstitution);
+        const paidCount = payableStudents.filter(s => monthPayments.find(p => p.studentId === s.id && p.paid)).length;
+        const unpaidCount = payableStudents.length - paidCount;
         return (
           <div className="dash-card"
             style={{marginBottom:12, cursor:"pointer"}}
             onClick={() => onUnpaidCardClick ? onUnpaidCardClick() : nav("payments")}>
             <div className="dash-card-title">이번달 수납 현황 <span style={{fontSize:11,color:"var(--ink-30)",fontWeight:400}}>{monthLabel(THIS_MONTH)}</span></div>
             <div style={{display:"flex",alignItems:"center",gap:16}}>
-              <DonutChart paid={paidCount} total={students.length} />
+              <DonutChart paid={paidCount} total={payableStudents.length} />
               <div style={{flex:1}}>
                 <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
                   <div style={{width:8,height:8,borderRadius:"50%",background:"var(--green)",flexShrink:0}} />
@@ -366,6 +453,86 @@ export default function Dashboard({ students, teachers, currentUser, notices, ca
         </div>
       )}
 
+      {/* ── 휴회 케어 관리 ── */}
+      {(() => {
+        const isManager = canManageAll(currentUser.role);
+        const rawPaused = students.filter(s => s.status === "paused" && !s.isInstitution);
+        const pausedList = isManager
+          ? rawPaused
+          : rawPaused.filter(s => s.teacherId === currentUser.id || (s.lessons || []).some(l => l.teacherId === currentUser.id));
+        if (pausedList.length === 0) return null;
+
+        const getInfo = (s) => {
+          const days = s.pausedAt ? Math.floor((Date.now() - s.pausedAt) / 86400000) : null;
+          const logs = [...(s.careLogs || [])].sort((a, b) => b.createdAt - a.createdAt);
+          const lastLog = logs[0] || null;
+          const daysSinceCare = lastLog ? Math.floor((Date.now() - lastLog.createdAt) / 86400000) : null;
+          const needsCare = days !== null && days >= 14 && (daysSinceCare === null || daysSinceCare >= 14);
+          const stage = !needsCare ? "ok" : days >= 30 ? "urgent" : "due";
+          return { days, lastLog, daysSinceCare, stage };
+        };
+        const STAGE = {
+          urgent: { label: "케어 긴급", color: "#c00", bg: "#fff0f0" },
+          due:    { label: "케어 예정", color: "#b45309", bg: "var(--gold-lt)" },
+          ok:     { label: "케어 완료", color: "var(--green)", bg: "var(--green-lt)" },
+        };
+        const sorted = [...pausedList].sort((a, b) => {
+          const order = { urgent: 0, due: 1, ok: 2 };
+          return (order[getInfo(a).stage] ?? 3) - (order[getInfo(b).stage] ?? 3);
+        });
+        const actionCount = pausedList.filter(s => getInfo(s).stage !== "ok").length;
+
+        return (
+          <div className="dash-card" style={{ marginBottom: 12 }}>
+            <div className="dash-card-title">
+              휴회 케어 관리
+              <div style={{ display: "flex", gap: 4 }}>
+                {actionCount > 0 && <span style={{ fontSize: 11, color: "#c00", background: "#fff0f0", padding: "2px 8px", borderRadius: 10, fontWeight: 700 }}>케어 필요 {actionCount}명</span>}
+                <span style={{ fontSize: 11, color: "var(--ink-30)", background: "var(--ink-10)", padding: "2px 8px", borderRadius: 10 }}>전체 {pausedList.length}명</span>
+              </div>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              {sorted.map(s => {
+                const { days, lastLog, daysSinceCare, stage } = getInfo(s);
+                const teacherName = (() => {
+                  const tid = (s.lessons || []).find(l => l.teacherId)?.teacherId || s.teacherId;
+                  return teachers.find(t => t.id === tid)?.name || null;
+                })();
+                const insts = (s.lessons || []).map(l => l.instrument).filter(Boolean).join(" · ");
+                const st = STAGE[stage];
+                return (
+                  <div key={s.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", background: "var(--bg)", borderRadius: 8, border: "1px solid var(--border)" }}>
+                    <Av photo={s.photo} name={s.name} size="av-sm" />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 2 }}>
+                        <span style={{ fontSize: 13, fontWeight: 600, color: "var(--ink)" }}>{s.name}</span>
+                        {s.pausedReason && <span style={{ fontSize: 10, color: "var(--ink-30)", background: "var(--ink-10)", padding: "1px 6px", borderRadius: 8 }}>{s.pausedReason}</span>}
+                      </div>
+                      <div style={{ fontSize: 11, color: "var(--ink-60)" }}>{insts || "-"}{teacherName ? ` · ${teacherName} 강사` : ""}</div>
+                      <div style={{ display: "flex", gap: 8, marginTop: 3, alignItems: "center" }}>
+                        {days !== null && <span style={{ fontSize: 10, color: "var(--ink-30)" }}>D+{days}</span>}
+                        {lastLog
+                          ? <span style={{ fontSize: 10, color: daysSinceCare <= 7 ? "var(--green)" : "var(--ink-30)" }}>마지막 케어 {daysSinceCare}일 전 · {lastLog.careType} · {lastLog.responseStatus}</span>
+                          : <span style={{ fontSize: 10, color: "var(--ink-30)" }}>케어 기록 없음</span>}
+                      </div>
+                    </div>
+                    <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4, flexShrink: 0 }}>
+                      <span style={{ fontSize: 10, fontWeight: 700, color: st.color, background: st.bg, padding: "2px 7px", borderRadius: 8, whiteSpace: "nowrap" }}>{st.label}</span>
+                      {onUpdateStudent && (
+                        <button onClick={() => setCareModal(s)}
+                          style={{ fontSize: 11, padding: "3px 10px", borderRadius: 6, border: "1px solid var(--blue)", background: "var(--blue-lt)", color: "var(--blue)", fontFamily: "inherit", cursor: "pointer", fontWeight: 600, whiteSpace: "nowrap" }}>
+                          케어 기록
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })()}
+
       {/* Churn Risk */}
       {canManageAll(currentUser.role) && (
         <ChurnWidget students={students} attendance={attendance} teachers={teachers} />
@@ -435,6 +602,20 @@ export default function Dashboard({ students, teachers, currentUser, notices, ca
             </div>
           </div>
         </div>
+      )}
+
+      {/* ── 휴회 케어 기록 모달 ── */}
+      {careModal && onUpdateStudent && (
+        <CareLogModal
+          student={careModal}
+          currentUser={currentUser}
+          onClose={() => setCareModal(null)}
+          onSave={async (entry) => {
+            const upd = { ...careModal, careLogs: [...(careModal.careLogs || []), entry] };
+            await onUpdateStudent(upd);
+            setCareModal(null);
+          }}
+        />
       )}
     </div>
   );

@@ -31,6 +31,7 @@ export default function AlimtalkModal({ type: initialType = "monthly_fee", stude
   const [testPhone, setTestPhone] = useState("");
   const [testResult, setTestResult] = useState(null); // null | {ok, msg}
   const [isTestSending, setIsTestSending] = useState(false);
+  const [sendError, setSendError] = useState("");
 
   const autoFee = (s) => (s.monthlyFee || 0) + (s.instrumentRental ? (s.rentalFee || 0) : 0);
 
@@ -87,13 +88,19 @@ export default function AlimtalkModal({ type: initialType = "monthly_fee", stude
 
   const handleSend = async () => {
     setIsSubmitting(true);
+    setSendError("");
     const enriched = targets.map(s => {
       const p = getPayment?.(s.id);
       return { ...s, amount: p?.amount ?? autoFee(s) };
     });
-    await onSend?.(type, enriched, { month, deadline, makeupDate, makeupTime });
-    setIsSubmitting(false);
-    onClose();
+    try {
+      await onSend?.(type, enriched, { month, deadline, makeupDate, makeupTime });
+      onClose();
+    } catch (e) {
+      setSendError(e?.message || "발송에 실패했습니다. 다시 시도해주세요.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   // 수강료 확인 단계에서 사용 (monthly_fee 전용)
@@ -238,6 +245,11 @@ export default function AlimtalkModal({ type: initialType = "monthly_fee", stude
               </div>
 
               <div style={{fontSize:12,color:"var(--ink-30)",marginBottom:4}}>총 {targets.length}명에게 발송됩니다.</div>
+              {sendError && (
+                <div style={{background:"var(--red-lt)",border:"1.5px solid var(--red)",borderRadius:8,padding:"8px 12px",marginTop:8,fontSize:13,color:"var(--red)",fontWeight:500}}>
+                  ⚠ {sendError}
+                </div>
+              )}
             </div>
             <div className="modal-f">
               <button className="btn btn-secondary" onClick={() => initialType === "monthly_fee" ? setStep("review") : onClose()} disabled={isSubmitting}>

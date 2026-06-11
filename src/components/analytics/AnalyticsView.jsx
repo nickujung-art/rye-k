@@ -69,7 +69,8 @@ export default function AnalyticsView({ students, teachers, attendance, payments
 
   // ── 선택 월 수납 현황
   const monthPay = payments.filter(p => p.month === selectedMonth);
-  const paidCount = monthPay.filter(p => p.paid).length;
+  const activeIds = new Set(active.map(s => s.id));
+  const paidCount = monthPay.filter(p => p.paid && activeIds.has(p.studentId)).length;
   const unpaidCount = active.length - paidCount;
   const totalRevenue = monthPay.filter(p => p.paid).reduce((s, p) => s + (p.paidAmount || p.amount || 0), 0);
 

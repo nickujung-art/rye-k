@@ -165,6 +165,7 @@ export default function SettlementView({
   const [taxExtras, setTaxExtras] = useState({});
   const [taxIdNums, setTaxIdNums] = useState({});
   const [taxEmail, setTaxEmail] = useState("");
+  const [taxEmailErr, setTaxEmailErr] = useState("");
 
   const availableTeachers = teachers.filter(t => canManageAll(currentUser?.role) || t.id === currentUser?.id);
   const selectedTeacher = teachers.find(t => t.id === selectedTeacherId);
@@ -190,7 +191,8 @@ export default function SettlementView({
   }, [taxModal, teachers, month, students, attendance, payments, institutions, instantCharges, feePresets]);
 
   const handleTaxEmail = (allTaxRows, taxTotals) => {
-    if (!taxEmail.trim()) { alert("수신 이메일을 입력하세요."); return; }
+    if (!taxEmail.trim()) { setTaxEmailErr("수신 이메일을 입력하세요."); return; }
+    setTaxEmailErr("");
     const label = month.replace("-", "년 ") + "월";
     const subject = `${label} 강사료 지급 내역 (세무신고용)`;
     const lines = [
@@ -390,9 +392,10 @@ export default function SettlementView({
                       className="inp"
                       type="email"
                       value={taxEmail}
-                      onChange={e => setTaxEmail(e.target.value)}
+                      onChange={e => { setTaxEmail(e.target.value); setTaxEmailErr(""); }}
                       placeholder="accountant@example.com"
                     />
+                    {taxEmailErr && <div style={{ fontSize: 12, color: "var(--red)", marginTop: 4 }}>⚠ {taxEmailErr}</div>}
                   </div>
                   <button className="btn btn-primary" onClick={() => handleTaxEmail(allTaxRows, taxTotals)} disabled={allTaxRows.length === 0}>
                     이메일 발송

@@ -173,6 +173,8 @@ export function StudentNoticeManager({ notices, currentUser, students = [], teac
   const [readersModal, setReadersModal] = useState(null);
   const [expandedCards, setExpandedCards] = useState(new Set());
   const [imgErr, setImgErr] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [saveErr, setSaveErr] = useState("");
 
   const toggleCard = (id) => setExpandedCards(prev => {
     const next = new Set(prev);
@@ -221,7 +223,8 @@ export function StudentNoticeManager({ notices, currentUser, students = [], teac
   };
 
   const handleSave = async () => {
-    if (!form.title.trim() || !form.content.trim()) return;
+    if (saving || !form.title.trim() || !form.content.trim()) return;
+    setSaving(true); setSaveErr("");
     const expireAt = form.expireDays > 0 ? Date.now() + form.expireDays * 24 * 60 * 60 * 1000 : null;
     let targetTeacherId = null;
     if (isTeacherRole) {
@@ -242,13 +245,19 @@ export function StudentNoticeManager({ notices, currentUser, students = [], teac
       authorRole: currentUser.role,
       updatedAt: Date.now(),
     };
-    if (editing === "new") {
-      const n = { id: uid(), ...base, createdAt: Date.now(), readBy: [] };
-      await onSave([...notices, n]);
-    } else {
-      await onSave(notices.map(n => n.id === editing ? { ...n, ...base } : n));
+    try {
+      if (editing === "new") {
+        const n = { id: uid(), ...base, createdAt: Date.now(), readBy: [] };
+        await onSave([...notices, n]);
+      } else {
+        await onSave(notices.map(n => n.id === editing ? { ...n, ...base } : n));
+      }
+      setEditing(null);
+    } catch {
+      setSaveErr("저장 중 오류가 발생했습니다.");
+    } finally {
+      setSaving(false);
     }
-    setEditing(null);
   };
 
   const handleDelete = async (id) => {
@@ -442,7 +451,11 @@ export function StudentNoticeManager({ notices, currentUser, students = [], teac
                 </div>
               )}
             </div>
-            <div className="modal-f"><button className="btn btn-secondary" onClick={() => setEditing(null)}>취소</button><button className="btn btn-primary" onClick={handleSave}>저장</button></div>
+            <div className="modal-f">
+              {saveErr && <div className="form-err" style={{marginBottom:8,width:"100%"}}>⚠ {saveErr}</div>}
+              <button className="btn btn-secondary" onClick={() => setEditing(null)} disabled={saving}>취소</button>
+              <button className="btn btn-primary" onClick={handleSave} disabled={saving}>{saving ? "저장 중…" : "저장"}</button>
+            </div>
           </div>
         </div>
       )}

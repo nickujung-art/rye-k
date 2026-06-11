@@ -130,12 +130,19 @@ export function StudentFormModal({ student, teachers, currentUser, categories, f
     if (saving) return; setSaving(true);
     try {
       const totalFee = calcTotalFee(form, feePresets);
-      // root teacherId → lesson별 teacherId가 없는 경우에만 전파
       const finalLessons = (form.lessons || []).map(l => ({
         ...l,
         teacherId: l.teacherId || form.teacherId || "",
       }));
-      await onSave({ ...form, lessons: finalLessons, monthlyFee: totalFee, createdAt: form.createdAt || Date.now() });
+      const prevStatus = student?.status || "active";
+      const newStatus = form.status || "active";
+      // 폼에서 휴원으로 변경 시 pausedAt 보정 (사유 없이 변경하는 경우)
+      const statusMeta = newStatus === "paused" && prevStatus !== "paused"
+        ? { pausedAt: form.pausedAt || Date.now(), pausedReason: form.pausedReason || "", careLogs: form.careLogs || [] }
+        : newStatus !== "paused"
+        ? { pausedAt: null, pausedReason: null }
+        : {};
+      await onSave({ ...form, ...statusMeta, lessons: finalLessons, monthlyFee: totalFee, createdAt: form.createdAt || Date.now() });
     }
     catch(e) { setErr("저장 중 오류가 발생했습니다."); setConfirming(false); }
     finally { setSaving(false); }
@@ -180,7 +187,8 @@ export function StudentFormModal({ student, teachers, currentUser, categories, f
               <input
                 className="inp"
                 value={form.guardianName}
-                onChange={e => set("guardianName", e.target.value.trim())}
+                onChange={e => set("guardianName", e.target.value)}
+                onBlur={e => set("guardianName", e.target.value.trim())}
                 placeholder="홍길동"
                 maxLength={20}
               />
@@ -381,6 +389,7 @@ export function StudentDetailModal({ student: s, teachers, currentUser, categori
   const [showNoteAll, setShowNoteAll] = useState(false);
   const [showPw, setShowPw] = useState(false);
   const [copyMsg, setCopyMsg] = useState("");
+  const [pausePicker, setPausePicker] = useState(null);
   const rentalOptions = Object.entries(feePresets || {}).filter(([k]) => k.startsWith("rental:"));
   const canManageRental = canManageAll(currentUser.role) || currentUser.role === "teacher";
   const pw = getBirthPassword(s.birthDate);
@@ -432,9 +441,51 @@ export function StudentDetailModal({ student: s, teachers, currentUser, categori
             </div>
             {days.length > 0 && <div className="day-row">{DAYS.map(d => <div key={d} className={`day-chip ${days.includes(d) ? "on" : ""}`}>{d}</div>)}</div>}
             {onStatusChange && s.status !== "withdrawn" && (
-              <button type="button" onClick={() => onStatusChange(s.status === "paused" ? "active" : "paused")} style={{marginTop:6,background:s.status==="paused"?"var(--green-lt)":"var(--gold-lt)",border:"none",borderRadius:6,color:s.status==="paused"?"var(--green)":"var(--gold-dk)",cursor:"pointer",fontSize:12,fontWeight:600,padding:"5px 14px",fontFamily:"inherit",alignSelf:"flex-start"}}>
-                {s.status === "paused" ? "▶ 재원 복귀" : "⏸ 휴원 처리"}
-              </button>
+              <div style={{marginTop:6}}>
+                {s.status === "paused" ? (
+                  <button type="button" onClick={() => { onStatusChange("active"); setPausePicker(null); }}
+                    style={{background:"var(--green-lt)",border:"none",borderRadius:6,color:"var(--green)",cursor:"pointer",fontSize:12,fontWeight:600,padding:"5px 14px",fontFamily:"inherit"}}>
+                    ▶ 재원 복귀
+                  </button>
+                ) : !pausePicker ? (
+                  <button type="button" onClick={() => setPausePicker({ reason: "", note: "" })}
+                    style={{background:"var(--gold-lt)",border:"none",borderRadius:6,color:"var(--gold-dk)",cursor:"pointer",fontSize:12,fontWeight:600,padding:"5px 14px",fontFamily:"inherit"}}>
+                    ⏸ 휴원 처리
+                  </button>
+                ) : null}
+                {pausePicker && s.status !== "paused" && (
+                  <div style={{marginTop:6,padding:"12px",background:"var(--gold-lt)",borderRadius:8,border:"1px solid rgba(245,168,0,.3)"}}>
+                    <div style={{fontSize:12,fontWeight:600,color:"var(--gold-dk)",marginBottom:8}}>휴원 사유 선택</div>
+                    <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:8}}>
+                      {["스케줄 충돌","재정 부담","동기 저하","강사 불만","이사·건강","기타"].map(r => (
+                        <button key={r} type="button" onClick={() => setPausePicker(p => ({...p, reason: r}))}
+                          style={{fontSize:11,padding:"3px 10px",borderRadius:12,border:"1px solid",fontFamily:"inherit",cursor:"pointer",
+                            borderColor: pausePicker.reason === r ? "var(--gold-dk)" : "var(--border)",
+                            background: pausePicker.reason === r ? "var(--gold-dk)" : "var(--paper)",
+                            color: pausePicker.reason === r ? "#fff" : "var(--ink-60)",
+                            fontWeight: pausePicker.reason === r ? 700 : 400}}>
+                          {r}
+                        </button>
+                      ))}
+                    </div>
+                    <input placeholder="메모 (선택)" value={pausePicker.note}
+                      onChange={e => setPausePicker(p => ({...p, note: e.target.value}))}
+                      style={{width:"100%",fontSize:12,padding:"6px 10px",borderRadius:6,border:"1px solid var(--border)",background:"var(--paper)",color:"var(--ink)",fontFamily:"inherit",boxSizing:"border-box",marginBottom:8}} />
+                    <div style={{display:"flex",gap:6}}>
+                      <button type="button"
+                        onClick={() => { if (!pausePicker.reason) return; onStatusChange("paused", pausePicker); setPausePicker(null); }}
+                        style={{flex:1,fontSize:12,padding:"6px",borderRadius:6,border:"none",fontFamily:"inherit",cursor:"pointer",fontWeight:600,
+                          background:"var(--gold-dk)",color:"#fff",opacity:pausePicker.reason ? 1 : 0.45}}>
+                        확인
+                      </button>
+                      <button type="button" onClick={() => setPausePicker(null)}
+                        style={{fontSize:12,padding:"6px 12px",borderRadius:6,border:"1px solid var(--border)",background:"var(--paper)",color:"var(--ink-60)",fontFamily:"inherit",cursor:"pointer"}}>
+                        취소
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
             )}
           </div>
         </div>

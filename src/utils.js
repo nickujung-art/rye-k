@@ -149,7 +149,12 @@ export async function sendAligoMessage(type, students, options = {}) {
   };
 
   const SUBJ = { monthly_fee: "수강료 안내", unpaid_reminder: "미납 독촉", makeup_lesson: "보강 안내", charge_request: "즉시청구 안내", enrollment_complete: "수강 등록 완료" };
-  const buttonJson = JSON.stringify({ button: [{ name: "My RYE 포탈", linkType: "WL", linkTypeName: "웹링크", linkMo: "https://app.ryekorea.com/myryk/", linkPc: "" }] });
+  const buttonJson = type === "enrollment_complete"
+    ? JSON.stringify({ button: [
+        { name: "채널추가", linkType: "AC", linkTypeName: "채널 추가" },
+        { name: "My RYE-K 포탈", linkType: "WL", linkTypeName: "웹링크", linkMo: "https://app.ryekorea.com/myryk/", linkPc: "" }
+      ]})
+    : JSON.stringify({ button: [{ name: "My RYE 포탈", linkType: "WL", linkTypeName: "웹링크", linkMo: "https://app.ryekorea.com/myryk/", linkPc: "" }] });
   const results = [];
   for (let i = 0; i < valid.length; i += 500) {
     const batch = valid.slice(i, i + 500);

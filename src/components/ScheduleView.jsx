@@ -131,9 +131,10 @@ function ScheduleView({ students, teachers, currentUser, attendance, onSaveAtten
   const getMakeups = (dateStr) => {
     return attendance.filter(a => {
       if (a.status !== "excused" || a.date !== dateStr) return false;
+      const s = students.find(st => st.id === a.studentId);
+      if (s && (s.status === "paused" || s.status === "withdrawn")) return false;
       if (effectiveFilter === "all") return true;
       if (a.teacherId === effectiveFilter) return true;
-      const s = students.find(st => st.id === a.studentId);
       if (!s) return false;
       return s.teacherId === effectiveFilter || (s.lessons || []).some(l => l.teacherId === effectiveFilter);
     }).map(a => {
@@ -178,7 +179,7 @@ function ScheduleView({ students, teachers, currentUser, attendance, onSaveAtten
         <div style={{fontSize:12,color:"var(--ink-60)",marginBottom:12,textAlign:"center",fontWeight:500}}>{weekLabel}</div>
         {weekDates.map(({ dayName, date, d }) => {
           const isToday = date === TODAY_STR;
-          const lessons = d.getDate() >= 29 ? [] : (scheduleByDay[dayName] || []);
+          const lessons = scheduleByDay[dayName] || [];
           const makeups = getMakeups(date);
           const dayNotices = getNoticesForDate(date);
           const all = [...lessons, ...makeups].sort((a, b) => (a.time||"").localeCompare(b.time||""));
@@ -369,7 +370,7 @@ function ScheduleView({ students, teachers, currentUser, attendance, onSaveAtten
           const isToday = dateStr === TODAY_STR;
           const isThisMonth = d.getMonth() === viewMonth;
           const dayName = DAYS[d.getDay()===0?6:d.getDay()-1];
-          const count = (d.getDate() >= 29 ? 0 : (scheduleByDay[dayName]||[]).length) + getMakeups(dateStr).length;
+          const count = (scheduleByDay[dayName]||[]).length + getMakeups(dateStr).length;
           const cellNotices = getNoticesForDate(dateStr);
           const isSelected = dayDetail === dateStr;
           return (

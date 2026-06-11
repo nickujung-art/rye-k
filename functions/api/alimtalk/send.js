@@ -1,3 +1,5 @@
+import { verifyToken } from "../ai/_utils/auth.js";
+
 const ALIGO_HOST = "kakaoapi.aligo.in";
 const ALIGO_URL = `https://${ALIGO_HOST}/akv10/alimtalk/send/`;
 
@@ -79,6 +81,14 @@ async function sendBatch(env, type, batch, options) {
 }
 
 export async function onRequestPost({ request, env }) {
+  // Auth: Firebase JWT Bearer — admin/manager only
+  const payload = await verifyToken(request);
+  if (!payload) return json({ success: false, error: "Unauthorized" }, 401);
+  const role = String(payload?.role || "").toLowerCase();
+  if (role !== "admin" && role !== "manager") {
+    return json({ success: false, error: "Forbidden" }, 403);
+  }
+
   let body;
   try {
     body = await request.json();

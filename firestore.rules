@@ -50,11 +50,14 @@ service cloud.firestore {
       allow write: if isManagerOrAbove();
     }
 
-    // 출석 기록 — 스태프(이메일 인증)만 쓰기
-    // SEC-4: 익명 사용자의 size() 체크 기반 컨텐츠 주입 경로 제거 (포털 출석 직접 쓰기 유스케이스 없음)
+    // 출석 기록 — 스태프(이메일 인증) 전체 쓰기, 익명(포털) 댓글 추가 허용
+    // SEC-4: 익명 사용자는 배열 크기 5000 이하 + 키 검증으로 플러딩 방지 (포털 레슨노트 댓글 저장 경로)
     match /appData/rye-attendance {
       allow read:  if isAuthenticated();
-      allow write: if isEmailUser();
+      allow write: if isEmailUser() ||
+        (isAnonymous() &&
+         request.resource.data.keys().hasAll(['value', 'updatedAt']) &&
+         request.resource.data.value.size() <= 5000);
     }
 
     // 수강 등록 대기 — 포털(익명) 수강 신청 허용, 페이로드 제한으로 플러딩 차단

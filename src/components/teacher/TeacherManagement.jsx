@@ -219,9 +219,10 @@ export function TeachersView({ teachers, students, categories, onAdd, onSelect, 
       ) : (
         <div className="s-grid">
           {filtered.map(t => {
-            const cnt = students.filter(s => s.teacherId === t.id || (s.lessons||[]).some(l => l.teacherId === t.id)).length;
+            const cnt = students.filter(s => s.status !== "withdrawn" && (s.teacherId === t.id || (s.lessons||[]).some(l => l.teacherId === t.id))).length;
             const insts = (t.instruments || []).filter(Boolean);
             const todayCount = students.filter(s =>
+              s.status !== "paused" && s.status !== "withdrawn" &&
               (s.teacherId === t.id || (s.lessons||[]).some(l => l.teacherId === t.id)) &&
               (s.lessons||[]).some(l => (l.schedule||[]).some(sc => sc.day === todayDayName))
             ).length;

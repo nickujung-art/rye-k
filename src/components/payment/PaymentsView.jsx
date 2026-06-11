@@ -66,6 +66,7 @@ export default function PaymentsView({
   const [aligoRemain, setAligoRemain] = useState(null);
   const [aligoRemainLoading, setAligoRemainLoading] = useState(false);
   const [editSaveError, setEditSaveError] = useState("");
+  const [saveEditSaving, setSaveEditSaving] = useState(false);
 
   const pendingInstantCount = instantCharges.filter(c => c.status === "pending").length;
 
@@ -133,6 +134,8 @@ export default function PaymentsView({
   };
 
   const saveEdit = async () => {
+    if (saveEditSaving) return;
+    setSaveEditSaving(true);
     setEditSaveError("");
     const existing = getPayment(editForm.studentId);
     const record = {
@@ -156,10 +159,12 @@ export default function PaymentsView({
       await onSavePayments(upd);
       const sName = visibleStudents.find(s => s.id === editForm.studentId)?.name;
       if (editForm.paid && !existing?.paid) onLog(`${sName} 회원 ${monthLabel(month)} 수강료 입금 확인`);
-      setEditSaveError(""); setEditingId(null);;
+      setEditSaveError(""); setEditingId(null);
     } catch (e) {
       console.error("수납 저장 실패:", e);
       setEditSaveError(e?.message || "저장에 실패했습니다. 다시 시도해주세요.");
+    } finally {
+      setSaveEditSaving(false);
     }
   };
 
@@ -777,8 +782,8 @@ export default function PaymentsView({
                 )}
               </div>
               <div className="modal-f">
-                <button className="btn btn-secondary" onClick={() => { setEditSaveError(""); setEditingId(null); }}>취소</button>
-                <button className="btn btn-primary" onClick={saveEdit}>저장</button>
+                <button className="btn btn-secondary" onClick={() => { setEditSaveError(""); setEditingId(null); }} disabled={saveEditSaving}>취소</button>
+                <button className="btn btn-primary" onClick={saveEdit} disabled={saveEditSaving}>{saveEditSaving ? "저장 중…" : "저장"}</button>
               </div>
             </div>
           </div>
@@ -832,10 +837,11 @@ export default function PaymentsView({
               const result = await sendAligoMessage(type, targets, options);
               const noPhoneMsg = result.noPhone?.length ? ` (전화번호 없음: ${result.noPhone.join(", ")})` : "";
               onLog(`알림톡 ${result.sent}명 발송 완료${noPhoneMsg}`);
+              setAlimtalkModal(null);
             } catch (e) {
               onLog(`알림톡 발송 실패: ${e.message}`);
+              throw e;
             }
-            setAlimtalkModal(null);
           }}
         />
       )}

@@ -1589,7 +1589,7 @@ export function PublicParentView() {
                           <div style={{display:"flex",alignItems:"center",gap:10,padding:"12px 16px",borderBottom:"1px solid #F5F5F5"}}>
                             <Av photo={noteTeacher?.photo} name={noteTeacher?.name || "강사"} size="av-sm" />
                             <div style={{flex:1,minWidth:0}}>
-                              <div style={{fontSize:12.5,fontWeight:600,color:"var(--ink)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{noteTeacher?.name ? `${noteTeacher.name} 강사` : "이전 강사"}</div>
+                              <div style={{fontSize:12.5,fontWeight:600,color:"var(--ink)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{noteTeacher?.name ? `${noteTeacher.name} 강사` : "RYE-K 강사"}</div>
                               <div style={{fontSize:10.5,color:"var(--ink-30)",marginTop:1}}>{dateLabel(a.date)} · {fmtDate(a.date)}</div>
                             </div>
                             <span style={{background:st.bg,color:st.color,fontSize:10.5,fontWeight:700,padding:"3px 9px",borderRadius:8,whiteSpace:"nowrap"}}>{st.icon} {st.text}</span>
