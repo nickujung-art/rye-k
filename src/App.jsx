@@ -9,7 +9,7 @@ import PaymentsView from "./components/payment/PaymentsView.jsx";
 import { LessonEditor, StudentFormModal, StudentDetailModal, StudentsView } from "./components/student/StudentManagement.jsx";
 import { TeacherFormModal, TeacherDetailModal, TeachersView } from "./components/teacher/TeacherManagement.jsx";
 import { NoticeFormModal, NoticesView, StudentNoticeManager } from "./components/notice/NoticeManagement.jsx";
-import { ActivityView, PendingView, TrashView, CategoriesView, AiSettingsView, ShopView } from "./components/admin/AdminTools.jsx";
+import { ActivityView, PendingView, TrashView, CategoriesView, AiSettingsView, ShopView, LessonSlotsView } from "./components/admin/AdminTools.jsx";
 import { CURRENT_VERSION } from "./constants/releases.js";
 import Dashboard from "./components/dashboard/Dashboard.jsx";
 import { PublicParentView, PublicRegisterForm } from "./components/portal/PublicPortal.jsx";
@@ -551,6 +551,67 @@ function MainApp() {
       tx.set(_studentsRef, { value: cur.map(s => s.id === student.id ? student : s), updatedAt: Date.now() });
     });
     setStudents(prev => prev.map(s => s.id === student.id ? student : s));
+  };
+  const runLessonSlotMigration = async () => {
+    const realStudents = students.filter(s => !s.isInstitution && s.status !== "withdrawn");
+
+    // Step 1: 그룹 맵 구성 (slotId 없는 lesson만)
+    const groupMap = {};
+    realStudents.forEach(s => {
+      (s.lessons || []).forEach((l, li) => {
+        if (l.slotId) return; // idempotent: 이미 slotId 있으면 스킵
+        const tid = l.teacherId || s.teacherId;
+        const schedFp = JSON.stringify(
+          [...(l.schedule || [])].sort((a, b) => `${a.day}${a.time}`.localeCompare(`${b.day}${b.time}`))
+        );
+        const key = `${tid}::${l.instrument}::${schedFp}`;
+        if (!groupMap[key]) {
+          groupMap[key] = { teacherId: tid, instrument: l.instrument, schedule: l.schedule || [], students: [] };
+        }
+        groupMap[key].students.push({ studentId: s.id, lessonIdx: li });
+      });
+    });
+
+    // Step 2: 슬롯 생성 (addLessonSlot, no transaction)
+    const slotIdMap = {};
+    let slotsCreated = 0;
+    for (const [key, group] of Object.entries(groupMap)) {
+      const isGroup = group.students.length > 1;
+      const slotName = isGroup
+        ? `${group.instrument} 그룹`
+        : (students.find(s => s.id === group.students[0].studentId)?.name || "개인");
+      const docRef = await addLessonSlot({
+        teacherId: group.teacherId,
+        instrument: group.instrument,
+        type: isGroup ? "group" : "individual",
+        name: slotName,
+        capacity: isGroup ? group.students.length : 1,
+        schedule: group.schedule,
+        status: "active",
+        notes: "",
+      });
+      slotIdMap[key] = docRef.id;
+      slotsCreated++;
+    }
+
+    // Step 3: 학생 업데이트 (updateStudentDoc per-op, 학생당 1회)
+    const studentUpdateMap = {};
+    for (const [key, group] of Object.entries(groupMap)) {
+      const slotId = slotIdMap[key];
+      group.students.forEach(({ studentId, lessonIdx }) => {
+        const base = studentUpdateMap[studentId] || students.find(s => s.id === studentId);
+        const lessons = [...(base.lessons || [])];
+        lessons[lessonIdx] = { ...lessons[lessonIdx], slotId };
+        studentUpdateMap[studentId] = { ...base, lessons };
+      });
+    }
+    let studentsUpdated = 0;
+    for (const updatedStudent of Object.values(studentUpdateMap)) {
+      await updateStudentDoc(updatedStudent);
+      studentsUpdated++;
+    }
+
+    return { slotsCreated, studentsUpdated };
   };
   const deleteStudentDoc = async (studentId) => {
     if (!studentId) throw new Error("deleteStudentDoc: id 없음");
@@ -1309,6 +1370,15 @@ function MainApp() {
               shopItems={shopItems}
               onSave={async u => { await saveShopItems(u); addLog("상품 카탈로그 수정"); }}
             />}
+            {view === "lessonSlots" && user.role === "admin" && (
+              <LessonSlotsView
+                students={students}
+                teachers={teachers}
+                lessonSlots={lessonSlots}
+                onRunMigration={runLessonSlotMigration}
+                showToast={showToast}
+              />
+            )}
             {view === "settlement" && canManageAll(user.role) && <SettlementView
               teachers={teachers}
               students={students}
