@@ -1,5 +1,5 @@
 import { initializeApp } from "firebase/app";
-import { getFirestore, doc, setDoc, onSnapshot, runTransaction, collection, addDoc, updateDoc, getDoc } from "firebase/firestore";
+import { getFirestore, doc, setDoc, onSnapshot, runTransaction, collection, addDoc, updateDoc, getDoc, deleteDoc } from "firebase/firestore";
 import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signInAnonymously, signOut, onAuthStateChanged, updatePassword } from "firebase/auth";
 
 const firebaseConfig = {
@@ -90,6 +90,22 @@ export async function addInstantCharge(data) {
 export async function updateInstantCharge(id, data) {
   if (!id) throw new Error("updateInstantCharge: id 없음");
   return updateDoc(doc(db, "rye-instant-charges", id), { ...data, updatedAt: Date.now() });
+}
+
+// ── rye-lesson-slots 독립 컬렉션 CRUD ─────────────────────────────────────
+export async function addLessonSlot(data) {
+  return addDoc(collection(db, "rye-lesson-slots"), {
+    ...data,
+    createdAt: Date.now(),
+  });
+}
+export async function updateLessonSlot(id, data) {
+  if (!id) throw new Error("updateLessonSlot: id 없음");
+  return updateDoc(doc(db, "rye-lesson-slots", id), { ...data, updatedAt: Date.now() });
+}
+export async function deleteLessonSlot(id) {
+  if (!id) throw new Error("deleteLessonSlot: id 없음");
+  return deleteDoc(doc(db, "rye-lesson-slots", id));
 }
 
 export async function getPortalIdToken() {
