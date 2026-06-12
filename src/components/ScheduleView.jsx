@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import knotLineSvg from "../assets/heritage/knot-line.svg";
 import { DAYS, TODAY_STR, IC } from "../constants.jsx";
 import { canManageAll, allLessonInsts, uid, fmtDateShort, sendAligoMessage } from "../utils.js";
@@ -25,6 +25,7 @@ function ScheduleView({ students, teachers, currentUser, attendance, onSaveAtten
   const [alimToast, setAlimToast] = useState("");
   const [editingSlotId, setEditingSlotId] = useState(null);
   const [editingSlotName, setEditingSlotName] = useState("");
+  const slotSavedRef = useRef(false); // prevents onBlur double-save after Enter
 
   const canSeeAll = canManageAll(currentUser.role);
   const effectiveFilter = canSeeAll ? filterTeacherId : currentUser.id;
@@ -172,17 +173,19 @@ function ScheduleView({ students, teachers, currentUser, attendance, onSaveAtten
             onKeyDown={e => {
               if (e.key === "Enter") {
                 e.preventDefault();
+                slotSavedRef.current = true;
                 if (editingSlotName.trim() && onUpdateSlot) {
                   onUpdateSlot(entry.slotId, { name: editingSlotName.trim() });
                 }
                 setEditingSlotId(null);
               }
-              if (e.key === "Escape") setEditingSlotId(null);
+              if (e.key === "Escape") { slotSavedRef.current = true; setEditingSlotId(null); }
             }}
             onBlur={() => {
-              if (editingSlotName.trim() && onUpdateSlot) {
+              if (!slotSavedRef.current && editingSlotName.trim() && onUpdateSlot) {
                 onUpdateSlot(entry.slotId, { name: editingSlotName.trim() });
               }
+              slotSavedRef.current = false;
               setEditingSlotId(null);
             }}
             onClick={e => e.stopPropagation()}
