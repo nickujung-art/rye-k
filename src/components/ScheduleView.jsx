@@ -11,7 +11,7 @@ function getTeacherColor(id, teachersList) {
   return TEACHER_COLORS[Math.abs(idx) % TEACHER_COLORS.length] || "var(--ink-30)";
 }
 
-function ScheduleView({ students, teachers, currentUser, attendance, onSaveAttendance, onSaveScheduleOverride, scheduleOverrides, notices }) {
+function ScheduleView({ students, teachers, currentUser, attendance, onSaveAttendance, onSaveScheduleOverride, scheduleOverrides, notices, lessonSlots, onUpdateSlot }) {
   const [viewMode, setViewMode] = useState("week");
   const [filterTeacherId, setFilterTeacherId] = useState("all");
   const [weekOffset, setWeekOffset] = useState(0);
@@ -22,6 +22,8 @@ function ScheduleView({ students, teachers, currentUser, attendance, onSaveAtten
   const [expandedGroups, setExpandedGroups] = useState({});
   const [alimSend, setAlimSend] = useState(true);
   const [alimToast, setAlimToast] = useState("");
+  const [editingSlotId, setEditingSlotId] = useState(null);
+  const [editingSlotName, setEditingSlotName] = useState("");
 
   const canSeeAll = canManageAll(currentUser.role);
   const effectiveFilter = canSeeAll ? filterTeacherId : currentUser.id;
@@ -74,6 +76,7 @@ function ScheduleView({ students, teachers, currentUser, attendance, onSaveAtten
             time: sch.time || "", teacherId: lessonTid,
             teacherName: teacher ? teacher.name : "미배정",
             color: getTeacherColor(lessonTid, teachers), isMakeup: false,
+            slotId: lesson.slotId || null,
           });
         }
       });
@@ -151,6 +154,60 @@ function ScheduleView({ students, teachers, currentUser, attendance, onSaveAtten
     });
   };
 
+  // Renders the group lesson name cell with optional inline edit for canSeeAll users
+  const renderGroupName = (entry) => {
+    const slot = entry.slotId ? (lessonSlots || []).find(s => s.id === entry.slotId) : null;
+    const slotName = slot?.name || "그룹 레슨";
+    const isEditing = editingSlotId === entry.slotId && entry.slotId;
+    return (
+      <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+        {isEditing ? (
+          <input
+            className="inp"
+            style={{ fontSize: 13, fontWeight: 600, padding: "2px 6px", height: 26, width: 140 }}
+            value={editingSlotName}
+            autoFocus
+            onChange={e => setEditingSlotName(e.target.value)}
+            onKeyDown={e => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                if (editingSlotName.trim() && onUpdateSlot) {
+                  onUpdateSlot(entry.slotId, { name: editingSlotName.trim() });
+                }
+                setEditingSlotId(null);
+              }
+              if (e.key === "Escape") setEditingSlotId(null);
+            }}
+            onBlur={() => {
+              if (editingSlotName.trim() && onUpdateSlot) {
+                onUpdateSlot(entry.slotId, { name: editingSlotName.trim() });
+              }
+              setEditingSlotId(null);
+            }}
+            onClick={e => e.stopPropagation()}
+          />
+        ) : (
+          <>
+            {slotName}
+            {canSeeAll && entry.slotId && onUpdateSlot && (
+              <span
+                style={{ fontSize: 11, cursor: "pointer", color: "var(--ink-30)", padding: "2px 3px" }}
+                title="이름 편집"
+                onClick={e => {
+                  e.stopPropagation();
+                  setEditingSlotId(entry.slotId);
+                  setEditingSlotName(slotName);
+                }}
+              >
+                ✏
+              </span>
+            )}
+          </>
+        )}
+      </span>
+    );
+  };
+
   if (viewMode === "week") {
     const weekDates = getWeekDates(weekOffset);
     const first = weekDates[0].d; const last = weekDates[6].d;
@@ -215,7 +272,7 @@ function ScheduleView({ students, teachers, currentUser, attendance, onSaveAtten
                     <span className="sched-time">{entry.time||"—"}</span>
                     <div className="sched-info">
                       <div className="sched-name">
-                        {entry.isGroupLesson ? "그룹 레슨" : entry.studentName}
+                        {entry.isGroupLesson ? renderGroupName(entry) : entry.studentName}
                         {((entry.isGroupLesson || entry.isGroup) && (entry.participantCount||0) > 0) && <span style={{fontSize:9,color:"var(--ink-30)",marginLeft:3,fontWeight:400}}>({entry.participantCount}명)</span>}
                       </div>
                       <div className="sched-inst">{entry.instrument}</div>
@@ -428,7 +485,7 @@ function ScheduleView({ students, teachers, currentUser, attendance, onSaveAtten
                     <span className="sched-time">{entry.time||"—"}</span>
                     <div className="sched-info">
                       <div className="sched-name">
-                        {entry.isGroupLesson ? "그룹 레슨" : entry.studentName}
+                        {entry.isGroupLesson ? renderGroupName(entry) : entry.studentName}
                         {((entry.isGroupLesson || entry.isGroup) && (entry.participantCount||0) > 0) && <span style={{fontSize:9,color:"var(--ink-30)",marginLeft:3,fontWeight:400}}>({entry.participantCount}명)</span>}
                       </div>
                       <div className="sched-inst">{entry.instrument}</div>
