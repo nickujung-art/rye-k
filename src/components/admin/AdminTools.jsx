@@ -787,6 +787,95 @@ export function ShopView({ shopItems, onSave }) {
   );
 }
 
+// ── LESSON SLOTS MIGRATION VIEW ───────────────────────────────────────────────
+export function LessonSlotsView({ students, teachers, lessonSlots, onRunMigration, showToast }) {
+  const [confirm, setConfirm] = useState(false);
+  const [running, setRunning] = useState(false);
+  const [result, setResult] = useState(null);
+  const [error, setError] = useState("");
+
+  const totalStudents = (students || []).filter(s => !s.isInstitution && s.status !== "withdrawn").length;
+  const migratedCount = (students || []).filter(s =>
+    !s.isInstitution && (s.lessons || []).some(l => l.slotId)
+  ).length;
+  const existingSlots = (lessonSlots || []).length;
+
+  const handleRun = async () => {
+    setRunning(true);
+    setError("");
+    setResult(null);
+    try {
+      const res = await onRunMigration();
+      setResult(res);
+      showToast && showToast(`마이그레이션 완료: 슬롯 ${res.slotsCreated}개, 학생 ${res.studentsUpdated}명`);
+    } catch (e) {
+      setError(e.message || "마이그레이션 중 오류 발생");
+    } finally {
+      setRunning(false);
+      setConfirm(false);
+    }
+  };
+
+  return (
+    <div>
+      <div className="ph">
+        <div><h1>레슨 슬롯 관리</h1><div className="ph-sub">그룹·개인 레슨 슬롯 초기화 및 현황</div></div>
+      </div>
+
+      {/* 현황 카드 */}
+      <div className="card" style={{ padding: 16, marginBottom: 16 }}>
+        <div style={{ display: "flex", gap: 24, flexWrap: "wrap" }}>
+          <div><div style={{ fontSize: 11, color: "var(--ink-30)", marginBottom: 2 }}>생성된 슬롯</div><div style={{ fontSize: 22, fontWeight: 700, color: "var(--blue)" }}>{existingSlots}</div></div>
+          <div><div style={{ fontSize: 11, color: "var(--ink-30)", marginBottom: 2 }}>slotId 연결된 학생</div><div style={{ fontSize: 22, fontWeight: 700, color: "var(--green)" }}>{migratedCount}</div></div>
+          <div><div style={{ fontSize: 11, color: "var(--ink-30)", marginBottom: 2 }}>전체 대상 학생</div><div style={{ fontSize: 22, fontWeight: 700 }}>{totalStudents}</div></div>
+        </div>
+      </div>
+
+      {/* 결과 표시 */}
+      {result && (
+        <div className="card" style={{ padding: 14, marginBottom: 16, background: "var(--green-lt)", border: "1px solid var(--green)" }}>
+          <div style={{ fontWeight: 600, color: "var(--green)" }}>마이그레이션 완료</div>
+          <div style={{ fontSize: 13, color: "var(--ink-60)", marginTop: 4 }}>
+            슬롯 {result.slotsCreated}개 생성 · 학생 {result.studentsUpdated}명 업데이트
+          </div>
+        </div>
+      )}
+      {error && (
+        <div className="card" style={{ padding: 14, marginBottom: 16, background: "var(--red-lt)", border: "1px solid var(--red)" }}>
+          <div style={{ fontWeight: 600, color: "var(--red)" }}>오류</div>
+          <div style={{ fontSize: 13, color: "var(--ink-60)", marginTop: 4 }}>{error}</div>
+        </div>
+      )}
+
+      {/* 마이그레이션 버튼 */}
+      <div className="card" style={{ padding: 16 }}>
+        <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 6 }}>레슨 슬롯 초기화</div>
+        <div style={{ fontSize: 13, color: "var(--ink-60)", marginBottom: 14, lineHeight: 1.6 }}>
+          기존 학생 데이터에서 그룹/개인 슬롯을 자동 생성하고 lessons[].slotId를 연결합니다.<br />
+          이미 slotId가 있는 레슨은 스킵됩니다 (idempotent). 기관 가상회원은 제외됩니다.
+        </div>
+        {!confirm ? (
+          <button
+            className="btn btn-secondary"
+            onClick={() => setConfirm(true)}
+            disabled={running}
+          >
+            레슨 슬롯 초기화 실행
+          </button>
+        ) : (
+          <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+            <span style={{ fontSize: 13, color: "var(--gold-dk)", fontWeight: 600 }}>실행하시겠습니까?</span>
+            <button className="btn btn-primary" onClick={handleRun} disabled={running} style={{ minWidth: 80 }}>
+              {running ? "실행 중..." : "확인"}
+            </button>
+            <button className="btn btn-secondary" onClick={() => setConfirm(false)} disabled={running}>취소</button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── TRASH VIEW (휴지통 — 7일 백업) ───────────────────────────────────────────
 export function TrashView({ trash, onRestore, onPermanentDelete }) {
   const [confirmId, setConfirmId] = useState(null);
