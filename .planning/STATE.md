@@ -28,6 +28,14 @@
 - 07-02 ✓: fuzzyMatchStudent guardian_exact/guardian_fuzzy + split_space + amount_match
 - 07-03 ✓: 미매칭 카드 rawText 표시 + 추천 학생 배지 + auto-select useEffect
 
+## Active Work
+
+**Phase 8: 그룹 레슨 고도화** — Planned (2026-06-12)
+- 6 plans in 3 waves ready to execute
+- Wave 1: 08-01 (rye-lesson-slots 인프라) + 08-06 (예약 설계 문서)
+- Wave 2: 08-02 (마이그레이션) + 08-03 (ScheduleView) + 08-04 (Attendance)
+- Wave 3: 08-05 (TimetableView)
+
 ## Pending / Blockers
 
 - **알림톡**: makeup_lesson(UI_1527) 재승인 대기 — 완료 시 utils.js line 127 throw 제거만 하면 됨

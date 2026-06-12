@@ -142,6 +142,11 @@ Plans:
 **Plans**: 6 plans
 Plans:
 - [ ] 08-01-PLAN.md — rye-lesson-slots CRUD (firebase.js) + App.jsx 리스너·상태·prop 전달 (GRP-01)
+- [ ] 08-02-PLAN.md — AdminTools LessonSlotsView + runLessonSlotMigration (GRP-02)
+- [ ] 08-03-PLAN.md — ScheduleView 그룹 이름 표시 + 인라인 편집 (GRP-03)
+- [ ] 08-04-PLAN.md — Attendance 그룹 헤더 슬롯 이름 연동 (GRP-04)
+- [ ] 08-05-PLAN.md — TimetableView 신규 + ScheduleView 탭 통합 + CSS (GRP-05, GRP-06, GRP-07)
+- [ ] 08-06-PLAN.md — 예약 시스템 설계 문서 (GRP-08)
 - [ ] 08-02-PLAN.md — AdminTools LessonSlotsView + App.jsx 마이그레이션 함수 (GRP-02)
 - [ ] 08-03-PLAN.md — ScheduleView 그룹 이름 표시 + 인라인 편집 (GRP-03)
 - [ ] 08-04-PLAN.md — Attendance 그룹 헤더 슬롯 이름 연동 (GRP-04)
