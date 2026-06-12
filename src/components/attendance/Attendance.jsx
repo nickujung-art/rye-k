@@ -356,7 +356,7 @@ function detectLessonGroups(students, dayName, filterTeacher) {
         // ★ v12.1: 기관 가상회원은 항상 단독 그룹 (s.id를 키에 포함시켜 격리)
         const instPrefix = s.isInstitution ? `inst_${s.id}__` : "";
         const key = `${instPrefix}${l.teacherId || s.teacherId}__${sc.time || ""}__${l.instrument}`;
-        if (!grouped[key]) grouped[key] = { teacherId: l.teacherId || s.teacherId, time: sc.time || "", instrument: l.instrument, students: [] };
+        if (!grouped[key]) grouped[key] = { teacherId: l.teacherId || s.teacherId, time: sc.time || "", instrument: l.instrument, slotId: l.slotId || null, students: [] };
         if (!grouped[key].students.find(x => x.id === s.id)) grouped[key].students.push(s);
       });
     });
@@ -366,7 +366,7 @@ function detectLessonGroups(students, dayName, filterTeacher) {
     .sort((a, b) => (a.time || "").localeCompare(b.time || ""));
 }
 
-function AttendanceView({ students, teachers, currentUser, attendance, onSaveAttendance, categories, scheduleOverrides, onSaveScheduleOverride, onUpdateStudent, showToast = (msg) => console.error(msg) }) {
+function AttendanceView({ students, teachers, currentUser, attendance, onSaveAttendance, categories, scheduleOverrides, onSaveScheduleOverride, onUpdateStudent, showToast = (msg) => console.error(msg), lessonSlots }) {
   const [date, setDate] = useState(TODAY_STR);
   const [filterTeacher, setFilterTeacher] = useState(currentUser.role === "teacher" ? currentUser.id : "all");
   const [noteModal, setNoteModal] = useState(null); // { studentId } | { groupKey, studentIds }
@@ -586,7 +586,15 @@ function AttendanceView({ students, teachers, currentUser, attendance, onSaveAtt
               {group.isGroup && (
                 <div style={{display:"flex",alignItems:"center",gap:8,padding:"8px 14px",background:"var(--blue-lt)",borderRadius:"var(--radius-sm) var(--radius-sm) 0 0",border:"1px solid rgba(43,58,159,.12)",borderBottom:"none",cursor:"pointer"}} onClick={() => toggleGroupCollapse(group.key)}>
                   <span style={{fontSize:11,color:"var(--blue)",fontWeight:700,flex:1}}>
-                    {group.instrument} · {group.time && `${group.time} · `}{teacher?.name || ""} 강사 · {group.students.length}명
+                    {(() => {
+                      const slot = group.slotId ? (lessonSlots || []).find(s => s.id === group.slotId) : null;
+                      const slotName = slot?.name;
+                      return slotName ? (
+                        <><strong>{slotName}</strong>{" · "}{group.instrument} · {group.time && `${group.time} · `}{teacher?.name || ""} 강사 · {group.students.length}명</>
+                      ) : (
+                        <>{group.instrument} · {group.time && `${group.time} · `}{teacher?.name || ""} 강사 · {group.students.length}명</>
+                      );
+                    })()}
                   </span>
                   <span style={{fontSize:10,color:"var(--blue-md)"}}>{isCollapsed ? "▶ 펼치기" : "▼ 접기"}</span>
                 </div>
