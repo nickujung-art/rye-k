@@ -839,4 +839,14 @@ body:has(.ai-backdrop) .ai-fab{display:none}
 .log-table tr.log-unmatched td{background:rgba(232,40,28,.03)}
 .log-mobile-cards{display:none}
 @media(max-width:640px){.log-table-wrap{display:none}.log-mobile-cards{display:block}}
+
+/* ── TimetableView ─────────────────────────────────────────────────── */
+.timetable-wrap{overflow-x:auto;padding-bottom:16px;-webkit-overflow-scrolling:touch;}
+.timetable-grid{display:grid;grid-template-columns:52px repeat(7,minmax(72px,1fr));grid-template-rows:36px repeat(25,48px);border:1px solid var(--border);border-radius:var(--radius-sm);overflow:hidden;min-width:580px;}
+.timetable-header{background:var(--bg);border-right:1px solid var(--border);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:var(--ink-60);position:sticky;top:0;z-index:1;}
+.timetable-time{background:var(--bg);border-right:1px solid var(--border);border-bottom:1px solid var(--border);display:flex;align-items:flex-start;justify-content:center;padding-top:4px;font-size:10px;color:var(--ink-30);}
+.timetable-cell{border-right:1px solid var(--border);border-bottom:1px solid var(--border);position:relative;background:var(--paper);}
+.timetable-slot{position:absolute;inset:2px;border-radius:4px;padding:3px 5px;display:flex;flex-direction:column;justify-content:flex-start;gap:1px;overflow:hidden;}
+.timetable-slot-name{font-size:11px;font-weight:600;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.timetable-slot-sub{font-size:10px;opacity:.65;white-space:nowrap;}
 `;

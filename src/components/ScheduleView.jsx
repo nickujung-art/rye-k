@@ -3,6 +3,7 @@ import knotLineSvg from "../assets/heritage/knot-line.svg";
 import { DAYS, TODAY_STR, IC } from "../constants.jsx";
 import { canManageAll, allLessonInsts, uid, fmtDateShort, sendAligoMessage } from "../utils.js";
 import { Av } from "./shared/CommonUI.jsx";
+import TimetableView from "./TimetableView.jsx";
 
 const TEACHER_COLORS = ["var(--blue)","var(--red)","var(--green)","#7C3AED","var(--gold-dk)","var(--blue-md)","var(--gold)","var(--red-dk)"];
 function getTeacherColor(id, teachersList) {
@@ -151,6 +152,25 @@ function ScheduleView({ students, teachers, currentUser, attendance, onSaveAtten
     });
   };
 
+  if (viewMode === "timetable") {
+    return (
+      <div className="sched-wrap">
+        {alimToast && <div style={{position:"fixed",top:72,left:"50%",transform:"translateX(-50%)",zIndex:9999,background:"var(--paper)",border:"1px solid var(--border)",borderRadius:10,padding:"10px 20px",boxShadow:"0 4px 16px rgba(0,0,0,.14)",fontSize:13,fontWeight:600,whiteSpace:"nowrap"}}>{alimToast}</div>}
+        <div className="sched-toolbar">
+          <button className={"sched-mode-btn " + (viewMode==="week"?"active":"")} onClick={() => setViewMode("week")}>주간</button>
+          <button className={"sched-mode-btn " + (viewMode==="month"?"active":"")} onClick={() => setViewMode("month")}>월간</button>
+          <button className={"sched-mode-btn active"}>시간표</button>
+        </div>
+        <TimetableView
+          lessonSlots={lessonSlots}
+          students={students}
+          teachers={teachers}
+          currentUser={currentUser}
+        />
+      </div>
+    );
+  }
+
   if (viewMode === "week") {
     const weekDates = getWeekDates(weekOffset);
     const first = weekDates[0].d; const last = weekDates[6].d;
@@ -164,6 +184,7 @@ function ScheduleView({ students, teachers, currentUser, attendance, onSaveAtten
         <div className="sched-toolbar">
           <button className={"sched-mode-btn " + (viewMode==="week"?"active":"")} onClick={() => setViewMode("week")}>주간</button>
           <button className={"sched-mode-btn " + (viewMode==="month"?"active":"")} onClick={() => setViewMode("month")}>월간</button>
+          <button className={"sched-mode-btn " + (viewMode==="timetable"?"active":"")} onClick={() => setViewMode("timetable")}>시간표</button>
           {canSeeAll && (
             <select className="sched-filter" value={filterTeacherId} onChange={e => setFilterTeacherId(e.target.value)}>
               <option value="all">전체 강사</option>
@@ -348,6 +369,7 @@ function ScheduleView({ students, teachers, currentUser, attendance, onSaveAtten
       <div className="sched-toolbar">
         <button className={"sched-mode-btn " + (viewMode==="week"?"active":"")} onClick={() => setViewMode("week")}>주간</button>
         <button className={"sched-mode-btn " + (viewMode==="month"?"active":"")} onClick={() => setViewMode("month")}>월간</button>
+        <button className={"sched-mode-btn " + (viewMode==="timetable"?"active":"")} onClick={() => setViewMode("timetable")}>시간표</button>
         {canSeeAll && (
           <select className="sched-filter" value={filterTeacherId} onChange={e => setFilterTeacherId(e.target.value)}>
             <option value="all">전체 강사</option>
