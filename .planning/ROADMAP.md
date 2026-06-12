@@ -13,6 +13,7 @@
 - [x] **Phase 5: 수납 자동화 (Payment Automation)** - 은행 입금 자동 매칭 + 미납 현황 대시보드 + 리마인더 자동 발송 ✓ 2026-05-09
 - [ ] **Phase 6: 분석 대시보드 고도화 (Analytics Enhancement)** - 관리자·강사·학부모용 데이터 인사이트 레이어
 - [x] **Phase 7: 입금 자동매칭 고도화 (Payment Matching Enhancement)** - guardianName 필드 추가 + 보호자 이름 매칭 + students_cache 타이밍 수정 ✓ 2026-06-03
+- [ ] **Phase 8: 그룹 레슨 고도화 (Group Lesson Enhancement)** - rye-lesson-slots 엔티티 신설 + 학생 일괄 마이그레이션 + 그룹 이름 편집 + 강사 시간표 뷰
 
 ## Phase Details
 
@@ -128,6 +129,26 @@ Plans:
 - [x] 07-02-PLAN.md — fuzzyMatchStudent 알고리즘 고도화 (PAY-10) ✓ 2026-06-03
 - [x] 07-03-PLAN.md — 미매칭 카드 UI 개선 (PAY-11) ✓ 2026-06-03
 
+### Phase 8: 그룹 레슨 고도화 (Group Lesson Enhancement)
+**Goal**: 레슨 슬롯이 명시적 엔티티로 관리되고, 강사와 관리자가 시간표 뷰에서 공강/수업 현황을 한눈에 확인하며, 그룹 레슨에 이름을 붙여 출석·스케줄에서 일관되게 표시된다
+**Depends on**: Nothing (standalone feature)
+**Requirements**: GRP-01, GRP-02, GRP-03, GRP-04, GRP-05, GRP-06, GRP-07, GRP-08
+**Success Criteria** (what must be TRUE):
+  1. AdminTools에서 마이그레이션 버튼 실행 후 모든 학생의 lessons[].slotId가 채워지고 rye-lesson-slots 문서가 생성된다
+  2. ScheduleView에서 그룹 레슨 헤더를 클릭해 이름을 편집하면 즉시 Firestore에 저장되고 다음 로드 시 유지된다
+  3. Attendance 그룹 헤더에서 "그룹 레슨" 대신 슬롯 이름이 표시된다
+  4. 강사가 로그인 시 TimetableView에서 자신의 09:00~21:00 주간 시간표를 격자 형태로 볼 수 있다
+  5. 관리자/매니저가 강사 카드를 클릭해 해당 강사의 시간표를 확인할 수 있다
+**Plans**: 6 plans
+Plans:
+- [ ] 08-01-PLAN.md — rye-lesson-slots CRUD (firebase.js) + App.jsx 리스너·상태·prop 전달 (GRP-01)
+- [ ] 08-02-PLAN.md — AdminTools LessonSlotsView + App.jsx 마이그레이션 함수 (GRP-02)
+- [ ] 08-03-PLAN.md — ScheduleView 그룹 이름 표시 + 인라인 편집 (GRP-03)
+- [ ] 08-04-PLAN.md — Attendance 그룹 헤더 슬롯 이름 연동 (GRP-04)
+- [ ] 08-05-PLAN.md — TimetableView 신규 컴포넌트 + ScheduleView 탭 통합 + CSS (GRP-05, GRP-06, GRP-07)
+- [ ] 08-06-PLAN.md — 예약 시스템 설계 문서 (08-RESERVATION-SPEC.md) (GRP-08)
+**UI hint**: yes
+
 ### Phase SHOP-01: 즉시 청구 & 상품 관리 시스템 (Instant Charge & Shop)
 **Goal**: 강사가 한복·악세사리·악기가방 등을 판매 시 즉시 청구를 요청하고, 관리자가 승인 후 알림 메시지를 클립보드 복사로 발송하며, 입금 확인 후 수납 레코드가 자동 생성된다. 상품 카탈로그는 AdminTools에서 관리한다.
 **Depends on**: Nothing (standalone feature)
@@ -150,6 +171,7 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
+| 8. 그룹 레슨 고도화 | 0/6 | Planned | - |
 | 1. 보안 기반 | 0/5 | Planned | - |
 | 2. 포털 완성 | 0/4 | Planned | - |
 | 3. AI 완성 | 0/3 | Planned | - |
@@ -208,6 +230,14 @@ Plans:
 | PAY-09 | Phase 7 | Planned |
 | PAY-10 | Phase 7 | Planned |
 | PAY-11 | Phase 7 | Planned |
+| GRP-01 | Phase 8 | Planned |
+| GRP-02 | Phase 8 | Planned |
+| GRP-03 | Phase 8 | Planned |
+| GRP-04 | Phase 8 | Planned |
+| GRP-05 | Phase 8 | Planned |
+| GRP-06 | Phase 8 | Planned |
+| GRP-07 | Phase 8 | Planned |
+| GRP-08 | Phase 8 | Planned |
 | SHOP-01 | SHOP-01 | Planned |
 | SHOP-02 | SHOP-01 | Planned |
 | SHOP-03 | SHOP-01 | Planned |
@@ -216,4 +246,4 @@ Plans:
 | SHOP-06 | SHOP-01 | Planned |
 | SHOP-07 | SHOP-01 | Planned |
 
-**Total: 45/45 requirements mapped.**
+**Total: 53/53 requirements mapped.**
