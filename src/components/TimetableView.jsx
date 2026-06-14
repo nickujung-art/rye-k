@@ -1,88 +1,359 @@
-import { useState } from "react";
+import { useState, useRef, useMemo, useEffect } from "react";
 import { canManageAll } from "../utils.js";
 import { Av } from "./shared/CommonUI.jsx";
 
 const DAYS = ["월","화","수","목","금","토","일"];
-const TIME_START = 9;   // 09:00
-const TIME_END = 21;    // 21:00 (마지막 행)
-const ROWS = (TIME_END - TIME_START) * 2 + 1; // = 25 (09:00~21:00, rowIdx 0~24)
+const TIME_START = 8;
+const TIME_END = 22;
+const ROWS = (TIME_END - TIME_START) * 2 + 1; // 29 rows: 08:00 ~ 22:00
 
 const TEACHER_COLORS = ["var(--blue)","var(--red)","var(--green)","#7C3AED","var(--gold-dk)","var(--blue-md)","var(--gold)","var(--red-dk)"];
-function getTeacherColor(id, teachersList) {
+
+function getTeacherColor(id, list) {
   if (!id) return "var(--ink-30)";
-  const idx = teachersList.findIndex(t => t.id === id);
+  const idx = list.findIndex(t => t.id === id);
   return TEACHER_COLORS[Math.abs(idx) % TEACHER_COLORS.length] || "var(--ink-30)";
 }
 
-function formatTimeLabel(rowIdx) {
+function formatTime(rowIdx) {
   const totalMins = (TIME_START + Math.floor(rowIdx / 2)) * 60 + (rowIdx % 2) * 30;
   const h = Math.floor(totalMins / 60);
   const m = totalMins % 60;
   return `${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}`;
 }
 
-function TimetableGrid({ lessonSlots, students, teachers, teacherId }) {
+function getTodayDayIdx() {
+  const d = new Date().getDay();
+  return [6,0,1,2,3,4,5][d]; // 0=월 ~ 6=일
+}
+
+function getNowRowIdx() {
+  const now = new Date();
+  const rowIdx = (now.getHours() - TIME_START) * 2 + (now.getMinutes() >= 30 ? 1 : 0);
+  return rowIdx >= 0 && rowIdx < ROWS ? rowIdx : -1;
+}
+
+function buildRowLayout(rowsWithSlots) {
+  const layout = [];
+  let i = 0;
+  while (i < ROWS) {
+    if (rowsWithSlots.has(i)) {
+      layout.push({ type: "slot", rowIdx: i });
+      i++;
+    } else {
+      const from = i;
+      while (i < ROWS && !rowsWithSlots.has(i)) i++;
+      layout.push({ type: "empty", fromIdx: from, toIdx: i - 1 });
+    }
+  }
+  return layout;
+}
+
+function safePopupLeft(left, width = 200) {
+  if (typeof window === "undefined") return left;
+  return Math.max(8, Math.min(left, window.innerWidth - width - 8));
+}
+
+function TimetableGrid({ lessonSlots, students, teachers, teacherId, canSeeAll, onUpdateSlot }) {
+  const [editingSlotId, setEditingSlotId] = useState(null);
+  const [editingSlotName, setEditingSlotName] = useState("");
+  const [memberPopup, setMemberPopup] = useState(null);
+  const [studentDetail, setStudentDetail] = useState(null);
+  const [selectedDayIdx, setSelectedDayIdx] = useState(null);
+  const [isMobile, setIsMobile] = useState(() => typeof window !== "undefined" && window.innerWidth < 640);
+  const slotSavedRef = useRef(null); // null | slotId — 연속 편집 시 이중저장 방지
+
+  useEffect(() => {
+    const handler = () => setIsMobile(window.innerWidth < 640);
+    window.addEventListener("resize", handler);
+    return () => window.removeEventListener("resize", handler);
+  }, []);
+
   const color = getTeacherColor(teacherId, teachers);
+  const todayIdx = getTodayDayIdx();
+  const nowRowIdx = getNowRowIdx();
 
-  // 슬롯을 그리드 위치로 매핑
-  // slotCell: { dayIdx, rowIdx, slot, memberCount }[]
-  const slotCells = [];
-  (lessonSlots || [])
-    .filter(s => s.teacherId === teacherId && s.status !== "closed")
-    .forEach(slot => {
-      (slot.schedule || []).forEach(sc => {
-        const dayIdx = DAYS.indexOf(sc.day);
-        if (dayIdx < 0) return;
-        const [h, mStr] = (sc.time || "09:00").split(":").map(Number);
-        const m = mStr || 0;
-        const rowIdx = (h - TIME_START) * 2 + (m >= 30 ? 1 : 0);
-        if (rowIdx < 0 || rowIdx >= ROWS) return; // 범위 밖 스킵
-        const memberCount = (students || []).filter(s =>
-          s.status === "active" && !s.isInstitution &&
-          (s.lessons || []).some(l => l.slotId === slot.id)
-        ).length;
-        slotCells.push({ dayIdx, rowIdx, slot, memberCount });
+  const slotCells = useMemo(() => {
+    const cells = [];
+    (lessonSlots || [])
+      .filter(s => s.teacherId === teacherId && s.status !== "closed")
+      .forEach(slot => {
+        // 개인 슬롯: 연결 학생이 일시정지/휴회면 제외
+        if (slot.type === "individual") {
+          const linked = (students || []).find(s =>
+            !s.isInstitution && (s.lessons || []).some(l => l.slotId === slot.id)
+          );
+          if (linked && linked.status !== "active") return;
+        }
+        (slot.schedule || []).forEach(sc => {
+          const dayIdx = DAYS.indexOf(sc.day);
+          if (dayIdx < 0) return;
+          const [hStr, mStr] = (sc.time || "09:00").split(":");
+          const rowIdx = (parseInt(hStr, 10) - TIME_START) * 2 + (parseInt(mStr || "0", 10) >= 30 ? 1 : 0);
+          if (rowIdx < 0 || rowIdx >= ROWS) return;
+          const memberCount = (students || []).filter(s =>
+            s.status === "active" && !s.isInstitution &&
+            (s.lessons || []).some(l => l.slotId === slot.id)
+          ).length;
+          cells.push({ dayIdx, rowIdx, rawTime: sc.time, slot, memberCount });
+        });
       });
-    });
+    return cells;
+  }, [lessonSlots, students, teacherId]);
 
-  return (
-    <div className="timetable-wrap">
-      <div className="timetable-grid">
-        {/* 헤더 행 — 첫 번째 셀: 빈 코너 */}
-        <div className="timetable-header" />
-        {DAYS.map(d => (
-          <div key={d} className="timetable-header">{d}</div>
+  const rowLayout = useMemo(() => {
+    return buildRowLayout(new Set(slotCells.map(c => c.rowIdx)));
+  }, [slotCells]);
+
+  const cellMap = useMemo(() => {
+    const map = {};
+    slotCells.forEach(c => { map[`${c.dayIdx}-${c.rowIdx}`] = c; });
+    return map;
+  }, [slotCells]);
+
+  const commitEdit = (slotId, name) => {
+    if (name.trim() && onUpdateSlot) onUpdateSlot(slotId, { name: name.trim() });
+    setEditingSlotId(null);
+  };
+
+  const openMembers = (e, slot) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const members = (students || []).filter(s =>
+      s.status === "active" && !s.isInstitution &&
+      (s.lessons || []).some(l => l.slotId === slot.id)
+    );
+    setMemberPopup({ slotId: slot.id, members, top: rect.bottom + 6, left: safePopupLeft(rect.left) });
+  };
+
+  const openStudentDetail = (e, slot) => {
+    const student = (students || []).find(s =>
+      !s.isInstitution && (s.lessons || []).some(l => l.slotId === slot.id)
+    );
+    if (!student) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const left = isMobile ? safePopupLeft(rect.left) : safePopupLeft(rect.right + 8);
+    const top = isMobile ? rect.bottom + 6 : rect.top;
+    setStudentDetail({ student, top, left });
+  };
+
+  if (slotCells.length === 0) {
+    return (
+      <div className="empty" style={{ marginTop: 32 }}>
+        <div className="empty-txt">
+          {canSeeAll
+            ? <><span>이 강사의 레슨 슬롯이 없습니다.</span><br/><span style={{fontSize:12,color:"var(--ink-30)"}}>AdminTools → 레슨 슬롯에서 마이그레이션을 실행하세요.</span></>
+            : "등록된 레슨이 없습니다."}
+        </div>
+      </div>
+    );
+  }
+
+  // ── 공통 슬롯 카드 렌더 (데스크톱 셀 내부 / 모바일 카드 내부 공용) ──
+  const renderSlotContent = (cell, compact = false) => {
+    const isGroup = cell.slot.type === "group";
+    const isEditing = canSeeAll && editingSlotId === cell.slot.id;
+    const rawTimeMins = parseInt((cell.rawTime || '').split(':')[1] || '0', 10);
+    const showRawTime = !compact && cell.rawTime && rawTimeMins !== 0 && rawTimeMins !== 30;
+    return (
+      <>
+        <div className="tt-slot-name">
+          {isEditing ? (
+            <input
+              className="inp tt-slot-inp"
+              value={editingSlotName}
+              autoFocus
+              onChange={e => setEditingSlotName(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === "Enter") { e.preventDefault(); slotSavedRef.current = cell.slot.id; commitEdit(cell.slot.id, editingSlotName); }
+                if (e.key === "Escape") { slotSavedRef.current = cell.slot.id; setEditingSlotId(null); }
+              }}
+              onBlur={() => {
+                if (slotSavedRef.current !== cell.slot.id) commitEdit(cell.slot.id, editingSlotName);
+                slotSavedRef.current = null;
+              }}
+              onClick={e => e.stopPropagation()}
+            />
+          ) : (
+            <>
+              <span
+                className={`tt-slot-name-txt${!isGroup ? " tt-slot-name-txt--clickable" : ""}`}
+                style={compact ? { fontSize: 14, fontWeight: 700 } : undefined}
+                onClick={!isGroup ? e => { e.stopPropagation(); openStudentDetail(e, cell.slot); } : undefined}
+              >
+                {cell.slot.name}
+              </span>
+              {canSeeAll && onUpdateSlot && isGroup && (
+                <span
+                  className="tt-edit-btn"
+                  title="이름 편집"
+                  onClick={e => {
+                    e.stopPropagation();
+                    slotSavedRef.current = null;
+                    setEditingSlotId(cell.slot.id);
+                    setEditingSlotName(cell.slot.name);
+                  }}
+                >✏</span>
+              )}
+            </>
+          )}
+        </div>
+        <div className="tt-slot-pills">
+          <span className="tt-pill">{isGroup ? "그룹" : "개인"}</span>
+        </div>
+        {isGroup && cell.memberCount > 0 && (
+          <div
+            className="tt-slot-sub tt-slot-sub--link"
+            onClick={e => openMembers(e, cell.slot)}
+          >
+            {cell.memberCount}명 ▾
+          </div>
+        )}
+        {showRawTime && <div className="tt-slot-sub">{cell.rawTime}</div>}
+      </>
+    );
+  };
+
+  // ── 모바일 뷰 ──
+  const activeDayIdxs = [...new Set([...slotCells.map(c => c.dayIdx), todayIdx])].sort((a, b) => a - b);
+  const defaultDayIdx = activeDayIdxs.includes(todayIdx) ? todayIdx : (activeDayIdxs[0] ?? 0);
+  const activeDayIdx = selectedDayIdx ?? defaultDayIdx;
+
+  const mobileView = (
+    <>
+      <div className="tt-day-tabs">
+        {activeDayIdxs.map(di => (
+          <button
+            key={di}
+            className={`tt-day-tab${di === activeDayIdx ? " tt-day-tab--active" : ""}${di === todayIdx ? " tt-day-tab--today" : ""}`}
+            onClick={() => setSelectedDayIdx(di)}
+          >
+            {DAYS[di]}
+          </button>
         ))}
+      </div>
+      <div className="tt-mobile-list">
+        {slotCells
+          .filter(c => c.dayIdx === activeDayIdx)
+          .sort((a, b) => a.rowIdx - b.rowIdx)
+          .map(cell => (
+            <div key={`${cell.slot.id}-${cell.rowIdx}`} className="tt-mobile-card" style={{ background: color + "12" }}>
+              <div className="tt-mobile-card-time">{cell.rawTime || formatTime(cell.rowIdx)}</div>
+              <div className="tt-mobile-card-body">
+                {renderSlotContent(cell, true)}
+              </div>
+            </div>
+          ))}
+        {slotCells.filter(c => c.dayIdx === activeDayIdx).length === 0 && (
+          <div className="empty"><div className="empty-txt">해당 요일에 레슨이 없습니다.</div></div>
+        )}
+      </div>
+    </>
+  );
 
-        {/* 시간 행 × 요일 열 */}
-        {Array.from({ length: ROWS }, (_, rowIdx) => {
-          const timeLabel = formatTimeLabel(rowIdx);
+  // ── 데스크톱 그리드 뷰 ──
+  const gridTemplateRows = `36px ${rowLayout.map(r => r.type === "slot" ? "56px" : "22px").join(" ")}`;
+
+  const desktopView = (
+    <div className="tt-wrap">
+      <div className="tt-grid" style={{ gridTemplateRows }}>
+        <div className="tt-corner" />
+        {DAYS.map((d, di) => (
+          <div key={d} className={`tt-hdr${di === todayIdx ? " tt-hdr--today" : ""}`}>{d}</div>
+        ))}
+        {rowLayout.flatMap((row, li) => {
+          if (row.type === "empty") {
+            return [
+              <div key={`et-${li}`} className="tt-time tt-time--gap">{formatTime(row.fromIdx)}</div>,
+              ...DAYS.map((_, di) => (
+                <div key={`ec-${li}-${di}`} className={`tt-cell tt-cell--gap${di === todayIdx ? " tt-cell--today" : ""}`} />
+              )),
+            ];
+          }
+          const isHour = row.rowIdx % 2 === 0;
+          const isNow = row.rowIdx === nowRowIdx;
           return [
-            <div key={`t-${rowIdx}`} className="timetable-time">{timeLabel}</div>,
-            ...DAYS.map((d, dayIdx) => {
-              const cell = slotCells.find(c => c.dayIdx === dayIdx && c.rowIdx === rowIdx);
-              if (cell) {
-                const bg = color;
-                return (
-                  <div key={`${dayIdx}-${rowIdx}`} className="timetable-cell">
-                    <div className="timetable-slot" style={{
-                      background: bg + "26",  // ~15% 투명도
-                      borderLeft: `3px solid ${bg}`,
-                    }}>
-                      <div className="timetable-slot-name">{cell.slot.name}</div>
-                      {cell.memberCount > 0 && (
-                        <div className="timetable-slot-sub">{cell.memberCount}명</div>
-                      )}
-                    </div>
+            <div key={`t-${li}`} className={`tt-time${isHour ? " tt-time--hour" : ""}${isNow ? " tt-time--now" : ""}`}>
+              {formatTime(row.rowIdx)}
+              {isNow && <span className="tt-now-dot" />}
+            </div>,
+            ...DAYS.map((_, di) => {
+              const cell = cellMap[`${di}-${row.rowIdx}`];
+              const isToday = di === todayIdx;
+              const cellCls = `tt-cell${isHour ? " tt-cell--hour" : ""}${isToday ? " tt-cell--today" : ""}${isNow && isToday ? " tt-cell--now" : ""}`;
+              if (!cell) return <div key={`c-${li}-${di}`} className={cellCls} />;
+              return (
+                <div key={`c-${li}-${di}`} className={cellCls}>
+                  <div className="tt-slot" style={{ background: color + "15" }}>
+                    {renderSlotContent(cell)}
                   </div>
-                );
-              }
-              return <div key={`${dayIdx}-${rowIdx}`} className="timetable-cell" />;
+                </div>
+              );
             }),
           ];
         })}
       </div>
     </div>
+  );
+
+  // ── 공용 팝업 ──
+  const popups = (
+    <>
+      {memberPopup && !studentDetail && (
+        <>
+          <div style={{ position: "fixed", inset: 0, zIndex: 9998 }} onClick={() => setMemberPopup(null)} />
+          <div className="tt-member-popup" style={{ top: memberPopup.top, left: memberPopup.left }}>
+            <div className="tt-member-popup-title">수강생</div>
+            {memberPopup.members.length === 0 ? (
+              <div style={{ color: "var(--ink-30)", fontSize: 12 }}>등록된 수강생 없음</div>
+            ) : memberPopup.members.map(s => (
+              <div
+                key={s.id}
+                className="tt-member-row tt-member-row--link"
+                onClick={e => {
+                  const rect = e.currentTarget.getBoundingClientRect();
+                  setStudentDetail({ student: s, top: rect.top, left: safePopupLeft(rect.right + 8) });
+                }}
+              >{s.name}</div>
+            ))}
+          </div>
+        </>
+      )}
+      {studentDetail && (
+        <>
+          <div style={{ position: "fixed", inset: 0, zIndex: 9998 }} onClick={() => { setStudentDetail(null); setMemberPopup(null); }} />
+          <div className="tt-member-popup" style={{ top: studentDetail.top, left: studentDetail.left, minWidth: 180 }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+              <span style={{ fontWeight: 700, fontSize: 14 }}>{studentDetail.student.name}</span>
+              <span style={{ fontSize: 11, cursor: "pointer", color: "var(--ink-30)" }} onClick={() => setStudentDetail(null)}>✕</span>
+            </div>
+            {(studentDetail.student.lessons || []).map((l, i) => (
+              <div key={i} style={{ fontSize: 12, color: "var(--ink-60)", marginBottom: 2 }}>
+                {l.instrument && <span>{l.instrument}</span>}
+                {(l.schedule || []).map((sc, si) => (
+                  <span key={si} style={{ marginLeft: 6, color: "var(--ink-30)" }}>{sc.day} {sc.time}</span>
+                ))}
+              </div>
+            ))}
+            {studentDetail.student.phone && (
+              <div style={{ fontSize: 12, color: "var(--ink-60)", marginTop: 6 }}>📞 {studentDetail.student.phone}</div>
+            )}
+            {studentDetail.student.guardianPhone && (
+              <div style={{ fontSize: 12, color: "var(--ink-60)", marginTop: 2 }}>👨‍👩‍👧 {studentDetail.student.guardianPhone}</div>
+            )}
+            {studentDetail.student.status === "paused" && (
+              <div style={{ fontSize: 11, color: "var(--gold-dk)", marginTop: 6, fontWeight: 600 }}>● 수강 일시정지</div>
+            )}
+          </div>
+        </>
+      )}
+    </>
+  );
+
+  return (
+    <>
+      {isMobile ? mobileView : desktopView}
+      {popups}
+    </>
   );
 }
 
@@ -97,7 +368,7 @@ function TeacherSelectGrid({ teachers, onSelect }) {
           <div
             key={t.id}
             className="card"
-            style={{ padding: "14px 12px", cursor: "pointer", textAlign: "center", borderLeft: `4px solid ${getTeacherColor(t.id, teachers)}` }}
+            style={{ padding: "14px 12px", cursor: "pointer", textAlign: "center" }}
             onClick={() => onSelect(t.id)}
           >
             <Av name={t.name} size="av-sm" />
@@ -110,11 +381,10 @@ function TeacherSelectGrid({ teachers, onSelect }) {
   );
 }
 
-export default function TimetableView({ lessonSlots, students, teachers, currentUser }) {
+export default function TimetableView({ lessonSlots, students, teachers, currentUser, onUpdateSlot }) {
   const isTeacher = currentUser.role === "teacher";
   const canSeeAll = canManageAll(currentUser.role);
   const [selectedTeacherId, setSelectedTeacherId] = useState(isTeacher ? currentUser.id : null);
-
   const selectedTeacher = selectedTeacherId ? teachers.find(t => t.id === selectedTeacherId) : null;
 
   return (
@@ -122,27 +392,19 @@ export default function TimetableView({ lessonSlots, students, teachers, current
       <div className="ph">
         <div>
           <h1>시간표</h1>
-          <div className="ph-sub">09:00 ~ 21:00 주간 레슨 현황</div>
+          <div className="ph-sub">08:00 ~ 22:00 주간 레슨 현황</div>
         </div>
       </div>
-
       {canSeeAll && selectedTeacherId && (
         <div style={{ marginBottom: 12 }}>
-          <button
-            className="btn btn-secondary btn-sm"
-            onClick={() => setSelectedTeacherId(null)}
-            style={{ fontSize: 12 }}
-          >
-            &larr; 강사 목록
+          <button className="btn btn-secondary btn-sm" onClick={() => setSelectedTeacherId(null)} style={{ fontSize: 12 }}>
+            ← 강사 목록
           </button>
           {selectedTeacher && (
-            <span style={{ marginLeft: 12, fontSize: 14, fontWeight: 600 }}>
-              {selectedTeacher.name} 강사 시간표
-            </span>
+            <span style={{ marginLeft: 12, fontSize: 14, fontWeight: 600 }}>{selectedTeacher.name} 강사 시간표</span>
           )}
         </div>
       )}
-
       {canSeeAll && !selectedTeacherId ? (
         <TeacherSelectGrid teachers={teachers} onSelect={setSelectedTeacherId} />
       ) : selectedTeacherId ? (
@@ -151,11 +413,11 @@ export default function TimetableView({ lessonSlots, students, teachers, current
           students={students}
           teachers={teachers}
           teacherId={selectedTeacherId}
+          canSeeAll={canSeeAll}
+          onUpdateSlot={onUpdateSlot}
         />
       ) : (
-        <div className="empty">
-          <div className="empty-txt">시간표를 불러올 수 없습니다.</div>
-        </div>
+        <div className="empty"><div className="empty-txt">시간표를 불러올 수 없습니다.</div></div>
       )}
     </div>
   );

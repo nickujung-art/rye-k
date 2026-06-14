@@ -16,6 +16,7 @@
 | ALM | AlimTalk Notifications |
 | PAY | Payment Automation |
 | ANL | Analytics & Dashboard |
+| GRP | Group Lesson Enhancement |
 | SHOP | Instant Charge & Shop Catalog |
 
 ---
@@ -102,6 +103,21 @@
 | ANL-02 | 강사용 담당 학생 출석률·진도 요약 뷰 | P1 | 6 |
 | ANL-03 | 학부모용 자녀 월별 수업 리포트 (출석률 + 레슨노트 요약) | P2 | 6 |
 | ANL-04 | Firestore 데이터 아카이빙 전략 구현 (1MB 한도 대응) | P2 | 6 |
+
+---
+
+## GRP — Group Lesson Enhancement
+
+| ID | Requirement | Priority | Phase |
+|----|-------------|----------|-------|
+| GRP-01 | `rye-lesson-slots` Firestore 컬렉션 신설 — type/name/capacity/schedule/status 필드, App.jsx 리스너 추가 | P0 | 8 |
+| GRP-02 | 기존 학생 일괄 마이그레이션 — AdminTools 버튼으로 개인+그룹 슬롯 자동 생성 + students.lessons[].slotId 연결 (idempotent) | P0 | 8 |
+| GRP-03 | ScheduleView 그룹 이름 표시 + 인라인 편집 — slotId 기반 슬롯 이름으로 "그룹 레슨" 하드코딩 대체 | P0 | 8 |
+| GRP-04 | Attendance 그룹 헤더 슬롯 이름 연동 — 그룹 감지 시 슬롯 이름 표시 | P1 | 8 |
+| GRP-05 | TimetableView 신규 컴포넌트 — 09:00~21:00 × 30분 격자, 슬롯 카드, 공강 표시 | P0 | 8 |
+| GRP-06 | 강사 본인 시간표 뷰 — 자신의 슬롯을 요일×시간 격자로 확인 | P0 | 8 |
+| GRP-07 | 매니저/관리자 시간표 뷰 — 강사 카드 목록 → 클릭 → 해당 강사 시간표 | P1 | 8 |
+| GRP-08 | 예약 시스템 아키텍처 확정 (`rye-reservations` 스키마 + 포털 연동 흐름) — 구현 없음, 설계 문서만 | P2 | 8 |
 
 ---
 

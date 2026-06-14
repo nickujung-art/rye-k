@@ -193,7 +193,7 @@ function ScheduleView({ students, teachers, currentUser, attendance, onSaveAtten
         ) : (
           <>
             {slotName}
-            {canSeeAll && entry.slotId && onUpdateSlot && (
+            {canSeeAll && entry.slotId && onUpdateSlot && slot?.type === "group" && (
               <span
                 style={{ fontSize: 11, cursor: "pointer", color: "var(--ink-30)", padding: "2px 3px" }}
                 title="이름 편집"
@@ -226,6 +226,7 @@ function ScheduleView({ students, teachers, currentUser, attendance, onSaveAtten
           students={students}
           teachers={teachers}
           currentUser={currentUser}
+          onUpdateSlot={onUpdateSlot}
         />
       </div>
     );
