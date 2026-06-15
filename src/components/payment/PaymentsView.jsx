@@ -1265,22 +1265,30 @@ function UnmatchedPaymentsTab({
     setMatchingId(unmatched.id);
     try {
       const existing = payments.find(p => p.studentId === sid && p.month === month);
-      if (existing?.paid) {
-        onLog(`미매칭 매칭 실패 — ${s.name} 이미 납부 완료`);
-        return;
-      }
-      const amount = unmatched.amount || (autoFee ? autoFee(s) : (s.monthlyFee || 0));
+      const isSplit = existing?.paid;
+      const baseAmount = isSplit
+        ? (existing.amount || 0)
+        : (unmatched.amount || (autoFee ? autoFee(s) : (s.monthlyFee || 0)));
+      const depositDate = unmatched.timestamp
+        ? new Date(unmatched.timestamp + 9 * 60 * 60 * 1000).toISOString().slice(0, 10)
+        : TODAY_STR;
+      const newPaidAmount = isSplit
+        ? (existing.paidAmount || 0) + (unmatched.amount || 0)
+        : (unmatched.amount || baseAmount);
+      const newNote = isSplit
+        ? `${existing.note ? existing.note + " / " : ""}분할납부 추가 — ${unmatched.senderName} ${(unmatched.amount || 0).toLocaleString()}원 (${depositDate})`
+        : `미매칭 수동 매칭 — 입금자: ${unmatched.senderName}`;
       const record = {
         ...(existing || {}),
         id: existing?.id || uid(),
         studentId: sid,
         month,
-        amount,
+        amount: baseAmount,
         paid: true,
-        paidAmount: unmatched.amount || amount,
-        paidDate: TODAY_STR,
+        paidAmount: newPaidAmount,
+        paidDate: isSplit ? (existing.paidDate || depositDate) : depositDate,
         method: "transfer",
-        note: `미매칭 수동 매칭 — 입금자: ${unmatched.senderName}`,
+        note: newNote,
         extraCharges: existing?.extraCharges || [],
         createdAt: existing?.createdAt || Date.now(),
         updatedAt: Date.now(),
@@ -1297,7 +1305,9 @@ function UnmatchedPaymentsTab({
       );
       await onSaveUnmatched(updUnmatched);
 
-      onLog(`미매칭 입금 수동 매칭 완료 — ${unmatched.senderName} → ${s.name} ${(unmatched.amount || 0).toLocaleString()}원`);
+      onLog(isSplit
+        ? `분할납부 추가 처리 — ${unmatched.senderName} → ${s.name} +${(unmatched.amount || 0).toLocaleString()}원 (합계 ${newPaidAmount.toLocaleString()}원)`
+        : `미매칭 입금 수동 매칭 완료 — ${unmatched.senderName} → ${s.name} ${(unmatched.amount || 0).toLocaleString()}원`);
       setSelectedStudentId(prev => { const n = { ...prev }; delete n[unmatched.id]; return n; });
     } catch (e) {
       onLog("미매칭 매칭 실패: " + e.message);
