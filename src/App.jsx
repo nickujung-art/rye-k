@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, lazy, Suspense } from "react";
 import { db, auth, doc, setDoc, onSnapshot, runTransaction, collection, getDoc, addInstantCharge, updateInstantCharge, addLessonSlot, updateLessonSlot, deleteLessonSlot, firebaseSignIn, firebaseSignInAnon, firebaseLogout, onAuthStateChanged } from "./firebase.js";
 import { DEFAULT_CATEGORIES, DAYS, ADMIN, TODAY_STR, THIS_MONTH, TODAY_DAY, ATT_STATUS, PAY_METHODS, INST_TYPES, IC, CSS } from "./constants.jsx";
-import { calcAge, isMinor, getCat, fmtDate, fmtDateShort, fmtDateTime, uid, fmtPhone, fmtMoney, allLessonInsts, allLessonDays, canManageAll, monthLabel, generateStudentCode, getBirthPassword, getPhoneInitialPassword, instTypeLabel, expandInstitutionsToMembers, getContractDaysLeft, formatLessonNoteSummary, calcLessonFeeWithFallback } from "./utils.js";
+import { calcAge, isMinor, getCat, fmtDate, fmtDateShort, fmtDateTime, uid, fmtPhone, fmtMoney, allLessonInsts, allLessonDays, canManageAll, monthLabel, generateStudentCode, getBirthPassword, getPhoneInitialPassword, instTypeLabel, expandInstitutionsToMembers, getContractDaysLeft, formatLessonNoteSummary, calcLessonFeeWithFallback, slotMatchesLesson } from "./utils.js";
 import { InstitutionFormModal, InstitutionDetailModal, InstitutionsView } from "./components/institution/Institutions.jsx";
 import { Logo } from "./components/shared/CommonUI.jsx";
 import { AttendanceView, LessonNotesView, NoteCommentsPanel } from "./components/attendance/Attendance.jsx";
@@ -19,6 +19,7 @@ import { UpdatePopup } from "./components/updates/UpdatePopup.jsx";
 import { setAiEnabled } from "./aiClient.js";
 import AiAssistant from "./components/ai/AiAssistant.jsx";
 import SettlementView from "./components/settlement/SettlementView.jsx";
+// import PauseManagementView from "./components/student/PauseManagementView.jsx"; // Phase 9 Plan 04 — uncomment when Plan 04 is executed
 
 // ── Lazy-loaded views (code-split) ────────────────────────────────────────────
 const AnalyticsView       = lazy(() => import("./components/analytics/AnalyticsView.jsx"));
@@ -613,6 +614,113 @@ function MainApp() {
 
     return { slotsCreated, studentsUpdated };
   };
+
+  // Phase 9 — D-01: 학생 저장 시 슬롯 자동 생성·연결·detach
+  // addStudentDoc은 void 반환이므로 studentWithId를 인자로 직접 전달한다.
+  const autoSyncStudentSlots = async (student) => {
+    const lessons = student.lessons || [];
+    if (lessons.length === 0) return 0;
+
+    let newSlotCount = 0;
+    const updatedLessons = [...lessons];
+
+    for (let i = 0; i < lessons.length; i++) {
+      const lesson = lessons[i];
+      const tid = lesson.teacherId || student.teacherId;
+      if (!tid || !lesson.instrument) continue; // 강사/악기 없는 레슨은 스킵
+
+      // 기존 slotId 검증 (detach 판단)
+      if (lesson.slotId) {
+        const existingSlot = lessonSlots.find(s => s.id === lesson.slotId);
+        if (existingSlot && slotMatchesLesson(existingSlot, lesson, tid)) {
+          continue; // idempotent — 변경 없음
+        }
+        // 불일치 또는 슬롯 소멸 → detach
+        updatedLessons[i] = { ...lesson, slotId: null };
+      }
+
+      // 완전 일치 슬롯 탐색 (closed 슬롯 제외)
+      const matched = lessonSlots.find(s =>
+        s.status !== "closed" &&
+        slotMatchesLesson(s, { ...updatedLessons[i], slotId: null }, tid)
+      );
+
+      if (matched) {
+        updatedLessons[i] = { ...updatedLessons[i], slotId: matched.id };
+      } else {
+        // 같은 셀에 다른 학생이 이미 있으면 그룹으로 판단
+        const memberCount = students.filter(s =>
+          s.id !== student.id &&
+          (s.lessons || []).some(l =>
+            slotMatchesLesson(
+              { teacherId: tid, instrument: lesson.instrument, schedule: lesson.schedule },
+              l,
+              l.teacherId || s.teacherId
+            )
+          )
+        ).length;
+        const isGroup = memberCount >= 1;
+        const docRef = await addLessonSlot({
+          teacherId: tid,
+          instrument: lesson.instrument,
+          type: isGroup ? "group" : "individual",
+          name: isGroup ? `${lesson.instrument} 그룹` : student.name,
+          schedule: lesson.schedule || [],
+          status: "active",
+          notes: "",
+        });
+        updatedLessons[i] = { ...updatedLessons[i], slotId: docRef.id };
+        newSlotCount++;
+      }
+    }
+
+    // 변경된 lessons로 학생 문서 업데이트 (saveStudents 절대 금지 — per-op 트랜잭션)
+    const finalStudent = { ...student, lessons: updatedLessons };
+    await updateStudentDoc(finalStudent);
+    return newSlotCount;
+  };
+
+  // Phase 9 — D-04: 복귀 처리 콜백 (paused → active + pauseHistory append)
+  // 기존 pausedAt/pausedReason 에서 pauseHistory entry 자동 구성
+  const onResumeStudent = async (student) => {
+    const resumedAt = Date.now();
+    const newEntry = {
+      pausedAt: student.pausedAt || null,
+      pausedReason: student.pausedReason || "",
+      resumedAt,
+      durationDays: student.pausedAt
+        ? Math.floor((resumedAt - student.pausedAt) / 86400000)
+        : null,
+      slotIds: (student.lessons || []).map(l => l.slotId).filter(Boolean),
+    };
+    const upd = {
+      ...student,
+      status: "active",
+      pausedAt: null,
+      pausedReason: null,
+      pauseHistory: [...(student.pauseHistory || []), newEntry],
+    };
+    await updateStudentDoc(upd);
+    showToast(`${student.name} 복귀 처리되었습니다.`);
+  };
+
+  // Phase 9 — D-02: TimetableView "+" 클릭 후 학생 배정 콜백
+  // instrument는 TimetableView에서 학생의 기존 레슨 또는 선택 드롭다운으로 결정되어 전달
+  const onAddStudentToSlot = async (student, teacherId, day, time, instrument) => {
+    if (!instrument) { showToast("악기를 선택해주세요.", true); return; }
+    // 이미 같은 강사/요일/시간 레슨이 있으면 중복 추가 방지
+    const alreadyHas = (student.lessons || []).some(l =>
+      (l.teacherId || student.teacherId) === teacherId &&
+      (l.schedule || []).some(sch => sch.day === day && sch.time === time)
+    );
+    if (alreadyHas) { showToast("이미 해당 시간에 레슨이 있습니다.", true); return; }
+    const newLesson = { instrument, teacherId, schedule: [{ day, time }], slotId: null };
+    const updStudent = { ...student, lessons: [...(student.lessons || []), newLesson] };
+    await updateStudentDoc(updStudent);
+    const created = await autoSyncStudentSlots(updStudent).catch(() => 0);
+    showToast(`${student.name} 배정${created > 0 ? ` (슬롯 ${created}개 생성됨)` : ""}`);
+  };
+
   const deleteStudentDoc = async (studentId) => {
     if (!studentId) throw new Error("deleteStudentDoc: id 없음");
     await runTransaction(db, async (tx) => {
@@ -1244,7 +1352,7 @@ function MainApp() {
   if (!user) return <><style>{CSS}</style><LoginScreen onLogin={login} /></>;
 
   const pendingCount = isAdmin ? pending.length : 0;
-  const topTitle = { dashboard: "RYE-K", students: "회원 관리", attendance: "출석 체크", payments: "수납 관리", teachers: "강사 관리", notices: "공지사항", categories: "과목 관리", analytics: "현황 분석", profile: "내 정보", more: "더보기", activity: "활동 기록", pending: "등록 대기", schedule: "강사 스케줄", trash: "휴지통", studentNotices: "수강생 공지", lessonNotes: "레슨노트", institutions: "기관 관리", systemNews: "시스템 소식", monthlyReports: "월간 리포트", aiSettings: "AI 설정", shop: "상품 관리", settlement: "정산 관리" }[view] || "RYE-K";
+  const topTitle = { dashboard: "RYE-K", students: "회원 관리", attendance: "출석 체크", payments: "수납 관리", teachers: "강사 관리", notices: "공지사항", categories: "과목 관리", analytics: "현황 분석", profile: "내 정보", more: "더보기", activity: "활동 기록", pending: "등록 대기", schedule: "강사 스케줄", trash: "휴지통", studentNotices: "수강생 공지", lessonNotes: "레슨노트", institutions: "기관 관리", systemNews: "시스템 소식", monthlyReports: "월간 리포트", aiSettings: "AI 설정", shop: "상품 관리", settlement: "정산 관리", pauseManagement: "휴회 관리" }[view] || "RYE-K";
 
   return (
     <>
@@ -1359,7 +1467,7 @@ function MainApp() {
             {view === "profile" && <ProfileView currentUser={user} teachers={teachers} students={visible} categories={categories} onProfileSave={async form => { const upd = teachers.map(t => t.id === user.id ? { ...t, ...form } : t); await saveTeachers(upd); setUserPersist({ ...user, name: form.name || user.name }); addLog("프로필 수정"); showToast("프로필이 수정되었습니다."); }} />}
             {view === "activity" && canManageAll(user.role) && <ActivityView activity={activity} onFullBackup={requestFullBackup} />}
             {view === "pending" && canManageAll(user.role) && <PendingView pending={pending} teachers={teachers} categories={categories} onApprove={approvePending} onReject={rejectPending} />}
-            {view === "schedule" && <ScheduleView students={allMembers} teachers={teachers} currentUser={user} attendance={attendance} onSaveAttendance={async(upd)=>{await saveAttendance(upd);}} onSaveScheduleOverride={saveScheduleOverrides} scheduleOverrides={scheduleOverrides} notices={notices} lessonSlots={lessonSlots} onUpdateSlot={async (id, data) => updateLessonSlot(id, data)} />}
+            {view === "schedule" && <ScheduleView students={allMembers} teachers={teachers} currentUser={user} attendance={attendance} onSaveAttendance={async(upd)=>{await saveAttendance(upd);}} onSaveScheduleOverride={saveScheduleOverrides} scheduleOverrides={scheduleOverrides} notices={notices} lessonSlots={lessonSlots} onUpdateSlot={async (id, data) => updateLessonSlot(id, data)} onAddStudentToSlot={onAddStudentToSlot} />}
             {view === "trash" && canManageAll(user.role) && <TrashView trash={trash} onRestore={restoreFromTrash} onPermanentDelete={permanentDeleteFromTrash} />}
             {view === "studentNotices" && (canManageAll(user.role) || user.role === "teacher") && <StudentNoticeManager notices={studentNotices} students={allMembers} teachers={teachers} currentUser={user} onSave={async (upd) => { await saveStudentNotices(upd); showToast("수강생 공지가 저장되었습니다."); }} />}
             {view === "lessonNotes" && <LessonNotesView students={allMembers} teachers={teachers} currentUser={user} attendance={attendance} onSaveAttendance={async (upd) => { await saveAttendance(upd); }} onUpdateStudent={async (s) => { await updateStudentDoc(s); }} showToast={showToast} />}
@@ -1390,6 +1498,11 @@ function MainApp() {
               shopItems={shopItems}
               currentUser={user}
             />}
+            {/* Phase 9 Plan 04: view === "pauseManagement" → <PauseManagementView> — uncomment import + this block when Plan 04 is executed
+            {view === "pauseManagement" && (canManageAll(user.role) || user.role === "teacher") && (
+              <PauseManagementView students={visible} teachers={teachers} currentUser={user} lessonSlots={lessonSlots} onUpdateStudent={async (s) => { await updateStudentDoc(s); }} onResumeStudent={onResumeStudent} showToast={showToast} />
+            )}
+            */}
             {view === "more" && <MoreMenu user={user} setView={navigate} onLogout={handleLogout} onResetSeed={resetSeed} counts={{ teachers: teachers.length }} pendingCount={pendingCount} darkMode={darkMode} setDarkMode={setDarkMode} trash={trash} newCommentCount={newCommentCount} />}
           </div>
           </Suspense>
@@ -1427,16 +1540,37 @@ function MainApp() {
           addLog(`${data.name} 회원 등록 요청 (승인 대기)`);
           setModal(null); showToast("등록 요청이 접수되었습니다. 관리자 승인 후 등록됩니다.");
         } else {
-          if (data.id) {
-            await updateStudentDoc({ ...data, studentCode: data.studentCode || students.find(s => s.id === data.id)?.studentCode });
+          // addStudentDoc은 void 반환 → studentWithId를 미리 구성 후 autoSyncStudentSlots에 전달
+          const studentWithId = data.id
+            ? { ...data, studentCode: data.studentCode || students.find(s => s.id === data.id)?.studentCode }
+            : { ...data, id: uid(), studentCode: generateStudentCode() };
+
+          if (studentWithId.id && students.some(s => s.id === studentWithId.id)) {
+            await updateStudentDoc(studentWithId);
           } else {
-            await addStudentDoc({ ...data, id: uid(), studentCode: generateStudentCode() });
+            await addStudentDoc(studentWithId);
           }
+          const newSlots = await autoSyncStudentSlots(studentWithId).catch(() => 0);
           addLog(`${data.name} 회원 ${isNew ? "등록" : "수정"}`);
-          setModal(null); showToast(isNew ? "회원이 등록되었습니다." : "회원 정보가 수정되었습니다.");
+          setModal(null);
+          showToast(isNew ? "회원이 등록되었습니다." : "회원 정보가 수정되었습니다.");
+          if (newSlots > 0) setTimeout(() => showToast(`슬롯 ${newSlots}개 생성됨`), 800);
         }
       }} />}
-      {modal === "sDetail" && selected && <StudentDetailModal student={selected} teachers={teachers} currentUser={user} categories={categories} feePresets={feePresets} attendance={attendance} payments={payments} onClose={() => setModal(null)} onEdit={() => setModal("sForm")} onDelete={async () => { await softDeleteStudent(selected); setModal(null); showToast(`${selected.name} 회원이 삭제되었습니다. (7일간 복원 가능)`); }} onPhotoUpdate={async (sid, photoData) => { const s = students.find(s => s.id === sid); if (s) { await updateStudentDoc({ ...s, photo: photoData }); } showToast("프로필 사진이 저장되었습니다."); }} onSaveStudent={async (upd) => { await updateStudentDoc(upd); setSelected(upd); showToast("저장되었습니다."); }} onStatusChange={async (newStatus, meta = {}) => { const upd = { ...selected, status: newStatus, ...(newStatus === "paused" ? { pausedAt: Date.now(), pausedReason: meta.reason || "", careLogs: selected.careLogs || [] } : { pausedAt: null, pausedReason: null }) }; try { await updateStudentDoc(upd); setSelected(upd); showToast(newStatus === "paused" ? "휴원 처리되었습니다." : "재원 복귀되었습니다."); } catch { showToast("저장에 실패했습니다. 네트워크를 확인 후 다시 시도해주세요.", true); } }} />}
+      {modal === "sDetail" && selected && <StudentDetailModal student={selected} teachers={teachers} currentUser={user} categories={categories} feePresets={feePresets} attendance={attendance} payments={payments} onClose={() => setModal(null)} onEdit={() => setModal("sForm")} onDelete={async () => { await softDeleteStudent(selected); setModal(null); showToast(`${selected.name} 회원이 삭제되었습니다. (7일간 복원 가능)`); }} onPhotoUpdate={async (sid, photoData) => { const s = students.find(s => s.id === sid); if (s) { await updateStudentDoc({ ...s, photo: photoData }); } showToast("프로필 사진이 저장되었습니다."); }} onSaveStudent={async (upd) => { await updateStudentDoc(upd); setSelected(upd); showToast("저장되었습니다."); }} onStatusChange={async (newStatus, meta = {}) => {
+          if (newStatus === "active" && selected.status === "paused") {
+            // pauseHistory append는 onResumeStudent가 처리
+            try {
+              await onResumeStudent(selected);
+              setSelected(prev => ({ ...prev, status: "active", pausedAt: null, pausedReason: null }));
+            } catch {
+              showToast("저장에 실패했습니다. 네트워크를 확인 후 다시 시도해주세요.", true);
+            }
+          } else {
+            const upd = { ...selected, status: newStatus, ...(newStatus === "paused" ? { pausedAt: Date.now(), pausedReason: meta.reason || "", careLogs: selected.careLogs || [] } : { pausedAt: null, pausedReason: null }) };
+            try { await updateStudentDoc(upd); setSelected(upd); showToast(newStatus === "paused" ? "휴원 처리되었습니다." : "재원 복귀되었습니다."); } catch { showToast("저장에 실패했습니다. 네트워크를 확인 후 다시 시도해주세요.", true); }
+          }
+        }} />}
       {modal === "tForm" && canManageAll(user.role) && <TeacherFormModal teacher={selected} categories={categories} shopItems={shopItems} onClose={() => setModal(null)} onSave={async data => {
         const isNew = !data.id;
         const upd = data.id ? teachers.map(t => t.id === data.id ? data : t) : [...teachers, { ...data, id: uid() }];
