@@ -164,7 +164,12 @@ Plans:
   3. 그룹 슬롯 카드 팝업에서 "학생 추가" 버튼으로 기존 슬롯에 학생을 연결할 수 있다
   4. 사이드바에 "휴회 관리" 메뉴가 있고, 휴회 학생 목록·슬롯 이력·케어로그·복귀 처리가 가능하다
   5. 복귀(status → active) 시 pauseHistory[]에 { pausedAt, pausedReason, resumedAt, durationDays, slotIds } 엔트리가 자동 추가된다
-**Plans**: TBD
+**Plans**: 4 plans
+Plans:
+- [ ] 09-01-PLAN.md — slotMatchesLesson 유틸 + IC.pause + Phase 9 CSS (SCH-01, SCH-02, SCH-03)
+- [ ] 09-02-PLAN.md — autoSyncStudentSlots + sForm 핸들러 + onResumeStudent + pauseManagement 라우팅 (SCH-01, SCH-04, SCH-05)
+- [ ] 09-03-PLAN.md — TimetableView StudentSearchPopup + '+' 버튼 + '학생 추가' + ScheduleView 전달 (SCH-02, SCH-03)
+- [ ] 09-04-PLAN.md — PauseManagementView 신규 + NavLayout + Dashboard 링크 배너 + AdminTools 폐강 (SCH-04, SCH-05)
 
 ### Phase SHOP-01: 즉시 청구 & 상품 관리 시스템 (Instant Charge & Shop)
 **Goal**: 강사가 한복·악세사리·악기가방 등을 판매 시 즉시 청구를 요청하고, 관리자가 승인 후 알림 메시지를 클립보드 복사로 발송하며, 입금 확인 후 수납 레코드가 자동 생성된다. 상품 카탈로그는 AdminTools에서 관리한다.
@@ -194,7 +199,7 @@ Plans:
 | 4. 알림톡 통합 | - | ✓ COMPLETE | 2026-06-15 |
 | 5. 수납 자동화 | 5/5 | ✓ COMPLETE | 2026-05-09 |
 | 6. 분석 대시보드 고도화 | - | ✓ COMPLETE | 2026-06-15 |
-| 9. 스케줄 고도화 | 0/TBD | Context | - |
+| 9. 스케줄 고도화 | 0/4 | In Progress | - |
 | 7. 입금 자동매칭 고도화 | 3/3 | ✓ COMPLETE | 2026-06-03 |
 | 8. 그룹 레슨 고도화 | 6/6 | ✓ COMPLETE | 2026-06-13 |
 | SHOP-01. 즉시 청구 & 상품 관리 | 5/5 | ✓ COMPLETE | 2026-05-14 |
