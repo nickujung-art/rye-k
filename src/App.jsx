@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, lazy, Suspense } from "react";
 import { db, auth, doc, setDoc, onSnapshot, runTransaction, collection, getDoc, addInstantCharge, updateInstantCharge, addLessonSlot, updateLessonSlot, deleteLessonSlot, firebaseSignIn, firebaseSignInAnon, firebaseLogout, onAuthStateChanged } from "./firebase.js";
 import { DEFAULT_CATEGORIES, DAYS, ADMIN, TODAY_STR, THIS_MONTH, TODAY_DAY, ATT_STATUS, PAY_METHODS, INST_TYPES, IC, CSS } from "./constants.jsx";
-import { calcAge, isMinor, getCat, fmtDate, fmtDateShort, fmtDateTime, uid, fmtPhone, fmtMoney, allLessonInsts, allLessonDays, canManageAll, monthLabel, generateStudentCode, getBirthPassword, getPhoneInitialPassword, instTypeLabel, expandInstitutionsToMembers, getContractDaysLeft, formatLessonNoteSummary, calcLessonFeeWithFallback } from "./utils.js";
+import { calcAge, isMinor, getCat, fmtDate, fmtDateShort, fmtDateTime, uid, fmtPhone, fmtMoney, allLessonInsts, allLessonDays, canManageAll, monthLabel, generateStudentCode, getBirthPassword, getPhoneInitialPassword, instTypeLabel, expandInstitutionsToMembers, getContractDaysLeft, formatLessonNoteSummary, calcLessonFeeWithFallback, slotMatchesLesson } from "./utils.js";
 import { InstitutionFormModal, InstitutionDetailModal, InstitutionsView } from "./components/institution/Institutions.jsx";
 import { Logo } from "./components/shared/CommonUI.jsx";
 import { AttendanceView, LessonNotesView, NoteCommentsPanel } from "./components/attendance/Attendance.jsx";
@@ -613,6 +613,72 @@ function MainApp() {
 
     return { slotsCreated, studentsUpdated };
   };
+
+  // Phase 9 — D-01: 학생 저장 시 슬롯 자동 생성·연결·detach
+  // addStudentDoc은 void 반환이므로 studentWithId를 인자로 직접 전달한다.
+  const autoSyncStudentSlots = async (student) => {
+    const lessons = student.lessons || [];
+    if (lessons.length === 0) return 0;
+
+    let newSlotCount = 0;
+    const updatedLessons = [...lessons];
+
+    for (let i = 0; i < lessons.length; i++) {
+      const lesson = lessons[i];
+      const tid = lesson.teacherId || student.teacherId;
+      if (!tid || !lesson.instrument) continue; // 강사/악기 없는 레슨은 스킵
+
+      // 기존 slotId 검증 (detach 판단)
+      if (lesson.slotId) {
+        const existingSlot = lessonSlots.find(s => s.id === lesson.slotId);
+        if (existingSlot && slotMatchesLesson(existingSlot, lesson, tid)) {
+          continue; // idempotent — 변경 없음
+        }
+        // 불일치 또는 슬롯 소멸 → detach
+        updatedLessons[i] = { ...lesson, slotId: null };
+      }
+
+      // 완전 일치 슬롯 탐색 (closed 슬롯 제외)
+      const matched = lessonSlots.find(s =>
+        s.status !== "closed" &&
+        slotMatchesLesson(s, { ...updatedLessons[i], slotId: null }, tid)
+      );
+
+      if (matched) {
+        updatedLessons[i] = { ...updatedLessons[i], slotId: matched.id };
+      } else {
+        // 같은 셀에 다른 학생이 이미 있으면 그룹으로 판단
+        const memberCount = students.filter(s =>
+          s.id !== student.id &&
+          (s.lessons || []).some(l =>
+            slotMatchesLesson(
+              { teacherId: tid, instrument: lesson.instrument, schedule: lesson.schedule },
+              l,
+              l.teacherId || s.teacherId
+            )
+          )
+        ).length;
+        const isGroup = memberCount >= 1;
+        const docRef = await addLessonSlot({
+          teacherId: tid,
+          instrument: lesson.instrument,
+          type: isGroup ? "group" : "individual",
+          name: isGroup ? `${lesson.instrument} 그룹` : student.name,
+          schedule: lesson.schedule || [],
+          status: "active",
+          notes: "",
+        });
+        updatedLessons[i] = { ...updatedLessons[i], slotId: docRef.id };
+        newSlotCount++;
+      }
+    }
+
+    // 변경된 lessons로 학생 문서 업데이트 (saveStudents 절대 금지 — per-op 트랜잭션)
+    const finalStudent = { ...student, lessons: updatedLessons };
+    await updateStudentDoc(finalStudent);
+    return newSlotCount;
+  };
+
   const deleteStudentDoc = async (studentId) => {
     if (!studentId) throw new Error("deleteStudentDoc: id 없음");
     await runTransaction(db, async (tx) => {
@@ -1427,13 +1493,21 @@ function MainApp() {
           addLog(`${data.name} 회원 등록 요청 (승인 대기)`);
           setModal(null); showToast("등록 요청이 접수되었습니다. 관리자 승인 후 등록됩니다.");
         } else {
-          if (data.id) {
-            await updateStudentDoc({ ...data, studentCode: data.studentCode || students.find(s => s.id === data.id)?.studentCode });
+          // addStudentDoc은 void 반환 → studentWithId를 미리 구성 후 autoSyncStudentSlots에 전달
+          const studentWithId = data.id
+            ? { ...data, studentCode: data.studentCode || students.find(s => s.id === data.id)?.studentCode }
+            : { ...data, id: uid(), studentCode: generateStudentCode() };
+
+          if (studentWithId.id && students.some(s => s.id === studentWithId.id)) {
+            await updateStudentDoc(studentWithId);
           } else {
-            await addStudentDoc({ ...data, id: uid(), studentCode: generateStudentCode() });
+            await addStudentDoc(studentWithId);
           }
+          const newSlots = await autoSyncStudentSlots(studentWithId).catch(() => 0);
           addLog(`${data.name} 회원 ${isNew ? "등록" : "수정"}`);
-          setModal(null); showToast(isNew ? "회원이 등록되었습니다." : "회원 정보가 수정되었습니다.");
+          setModal(null);
+          showToast(isNew ? "회원이 등록되었습니다." : "회원 정보가 수정되었습니다.");
+          if (newSlots > 0) setTimeout(() => showToast(`슬롯 ${newSlots}개 생성됨`), 800);
         }
       }} />}
       {modal === "sDetail" && selected && <StudentDetailModal student={selected} teachers={teachers} currentUser={user} categories={categories} feePresets={feePresets} attendance={attendance} payments={payments} onClose={() => setModal(null)} onEdit={() => setModal("sForm")} onDelete={async () => { await softDeleteStudent(selected); setModal(null); showToast(`${selected.name} 회원이 삭제되었습니다. (7일간 복원 가능)`); }} onPhotoUpdate={async (sid, photoData) => { const s = students.find(s => s.id === sid); if (s) { await updateStudentDoc({ ...s, photo: photoData }); } showToast("프로필 사진이 저장되었습니다."); }} onSaveStudent={async (upd) => { await updateStudentDoc(upd); setSelected(upd); showToast("저장되었습니다."); }} onStatusChange={async (newStatus, meta = {}) => { const upd = { ...selected, status: newStatus, ...(newStatus === "paused" ? { pausedAt: Date.now(), pausedReason: meta.reason || "", careLogs: selected.careLogs || [] } : { pausedAt: null, pausedReason: null }) }; try { await updateStudentDoc(upd); setSelected(upd); showToast(newStatus === "paused" ? "휴원 처리되었습니다." : "재원 복귀되었습니다."); } catch { showToast("저장에 실패했습니다. 네트워크를 확인 후 다시 시도해주세요.", true); } }} />}
