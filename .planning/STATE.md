@@ -26,11 +26,11 @@
 
 ## Active Work
 
-**Phase 9: 스케줄 고도화** — Plans 01~03 완료 (2026-06-16)
+**Phase 9: 스케줄 고도화** — Plans 01~04 완료 (2026-06-16)
 - 09-01: CSS + slotMatchesLesson 유틸 + IC.pause 아이콘
 - 09-02: App.jsx onAddStudentToSlot 함수 구현
 - 09-03: TimetableView StudentSearchPopup + '+' 버튼 + '학생 추가' 버튼 + ScheduleView prop 전달
-- 다음: 09-04 휴회 관리 뷰
+- 09-04: PauseManagementView 신규 + NavLayout 휴회 관리 메뉴 + Dashboard 링크 배너 + AdminTools 폐강 버튼
 - 주요 결정: 슬롯 자동생성(저장즉시), TimetableView "+" 배정, 휴회관리뷰(사이드바), pauseHistory 복귀 시 append
 
 ## Pending / Blockers
@@ -47,6 +47,8 @@
 - Gemini 2.5 Flash 사용, thinkingBudget:0 (function-call 파싱 안정성)
 - [09-03] StudentSearchPopup: searchPopup.slotId 유무로 빈 셀 배정 vs 그룹 멤버 추가 분기
 - [09-03] 강사 기존 악기 1종류 → 자동 선택, 복수 → 드롭다운
+- [09-04] AdminTools 폐강 버튼은 firebase.js 직접 import (prop drilling 없이)
+- [09-04] Dashboard 케어 관리 섹션 → pm-link-banner 교체 (케어 기능 PauseManagementView로 집중)
 
 ## DB 백업 체계
 
