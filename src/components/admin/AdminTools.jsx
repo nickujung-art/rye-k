@@ -1,6 +1,7 @@
 import { useState } from "react";
 import knotLineSvg from "../../assets/heritage/knot-line.svg";
 import { IC, TODAY_STR } from "../../constants.jsx";
+import { updateLessonSlot } from "../../firebase.js";
 import { fmtDate, fmtDateTime, fmtMoney, fmtPhone, isMinor, calcAge, generateStudentCode, sendAligoMessage } from "../../utils.js";
 import { Av } from "../shared/CommonUI.jsx";
 import { LessonEditor } from "../student/StudentManagement.jsx";
@@ -844,6 +845,52 @@ export function LessonSlotsView({ students, teachers, lessonSlots, onRunMigratio
         <div className="card" style={{ padding: 14, marginBottom: 16, background: "var(--red-lt)", border: "1px solid var(--red)" }}>
           <div style={{ fontWeight: 600, color: "var(--red)" }}>오류</div>
           <div style={{ fontSize: 13, color: "var(--ink-60)", marginTop: 4 }}>{error}</div>
+        </div>
+      )}
+
+      {/* 슬롯 목록 (폐강 버튼 포함) */}
+      {(lessonSlots || []).length > 0 && (
+        <div className="card" style={{ padding: 16, marginBottom: 16 }}>
+          <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 10 }}>슬롯 목록</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            {(lessonSlots || []).map(slot => {
+              const t = (teachers || []).find(t => t.id === slot.teacherId);
+              return (
+                <div key={slot.id} style={{
+                  display: "flex", alignItems: "center", gap: 8,
+                  padding: "8px 10px", background: slot.status === "closed" ? "var(--ink-10)" : "var(--bg)",
+                  borderRadius: 8, border: "1px solid var(--border)",
+                  opacity: slot.status === "closed" ? 0.6 : 1,
+                }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: "var(--ink)" }}>
+                      {slot.name || slot.instrument || "슬롯"}
+                    </div>
+                    <div style={{ fontSize: 11, color: "var(--ink-30)" }}>
+                      {t?.name || "강사 없음"} · {slot.type === "group" ? "그룹" : "개인"} · {slot.day} {slot.time}
+                    </div>
+                  </div>
+                  {slot.status !== "closed" ? (
+                    <button
+                      onClick={async () => {
+                        await updateLessonSlot(slot.id, { status: "closed" });
+                        showToast && showToast(`${slot.name || slot.instrument} 슬롯이 폐강되었습니다.`);
+                      }}
+                      style={{
+                        fontSize: 11, padding: "2px 8px", borderRadius: 4,
+                        border: "1px solid var(--red, #e53e3e)", background: "#fff0f0",
+                        color: "var(--red, #e53e3e)", cursor: "pointer", fontFamily: "inherit",
+                      }}
+                    >
+                      폐강
+                    </button>
+                  ) : (
+                    <span style={{ fontSize: 11, color: "var(--ink-30)" }}>폐강됨</span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
 

@@ -19,7 +19,7 @@ import { UpdatePopup } from "./components/updates/UpdatePopup.jsx";
 import { setAiEnabled } from "./aiClient.js";
 import AiAssistant from "./components/ai/AiAssistant.jsx";
 import SettlementView from "./components/settlement/SettlementView.jsx";
-// import PauseManagementView from "./components/student/PauseManagementView.jsx"; // Phase 9 Plan 04 — uncomment when Plan 04 is executed
+import PauseManagementView from "./components/student/PauseManagementView.jsx";
 
 // ── Lazy-loaded views (code-split) ────────────────────────────────────────────
 const AnalyticsView       = lazy(() => import("./components/analytics/AnalyticsView.jsx"));
@@ -1498,11 +1498,9 @@ function MainApp() {
               shopItems={shopItems}
               currentUser={user}
             />}
-            {/* Phase 9 Plan 04: view === "pauseManagement" → <PauseManagementView> — uncomment import + this block when Plan 04 is executed
             {view === "pauseManagement" && (canManageAll(user.role) || user.role === "teacher") && (
               <PauseManagementView students={visible} teachers={teachers} currentUser={user} lessonSlots={lessonSlots} onUpdateStudent={async (s) => { await updateStudentDoc(s); }} onResumeStudent={onResumeStudent} showToast={showToast} />
             )}
-            */}
             {view === "more" && <MoreMenu user={user} setView={navigate} onLogout={handleLogout} onResetSeed={resetSeed} counts={{ teachers: teachers.length }} pendingCount={pendingCount} darkMode={darkMode} setDarkMode={setDarkMode} trash={trash} newCommentCount={newCommentCount} />}
           </div>
           </Suspense>

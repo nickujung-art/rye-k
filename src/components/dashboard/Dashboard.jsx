@@ -453,82 +453,18 @@ export default function Dashboard({ students, teachers, currentUser, notices, ca
         </div>
       )}
 
-      {/* ── 휴회 케어 관리 ── */}
+      {/* 휴회 관리 → PauseManagementView 링크 배너 (Phase 9) */}
       {(() => {
-        const isManager = canManageAll(currentUser.role);
-        const rawPaused = students.filter(s => s.status === "paused" && !s.isInstitution);
-        const pausedList = isManager
-          ? rawPaused
-          : rawPaused.filter(s => s.teacherId === currentUser.id || (s.lessons || []).some(l => l.teacherId === currentUser.id));
-        if (pausedList.length === 0) return null;
-
-        const getInfo = (s) => {
-          const days = s.pausedAt ? Math.floor((Date.now() - s.pausedAt) / 86400000) : null;
-          const logs = [...(s.careLogs || [])].sort((a, b) => b.createdAt - a.createdAt);
-          const lastLog = logs[0] || null;
-          const daysSinceCare = lastLog ? Math.floor((Date.now() - lastLog.createdAt) / 86400000) : null;
-          const needsCare = days !== null && days >= 14 && (daysSinceCare === null || daysSinceCare >= 14);
-          const stage = !needsCare ? "ok" : days >= 30 ? "urgent" : "due";
-          return { days, lastLog, daysSinceCare, stage };
-        };
-        const STAGE = {
-          urgent: { label: "케어 긴급", color: "#c00", bg: "#fff0f0" },
-          due:    { label: "케어 예정", color: "#b45309", bg: "var(--gold-lt)" },
-          ok:     { label: "케어 완료", color: "var(--green)", bg: "var(--green-lt)" },
-        };
-        const sorted = [...pausedList].sort((a, b) => {
-          const order = { urgent: 0, due: 1, ok: 2 };
-          return (order[getInfo(a).stage] ?? 3) - (order[getInfo(b).stage] ?? 3);
-        });
-        const actionCount = pausedList.filter(s => getInfo(s).stage !== "ok").length;
-
+        const pausedStudents = (students || []).filter(s => s.status === "paused" && !s.isInstitution);
+        if (pausedStudents.length === 0) return null;
         return (
-          <div className="dash-card" style={{ marginBottom: 12 }}>
-            <div className="dash-card-title">
-              휴회 케어 관리
-              <div style={{ display: "flex", gap: 4 }}>
-                {actionCount > 0 && <span style={{ fontSize: 11, color: "#c00", background: "#fff0f0", padding: "2px 8px", borderRadius: 10, fontWeight: 700 }}>케어 필요 {actionCount}명</span>}
-                <span style={{ fontSize: 11, color: "var(--ink-30)", background: "var(--ink-10)", padding: "2px 8px", borderRadius: 10 }}>전체 {pausedList.length}명</span>
-              </div>
+          <div className="pm-link-banner" onClick={() => nav("pauseManagement")}>
+            <span style={{ fontSize: 20 }}>⏸</span>
+            <div style={{ flex: 1 }}>
+              <div>휴회 관리</div>
+              <div style={{ fontSize: 11, opacity: 0.8 }}>휴회 {pausedStudents.length}명 · 케어로그 · 복귀 처리</div>
             </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-              {sorted.map(s => {
-                const { days, lastLog, daysSinceCare, stage } = getInfo(s);
-                const teacherName = (() => {
-                  const tid = (s.lessons || []).find(l => l.teacherId)?.teacherId || s.teacherId;
-                  return teachers.find(t => t.id === tid)?.name || null;
-                })();
-                const insts = (s.lessons || []).map(l => l.instrument).filter(Boolean).join(" · ");
-                const st = STAGE[stage];
-                return (
-                  <div key={s.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", background: "var(--bg)", borderRadius: 8, border: "1px solid var(--border)" }}>
-                    <Av photo={s.photo} name={s.name} size="av-sm" />
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 2 }}>
-                        <span style={{ fontSize: 13, fontWeight: 600, color: "var(--ink)" }}>{s.name}</span>
-                        {s.pausedReason && <span style={{ fontSize: 10, color: "var(--ink-30)", background: "var(--ink-10)", padding: "1px 6px", borderRadius: 8 }}>{s.pausedReason}</span>}
-                      </div>
-                      <div style={{ fontSize: 11, color: "var(--ink-60)" }}>{insts || "-"}{teacherName ? ` · ${teacherName} 강사` : ""}</div>
-                      <div style={{ display: "flex", gap: 8, marginTop: 3, alignItems: "center" }}>
-                        {days !== null && <span style={{ fontSize: 10, color: "var(--ink-30)" }}>D+{days}</span>}
-                        {lastLog
-                          ? <span style={{ fontSize: 10, color: daysSinceCare <= 7 ? "var(--green)" : "var(--ink-30)" }}>마지막 케어 {daysSinceCare}일 전 · {lastLog.careType} · {lastLog.responseStatus}</span>
-                          : <span style={{ fontSize: 10, color: "var(--ink-30)" }}>케어 기록 없음</span>}
-                      </div>
-                    </div>
-                    <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4, flexShrink: 0 }}>
-                      <span style={{ fontSize: 10, fontWeight: 700, color: st.color, background: st.bg, padding: "2px 7px", borderRadius: 8, whiteSpace: "nowrap" }}>{st.label}</span>
-                      {onUpdateStudent && (
-                        <button onClick={() => setCareModal(s)}
-                          style={{ fontSize: 11, padding: "3px 10px", borderRadius: 6, border: "1px solid var(--blue)", background: "var(--blue-lt)", color: "var(--blue)", fontFamily: "inherit", cursor: "pointer", fontWeight: 600, whiteSpace: "nowrap" }}>
-                          케어 기록
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+            <span style={{ fontSize: 16 }}>›</span>
           </div>
         );
       })()}

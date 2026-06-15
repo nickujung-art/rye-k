@@ -15,7 +15,7 @@ export function BottomNav({ view, setView, unpaidCount, pendingCount, newComment
   return (
     <nav className="bnav">
       {tabs.map(t => (
-        <div key={t.id} className={`bnav-item ${view === t.id || (t.id === "more" && ["teachers","notices","categories","profile","activity","pending","trash","studentNotices","analytics","lessonNotes","schedule","institutions","systemNews","monthlyReports","aiSettings","shop","lessonSlots","settlement"].includes(view)) ? "active" : ""}`} onClick={() => setView(t.id)}>
+        <div key={t.id} className={`bnav-item ${view === t.id || (t.id === "more" && ["teachers","notices","categories","profile","activity","pending","trash","studentNotices","analytics","lessonNotes","schedule","institutions","systemNews","monthlyReports","aiSettings","shop","lessonSlots","settlement","pauseManagement"].includes(view)) ? "active" : ""}`} onClick={() => setView(t.id)}>
           <span className="bnav-dot" />
           {t.badge > 0 && <span className="bnav-badge">{t.badge > 99 ? "99+" : t.badge}</span>}
           {t.icon}
@@ -77,6 +77,9 @@ export function Sidebar({ view, setView, user, onLogout, counts, pendingCount, d
     { id: "lessonNotes", label: "레슨노트", icon: "📝", badge: newCommentCount || undefined },
     ...(canManageAll(user.role) || user.role === "teacher" ? [{ id: "monthlyReports", label: "월간 리포트", icon: "📊" }] : []),
     { id: "schedule", label: "강사 스케줄", icon: "◫" },
+    ...(canManageAll(user.role) || user.role === "teacher"
+      ? [{ id: "pauseManagement", label: "휴회 관리", icon: "⏸" }]
+      : []),
     { id: "payments", label: "수납 관리", icon: "₩" },
     ...(canManageAll(user.role) ? [{ id: "settlement", label: "정산 관리", icon: "💰" }] : []),
     { id: "students", label: "회원 관리", icon: "♪", badge: counts.students },
@@ -152,6 +155,9 @@ export function MoreMenu({ user, setView, onLogout, onResetSeed, counts, pending
   const isDark = darkMode === "dark" || (darkMode === null && window.matchMedia?.("(prefers-color-scheme: dark)").matches);
   const items = [
     { id: "schedule", label: "강사 스케줄", desc: "주간/월간 시간표", icon: IC.schedule },
+    ...(canManageAll(user.role) || user.role === "teacher"
+      ? [{ id: "pauseManagement", label: "휴회 관리", desc: "휴회 학생 케어 · 복귀 처리", icon: IC.pause }]
+      : []),
     { id: "lessonNotes", label: "레슨노트", desc: newCommentCount > 0 ? `새 댓글 ${newCommentCount}건` : "", icon: IC.note, badge: newCommentCount || undefined },
     { id: "institutions", label: "기관 관리", desc: "B2B 파견 레슨", icon: IC.building },
     ...(canManageAll(user.role) ? [{ id: "pending", label: "등록 대기", desc: pendingCount > 0 ? `${pendingCount}건 대기` : "", icon: IC.edit }] : []),
