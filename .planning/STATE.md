@@ -26,9 +26,11 @@
 
 ## Active Work
 
-**Phase 9: 스케줄 고도화** — Context 완료 (2026-06-15)
-- Context: `.planning/phases/09-schedule-enhancement/09-CONTEXT.md`
-- 다음 단계: `/gsd-plan-phase 9`
+**Phase 9: 스케줄 고도화** — Plans 01~03 완료 (2026-06-16)
+- 09-01: CSS + slotMatchesLesson 유틸 + IC.pause 아이콘
+- 09-02: App.jsx onAddStudentToSlot 함수 구현
+- 09-03: TimetableView StudentSearchPopup + '+' 버튼 + '학생 추가' 버튼 + ScheduleView prop 전달
+- 다음: 09-04 휴회 관리 뷰
 - 주요 결정: 슬롯 자동생성(저장즉시), TimetableView "+" 배정, 휴회관리뷰(사이드바), pauseHistory 복귀 시 append
 
 ## Pending / Blockers
@@ -43,6 +45,8 @@
 - 알림톡: Aligo API 직접 호출 (Worker 우회, IPv6 문제)
 - Firebase Auth: anonymous→email deadlock 해소 — READ isAuthenticated(), WRITE isEmailUser()
 - Gemini 2.5 Flash 사용, thinkingBudget:0 (function-call 파싱 안정성)
+- [09-03] StudentSearchPopup: searchPopup.slotId 유무로 빈 셀 배정 vs 그룹 멤버 추가 분기
+- [09-03] 강사 기존 악기 1종류 → 자동 선택, 복수 → 드롭다운
 
 ## DB 백업 체계
 
