@@ -12,8 +12,11 @@
 | 01 보안 기반 | ✓ COMPLETE | |
 | 02 포털 완성 | ✓ COMPLETE | |
 | 03 AI 완성 | ✓ COMPLETE | |
+| 04 알림톡 통합 | ✓ COMPLETE | Aligo API 직접 호출 (IPv6 문제로 Worker 우회) |
 | 05 수납 자동화 | ✓ COMPLETE | 실제 카카오뱅크 테스트 미완 |
+| 06 분석 대시보드 고도화 | ✓ COMPLETE | AnalyticsView 월별 매출·악기·출석·수납 현황 |
 | 07 입금 자동매칭 고도화 | ✓ COMPLETE | |
+| 08 그룹 레슨 고도화 | ✓ COMPLETE | v17.0.0 — 슬롯 엔티티·마이그레이션·TimetableView |
 | BACKUP-01 | ✓ COMPLETE | GitHub Actions 주간 백업 |
 | BUG-01 | ✓ COMPLETE | |
 | FS-fee-split | ✓ COMPLETE | 과목별 수강료 분리 |
@@ -23,18 +26,10 @@
 
 ## Active Work
 
-**Phase 7: 입금 자동매칭 고도화** — ✓ COMPLETE (2026-06-03)
-- 07-01 ✓: guardianName 필드 + students_cache guardianName/monthlyFee + TTL 72h + 앱 마운트 auto-sync
-- 07-02 ✓: fuzzyMatchStudent guardian_exact/guardian_fuzzy + split_space + amount_match
-- 07-03 ✓: 미매칭 카드 rawText 표시 + 추천 학생 배지 + auto-select useEffect
-
-## Active Work
-
-**Phase 8: 그룹 레슨 고도화** — Planned (2026-06-12)
-- 6 plans in 3 waves ready to execute
-- Wave 1: 08-01 (rye-lesson-slots 인프라) + 08-06 (예약 설계 문서)
-- Wave 2: 08-02 (마이그레이션) + 08-03 (ScheduleView) + 08-04 (Attendance)
-- Wave 3: 08-05 (TimetableView)
+**Phase 9: 스케줄 고도화** — Context 완료 (2026-06-15)
+- Context: `.planning/phases/09-schedule-enhancement/09-CONTEXT.md`
+- 다음 단계: `/gsd-plan-phase 9`
+- 주요 결정: 슬롯 자동생성(저장즉시), TimetableView "+" 배정, 휴회관리뷰(사이드바), pauseHistory 복귀 시 append
 
 ## Pending / Blockers
 

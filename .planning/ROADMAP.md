@@ -9,11 +9,12 @@
 - [ ] **Phase 1: 보안 기반 (Security Foundation)** - 익명 전체 읽기 차단 + Auth 세션 정상화로 운영 데이터 보호
 - [ ] **Phase 2: 포털 완성 (Portal Completion)** - 학생·학부모 포털을 앱 수준으로 고도화 (시간표·레슨노트·수납·셀프 신청)
 - [ ] **Phase 3: AI 완성 (AI Completion)** - 월별 리포트·케어 메시지·자연어 쿼리 완성 및 AI 데이터 동의 강제
-- [ ] **Phase 4: 알림톡 통합 (KakaoTalk AlimTalk)** - Solapi 연동으로 결석·수납·일정 변경 자동 알림톡 발송
+- [x] **Phase 4: 알림톡 통합 (KakaoTalk AlimTalk)** - Aligo API 직접 연동, 수납·보강·등록완료 알림톡 구현 ✓ 2026-06-15
 - [x] **Phase 5: 수납 자동화 (Payment Automation)** - 은행 입금 자동 매칭 + 미납 현황 대시보드 + 리마인더 자동 발송 ✓ 2026-05-09
-- [ ] **Phase 6: 분석 대시보드 고도화 (Analytics Enhancement)** - 관리자·강사·학부모용 데이터 인사이트 레이어
+- [x] **Phase 6: 분석 대시보드 고도화 (Analytics Enhancement)** - AnalyticsView 월별 매출·악기·연령·출석·수납 현황 ✓ 2026-06-15
 - [x] **Phase 7: 입금 자동매칭 고도화 (Payment Matching Enhancement)** - guardianName 필드 추가 + 보호자 이름 매칭 + students_cache 타이밍 수정 ✓ 2026-06-03
-- [ ] **Phase 8: 그룹 레슨 고도화 (Group Lesson Enhancement)** - rye-lesson-slots 엔티티 신설 + 학생 일괄 마이그레이션 + 그룹 이름 편집 + 강사 시간표 뷰
+- [x] **Phase 8: 그룹 레슨 고도화 (Group Lesson Enhancement)** - rye-lesson-slots 엔티티 신설 + 마이그레이션 + 그룹 이름 편집 + TimetableView ✓ 2026-06-13
+- [ ] **Phase 9: 스케줄 고도화 (Schedule Enhancement)** - 슬롯 자동생성·연결 + TimetableView 직접 배정 + 휴회 관리 뷰 + pauseHistory 스키마
 
 ## Phase Details
 
@@ -154,6 +155,17 @@ Plans:
 - [ ] 08-06-PLAN.md — 예약 시스템 설계 문서 (08-RESERVATION-SPEC.md) (GRP-08)
 **UI hint**: yes
 
+### Phase 9: 스케줄 고도화 (Schedule Enhancement)
+**Goal**: 학생 등록/수정 시 슬롯이 자동 생성·연결되고, TimetableView에서 빈 셀에 직접 학생을 배정할 수 있으며, 휴회 학생 이력과 케어로그를 전용 뷰에서 관리한다
+**Depends on**: Phase 8
+**Success Criteria** (what must be TRUE):
+  1. 학생 등록/수정 저장 시 slotId 없는 레슨에 완전 일치 슬롯이 자동 연결되거나 신규 슬롯이 생성되며 토스트로 결과가 표시된다
+  2. TimetableView 빈 셀 "+"를 누르면 학생 검색 팝업이 나타나고, 선택 후 슬롯이 자동 생성·연결된다
+  3. 그룹 슬롯 카드 팝업에서 "학생 추가" 버튼으로 기존 슬롯에 학생을 연결할 수 있다
+  4. 사이드바에 "휴회 관리" 메뉴가 있고, 휴회 학생 목록·슬롯 이력·케어로그·복귀 처리가 가능하다
+  5. 복귀(status → active) 시 pauseHistory[]에 { pausedAt, pausedReason, resumedAt, durationDays, slotIds } 엔트리가 자동 추가된다
+**Plans**: TBD
+
 ### Phase SHOP-01: 즉시 청구 & 상품 관리 시스템 (Instant Charge & Shop)
 **Goal**: 강사가 한복·악세사리·악기가방 등을 판매 시 즉시 청구를 요청하고, 관리자가 승인 후 알림 메시지를 클립보드 복사로 발송하며, 입금 확인 후 수납 레코드가 자동 생성된다. 상품 카탈로그는 AdminTools에서 관리한다.
 **Depends on**: Nothing (standalone feature)
@@ -176,14 +188,15 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 8. 그룹 레슨 고도화 | 0/6 | Planned | - |
-| 1. 보안 기반 | 0/5 | Planned | - |
-| 2. 포털 완성 | 0/4 | Planned | - |
-| 3. AI 완성 | 0/3 | Planned | - |
-| 4. 알림톡 통합 | 0/TBD | Not started | - |
-| 5. 수납 자동화 | 0/4 | Planned | - |
-| 6. 분석 대시보드 고도화 | 0/TBD | Not started | - |
+| 1. 보안 기반 | 5/5 | ✓ COMPLETE | - |
+| 2. 포털 완성 | 4/4 | ✓ COMPLETE | - |
+| 3. AI 완성 | 3/3 | ✓ COMPLETE | - |
+| 4. 알림톡 통합 | - | ✓ COMPLETE | 2026-06-15 |
+| 5. 수납 자동화 | 5/5 | ✓ COMPLETE | 2026-05-09 |
+| 6. 분석 대시보드 고도화 | - | ✓ COMPLETE | 2026-06-15 |
+| 9. 스케줄 고도화 | 0/TBD | Context | - |
 | 7. 입금 자동매칭 고도화 | 3/3 | ✓ COMPLETE | 2026-06-03 |
+| 8. 그룹 레슨 고도화 | 6/6 | ✓ COMPLETE | 2026-06-13 |
 | SHOP-01. 즉시 청구 & 상품 관리 | 5/5 | ✓ COMPLETE | 2026-05-14 |
 
 ---
