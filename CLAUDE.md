@@ -4,7 +4,7 @@
 
 ## 기술 스택
 React 18 + Vite 5 · CSS-in-JS(`src/constants.jsx` CSS 문자열 → `<style>`) · Firebase v10 Firestore+Auth  
-GitHub(`nickujung-art/rye-k`) → Cloudflare Pages 자동 배포 · 번들 ~880KB / gzip ~220KB
+GitHub(`nickujung-art/rye-k`) → Cloudflare Pages 자동 배포 · 번들 ~1190KB / gzip ~298KB
 
 ## CRITICAL — 데이터 안전
 
@@ -55,11 +55,13 @@ src/
     ├── payment/PaymentsView.jsx · notice/NoticeManagement.jsx
     ├── institution/Institutions.jsx — InstClassEditor, InstitutionFormModal, InstitutionsView
     ├── analytics/AnalyticsView.jsx · admin/AdminTools.jsx · portal/PublicPortal.jsx
-    ├── ScheduleView.jsx
+    ├── ScheduleView.jsx · TimetableView.jsx
     └── updates/UpdatePopup.jsx · SystemNewsView.jsx
 ```
 
-## Firestore 컬렉션 (`appData` 단일 컬렉션)
+## Firestore 컬렉션
+`appData` 단일 컬렉션 (문서 ID = 데이터 키):
+
 | 키 | 타입 |
 |---|---|
 | `rye-teachers` / `rye-students` | Teacher[] / Student[] |
@@ -68,7 +70,15 @@ src/
 | `rye-institutions` | Institution[] |
 | `rye-categories` / `rye-fee-presets` | object |
 | `rye-schedule-overrides` | ScheduleOverride[] |
+| `rye-unmatched-payments` / `rye-payment-log` | UnmatchedPayment[] / PaymentLog[] |
+| `rye-shop-items` / `rye-ai-reports` / `rye-settings` | ShopItems / AiReport[] / Settings |
 | `rye-activity` / `rye-pending` / `rye-trash` | Log[] / Pending[] / TrashItem[] |
+
+별도 최상위 컬렉션 (`appData` 외부):
+
+| 컬렉션 | 타입 |
+|---|---|
+| `rye-lesson-slots` | LessonSlot[] |
 
 ## 권한 체계
 | 역할 | 회원 | 기관 | 수강료 | 연락처 |
@@ -80,8 +90,11 @@ src/
 ```js
 // 회원
 { id, name, birthDate, startDate, phone, guardianPhone, teacherId,
-  lessons: [{ instrument, teacherId, schedule: [{ day, time }] }],
+  lessons: [{ instrument, teacherId, schedule: [{ day, time }], slotId }],
   photo, notes, monthlyFee, status: "active"|"paused"|"withdrawn", studentCode, createdAt }
+
+// 레슨 슬롯 (rye-lesson-slots 별도 컬렉션)
+{ id, name, teacherId, instrument, day, time, type: "individual"|"group", studentIds: [] }
 
 // 기관
 { id, name, type: "school"|"center"|"company"|"government"|"other",

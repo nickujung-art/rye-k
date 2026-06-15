@@ -20,6 +20,15 @@ Firestore onSnapshot (실시간)
   → 사용자 액션 → per-op runTransaction → Firestore → onSnapshot 자동 반영
 ```
 
+## 레슨 슬롯 흐름
+```
+rye-lesson-slots (별도 컬렉션, onSnapshot)
+  → lessonSlots state (App.jsx)
+  → ScheduleView (탭: 스케줄 | 시간표)
+  → TimetableView (09:00~21:00 × 월~일 격자)
+Student.lessons[].slotId → 슬롯 연결 키
+```
+
 ## B2B 기관 가상회원 흐름
 ```
 rye-institutions (Firestore)
