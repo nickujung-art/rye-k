@@ -270,3 +270,18 @@ export function calcTotalFee(student, feePresets) {
   );
   return lessonSum + rental;
 }
+
+// Phase 9 — 슬롯-레슨 완전 일치 판단 (teacherId + instrument + schedule 배열 정렬 비교)
+// schedule 배열 순서는 정렬 후 비교 (입력 순서 무관)
+export function slotMatchesLesson(slot, lesson, studentTeacherId) {
+  const tid = lesson.teacherId || studentTeacherId;
+  if (slot.teacherId !== tid) return false;
+  if (slot.instrument !== lesson.instrument) return false;
+  const sched = [...(lesson.schedule || [])].sort((a, b) =>
+    `${a.day}${a.time}`.localeCompare(`${b.day}${b.time}`)
+  );
+  const slotSched = [...(slot.schedule || [])].sort((a, b) =>
+    `${a.day}${a.time}`.localeCompare(`${b.day}${b.time}`)
+  );
+  return JSON.stringify(sched) === JSON.stringify(slotSched);
+}
