@@ -12,7 +12,7 @@ function getTeacherColor(id, teachersList) {
   return TEACHER_COLORS[Math.abs(idx) % TEACHER_COLORS.length] || "var(--ink-30)";
 }
 
-function ScheduleView({ students, teachers, currentUser, attendance, onSaveAttendance, onSaveScheduleOverride, scheduleOverrides, notices, lessonSlots, onUpdateSlot }) {
+function ScheduleView({ students, teachers, currentUser, attendance, onSaveAttendance, onSaveScheduleOverride, scheduleOverrides, notices, lessonSlots, onUpdateSlot, onAddStudentToSlot }) {
   const [viewMode, setViewMode] = useState("week");
   const [filterTeacherId, setFilterTeacherId] = useState("all");
   const [weekOffset, setWeekOffset] = useState(0);
@@ -227,6 +227,7 @@ function ScheduleView({ students, teachers, currentUser, attendance, onSaveAtten
           teachers={teachers}
           currentUser={currentUser}
           onUpdateSlot={onUpdateSlot}
+          onAddStudentToSlot={onAddStudentToSlot}
         />
       </div>
     );

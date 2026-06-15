@@ -54,7 +54,62 @@ function safePopupLeft(left, width = 200) {
   return Math.max(8, Math.min(left, window.innerWidth - width - 8));
 }
 
-function TimetableGrid({ lessonSlots, students, teachers, teacherId, canSeeAll, onUpdateSlot }) {
+// Phase 9 — D-02: 학생 검색 팝업
+function StudentSearchPopup({ students, teachers, teacherId, instrument, setInstrument, onSelect, onClose, top, left }) {
+  const [q, setQ] = useState("");
+  const filtered = (students || []).filter(s =>
+    s.status === "active" && !s.isInstitution && s.name.includes(q)
+  ).slice(0, 20);
+  const teacher = (teachers || []).find(t => t.id === teacherId);
+  const teacherInstruments = teacher?.instruments || [];
+  const needsInstrument = !instrument;
+
+  return (
+    <>
+      <div style={{ position: "fixed", inset: 0, zIndex: 9998 }} onClick={onClose} />
+      <div className="tt-member-popup" style={{ top, left: safePopupLeft(left), minWidth: 230, zIndex: 9999, maxHeight: 320, overflowY: "auto" }}>
+        {needsInstrument && (
+          <div style={{ marginBottom: 8 }}>
+            <div style={{ fontSize: 11, color: "var(--ink-30)", marginBottom: 4 }}>악기 선택</div>
+            <select
+              className="inp"
+              style={{ fontSize: 12, padding: "4px 8px", width: "100%" }}
+              value={instrument || ""}
+              onChange={e => setInstrument(e.target.value)}
+            >
+              <option value="">-- 악기 선택 --</option>
+              {teacherInstruments.length > 0
+                ? teacherInstruments.map(inst => <option key={inst} value={inst}>{inst}</option>)
+                : <option value="기타">기타</option>}
+            </select>
+          </div>
+        )}
+        <input
+          className="inp"
+          value={q}
+          onChange={e => setQ(e.target.value)}
+          placeholder="이름 검색..."
+          autoFocus
+          style={{ marginBottom: 8, fontSize: 13 }}
+        />
+        {filtered.length === 0
+          ? <div style={{ color: "var(--ink-30)", fontSize: 12, padding: "4px 0" }}>검색 결과 없음</div>
+          : filtered.map(s => (
+            <div key={s.id} className="tt-member-row tt-member-row--link" onClick={() => onSelect(s)}>
+              {s.name}
+              {(s.lessons || []).some(l => (l.teacherId || s.teacherId) === teacherId) && (
+                <span style={{ fontSize: 10, color: "var(--ink-30)", marginLeft: 4 }}>
+                  {(s.lessons || []).find(l => (l.teacherId || s.teacherId) === teacherId)?.instrument}
+                </span>
+              )}
+            </div>
+          ))}
+      </div>
+    </>
+  );
+}
+
+function TimetableGrid({ lessonSlots, students, teachers, teacherId, canSeeAll, onUpdateSlot, onAddStudentToSlot }) {
   const [editingSlotId, setEditingSlotId] = useState(null);
   const [editingSlotName, setEditingSlotName] = useState("");
   const [memberPopup, setMemberPopup] = useState(null);
@@ -62,6 +117,8 @@ function TimetableGrid({ lessonSlots, students, teachers, teacherId, canSeeAll, 
   const [selectedDayIdx, setSelectedDayIdx] = useState(null);
   const [isMobile, setIsMobile] = useState(() => typeof window !== "undefined" && window.innerWidth < 640);
   const slotSavedRef = useRef(null); // null | slotId — 연속 편집 시 이중저장 방지
+  const [searchPopup, setSearchPopup] = useState(null);
+  const [cellInstrument, setCellInstrument] = useState(null);
 
   useEffect(() => {
     const handler = () => setIsMobile(window.innerWidth < 640);
@@ -114,6 +171,21 @@ function TimetableGrid({ lessonSlots, students, teachers, teacherId, canSeeAll, 
   const commitEdit = (slotId, name) => {
     if (name.trim() && onUpdateSlot) onUpdateSlot(slotId, { name: name.trim() });
     setEditingSlotId(null);
+  };
+
+  const handleCellAdd = (day, time, e) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const existingInstruments = (students || [])
+      .filter(s => (s.lessons || []).some(l => (l.teacherId || s.teacherId) === teacherId))
+      .flatMap(s => (s.lessons || [])
+        .filter(l => (l.teacherId || s.teacherId) === teacherId)
+        .map(l => l.instrument)
+      )
+      .filter(Boolean);
+    const uniqueInstruments = [...new Set(existingInstruments)];
+    const autoInstrument = uniqueInstruments.length === 1 ? uniqueInstruments[0] : null;
+    setCellInstrument(autoInstrument);
+    setSearchPopup({ teacherId, day, time, instrument: autoInstrument, top: rect.bottom + 6, left: rect.left });
   };
 
   const openMembers = (e, slot) => {
@@ -280,7 +352,17 @@ function TimetableGrid({ lessonSlots, students, teachers, teacherId, canSeeAll, 
               const cell = cellMap[`${di}-${row.rowIdx}`];
               const isToday = di === todayIdx;
               const cellCls = `tt-cell${isHour ? " tt-cell--hour" : ""}${isToday ? " tt-cell--today" : ""}${isNow && isToday ? " tt-cell--now" : ""}`;
-              if (!cell) return <div key={`c-${li}-${di}`} className={cellCls} />;
+              if (!cell) return (
+                <div key={`c-${li}-${di}`} className={cellCls}>
+                  {onAddStudentToSlot && teacherId && (
+                    <button
+                      className="tt-cell-add"
+                      onClick={e => handleCellAdd(DAYS[di], formatTime(row.rowIdx), e)}
+                      title="학생 배정"
+                    >+</button>
+                  )}
+                </div>
+              );
               return (
                 <div key={`c-${li}-${di}`} className={cellCls}>
                   <div className="tt-slot" style={{ background: color + "15" }}>
@@ -315,8 +397,61 @@ function TimetableGrid({ lessonSlots, students, teachers, teacherId, canSeeAll, 
                 }}
               >{s.name}</div>
             ))}
+            {onAddStudentToSlot && (
+              <button
+                className="tt-member-add-btn"
+                onClick={() => {
+                  const slot = (lessonSlots || []).find(s => s.id === memberPopup.slotId);
+                  if (!slot) return;
+                  const sch0 = (slot.schedule || [])[0];
+                  if (!sch0) return;
+                  setMemberPopup(null);
+                  setSearchPopup({
+                    slotId: slot.id,
+                    teacherId: slot.teacherId,
+                    day: sch0.day,
+                    time: sch0.time,
+                    instrument: slot.instrument,
+                    top: memberPopup.top,
+                    left: memberPopup.left,
+                  });
+                  setCellInstrument(slot.instrument);
+                }}
+              >
+                + 학생 추가
+              </button>
+            )}
           </div>
         </>
+      )}
+      {searchPopup && (
+        <StudentSearchPopup
+          students={students}
+          teachers={teachers}
+          teacherId={searchPopup.teacherId}
+          instrument={cellInstrument || searchPopup.instrument}
+          setInstrument={setCellInstrument}
+          top={searchPopup.top}
+          left={searchPopup.left}
+          onClose={() => { setSearchPopup(null); setCellInstrument(null); }}
+          onSelect={async (student) => {
+            const inst = cellInstrument || searchPopup.instrument;
+            if (!inst) return;
+            setSearchPopup(null);
+            setCellInstrument(null);
+            if (searchPopup.slotId) {
+              const slot = (lessonSlots || []).find(s => s.id === searchPopup.slotId);
+              if (slot && onAddStudentToSlot) {
+                const sch = (slot.schedule || [])[0] || {};
+                await onAddStudentToSlot(student, slot.teacherId, sch.day, sch.time, slot.instrument);
+              }
+            } else {
+              if (onAddStudentToSlot) {
+                await onAddStudentToSlot(student, searchPopup.teacherId, searchPopup.day, searchPopup.time, inst);
+              }
+            }
+          }}
+        />
       )}
       {studentDetail && (
         <>
@@ -381,7 +516,7 @@ function TeacherSelectGrid({ teachers, onSelect }) {
   );
 }
 
-export default function TimetableView({ lessonSlots, students, teachers, currentUser, onUpdateSlot }) {
+export default function TimetableView({ lessonSlots, students, teachers, currentUser, onUpdateSlot, onAddStudentToSlot }) {
   const isTeacher = currentUser.role === "teacher";
   const canSeeAll = canManageAll(currentUser.role);
   const [selectedTeacherId, setSelectedTeacherId] = useState(isTeacher ? currentUser.id : null);
@@ -415,6 +550,7 @@ export default function TimetableView({ lessonSlots, students, teachers, current
           teacherId={selectedTeacherId}
           canSeeAll={canSeeAll}
           onUpdateSlot={onUpdateSlot}
+          onAddStudentToSlot={onAddStudentToSlot}
         />
       ) : (
         <div className="empty"><div className="empty-txt">시간표를 불러올 수 없습니다.</div></div>
