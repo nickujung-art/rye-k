@@ -14,7 +14,8 @@
 - [x] **Phase 6: 분석 대시보드 고도화 (Analytics Enhancement)** - AnalyticsView 월별 매출·악기·연령·출석·수납 현황 ✓ 2026-06-15
 - [x] **Phase 7: 입금 자동매칭 고도화 (Payment Matching Enhancement)** - guardianName 필드 추가 + 보호자 이름 매칭 + students_cache 타이밍 수정 ✓ 2026-06-03
 - [x] **Phase 8: 그룹 레슨 고도화 (Group Lesson Enhancement)** - rye-lesson-slots 엔티티 신설 + 마이그레이션 + 그룹 이름 편집 + TimetableView ✓ 2026-06-13
-- [ ] **Phase 9: 스케줄 고도화 (Schedule Enhancement)** - 슬롯 자동생성·연결 + TimetableView 직접 배정 + 휴회 관리 뷰 + pauseHistory 스키마
+- [x] **Phase 9: 스케줄 고도화 (Schedule Enhancement)** - 슬롯 자동생성·연결 + TimetableView 직접 배정 + 휴회 관리 뷰 + pauseHistory 스키마 ✓ 2026-06-16
+- [ ] **Phase 10: 회계 앱 (Accounting App)** - 별도 앱(rye-k-accounting) 신규 구축: Supabase+복식부기+RYE-K연동+은행대사+급여+B2B계산서+세무사전송
 
 ## Phase Details
 
@@ -171,6 +172,34 @@ Plans:
 - [ ] 09-03-PLAN.md — TimetableView StudentSearchPopup + '+' 버튼 + '학생 추가' + ScheduleView 전달 (SCH-02, SCH-03)
 - [ ] 09-04-PLAN.md — PauseManagementView 신규 + NavLayout + Dashboard 링크 배너 + AdminTools 폐강 (SCH-04, SCH-05)
 
+### Phase 10: 회계 앱 (Accounting App)
+**Goal**: 별도 앱(rye-k-accounting, Supabase+React+TS)을 신규 구축해 복식부기 원장·RYE-K 수납 자동 연동·은행 CSV 대사·강사 급여·B2B 계산서·세무사 이메일 전송을 제공하며, 더블체크 대시보드로 RYE-K 수납 집계와 원장을 항상 비교할 수 있다
+**Depends on**: Phase 9 (독립 신규 프로젝트이지만 RYE-K Firebase 수납 데이터 참조)
+**Requirements**: ACC-01, ACC-02, ACC-03, ACC-04, ACC-05, ACC-06, ACC-07, ACC-08, ACC-09, ACC-10, ACC-11, ACC-12, ACC-13, ACC-14, ACC-15
+**Success Criteria** (what must be TRUE):
+  1. accounting.ryekorea.com에 접속하면 Supabase Auth 로그인 화면이 나타나고 이메일/비밀번호로 로그인된다
+  2. RYE-K 수납 완료 항목이 5분 이내 회계 앱 전표 목록에 draft 상태로 나타난다
+  3. 은행 CSV를 업로드하면 Bank Rules가 적용되어 자동매칭/규칙적용/수동처리 3가지로 분류된다
+  4. 강사 급여 입력 시 사업소득 3.3% 원천세가 자동 계산되고 급여 전표가 생성된다
+  5. 월별 손익계산서(P&L)가 정확히 수입합계-지출합계=순이익 구조로 표시된다
+  6. 더블체크 대시보드에서 RYE-K 수납 집계와 원장 집계가 비교되며 차이 발생 시 빨간 표시가 된다
+**Plans**: 11 plans
+Plans:
+- [ ] 10-01-PLAN.md — 프로젝트 스캐폴드 + Vite/TS/Tailwind 설정 (ACC-01, ACC-15)
+- [ ] 10-02-PLAN.md — Supabase 스키마 마이그레이션 + DB push 체크포인트 (ACC-02, ACC-03, ACC-04)
+- [ ] 10-03-PLAN.md — Supabase Auth + 레이아웃 + 공통 UI 컴포넌트 (ACC-03, ACC-14)
+- [ ] 10-04-PLAN.md — 복식부기 전표 엔진 + 전표 CRUD UI (ACC-04)
+- [ ] 10-05-PLAN.md — RYE-K 수납 동기화 Edge Function (Deno.cron 5분) (ACC-05)
+- [ ] 10-06-PLAN.md — 비용 빠른입력 + 반복 템플릿 (ACC-06)
+- [ ] 10-07-PLAN.md — 은행 CSV 파서 5종 + Bank Rules 엔진 + 대사 UI (ACC-07)
+- [ ] 10-08-PLAN.md — 강사 급여 3.3% 원천세 + AR Aging 미수금 현황 (ACC-08, ACC-12)
+- [ ] 10-09-PLAN.md — B2B 세금계산서 + 홈택스 연동 링크 (ACC-09)
+- [ ] 10-10-PLAN.md — P&L 손익계산서 + 원장 조회 (ACC-10)
+- [ ] 10-11-PLAN.md — 더블체크 대시보드 + 세무사 이메일 전송 (ACC-11, ACC-13)
+**Tech Stack**: React 18 + Vite 5 + TypeScript, Supabase (PostgreSQL + Auth + Edge Functions), Cloudflare Pages
+**Repo**: rye-k-accounting (별도 Git 리포지토리)
+**UI hint**: yes
+
 ### Phase SHOP-01: 즉시 청구 & 상품 관리 시스템 (Instant Charge & Shop)
 **Goal**: 강사가 한복·악세사리·악기가방 등을 판매 시 즉시 청구를 요청하고, 관리자가 승인 후 알림 메시지를 클립보드 복사로 발송하며, 입금 확인 후 수납 레코드가 자동 생성된다. 상품 카탈로그는 AdminTools에서 관리한다.
 **Depends on**: Nothing (standalone feature)
@@ -203,6 +232,7 @@ Plans:
 | 7. 입금 자동매칭 고도화 | 3/3 | ✓ COMPLETE | 2026-06-03 |
 | 8. 그룹 레슨 고도화 | 6/6 | ✓ COMPLETE | 2026-06-13 |
 | SHOP-01. 즉시 청구 & 상품 관리 | 5/5 | ✓ COMPLETE | 2026-05-14 |
+| 10. 회계 앱 | 0/11 | PLANNED | - |
 
 ---
 
@@ -269,4 +299,20 @@ Plans:
 | SHOP-06 | SHOP-01 | Planned |
 | SHOP-07 | SHOP-01 | Planned |
 
-**Total: 53/53 requirements mapped.**
+| ACC-01 | Phase 10 | Planned |
+| ACC-02 | Phase 10 | Planned |
+| ACC-03 | Phase 10 | Planned |
+| ACC-04 | Phase 10 | Planned |
+| ACC-05 | Phase 10 | Planned |
+| ACC-06 | Phase 10 | Planned |
+| ACC-07 | Phase 10 | Planned |
+| ACC-08 | Phase 10 | Planned |
+| ACC-09 | Phase 10 | Planned |
+| ACC-10 | Phase 10 | Planned |
+| ACC-11 | Phase 10 | Planned |
+| ACC-12 | Phase 10 | Planned |
+| ACC-13 | Phase 10 | Planned |
+| ACC-14 | Phase 10 | Planned |
+| ACC-15 | Phase 10 | Planned |
+
+**Total: 68/68 requirements mapped.**
