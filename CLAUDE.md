@@ -24,6 +24,18 @@ GitHub(`nickujung-art/rye-k`) → Cloudflare Pages 자동 배포 · 번들 ~1190
 - **releases.js 변경은 Nick 명시 승인 후에만.** 초안 채팅에 먼저 보여주고 "확인했어"/"이대로 써줘"/"OK" 후 파일 반영+커밋.  
   "다음 진행해줘"/"계속해줘"는 승인 아님. 대상: `src/constants/releases.js` · `UpdatePopup.jsx` · `SystemNewsView.jsx`
 
+## 기능 상태 레지스트리 — MUST READ FIRST
+
+**세션 시작 시 또는 기능 개발 여부 판단 전, 반드시 `.planning/features.json` 을 먼저 읽는다.**
+
+- `done` 상태 기능은 재개발 제안 금지.
+- `deferred` 상태 기능은 명시적으로 연기된 것 — 자동 제안 금지, Nick이 재논의 요청 시만 꺼낸다.
+- 기능 관련 결정이 확정되면 **즉시** features.json 업데이트:
+  - 새 기능 확정 → `todo` 항목 추가
+  - 개발 시작 → `in_progress`
+  - 완료 + 검증 → `done` + `completedAt`
+  - 의도적 연기 → `deferred` + `deferredTo` + `notes`에 이유
+
 ## 일반 규칙
 - 수정 전 이슈/질문 먼저 보고 → 확인 후 실행.
 - 리팩토링과 기능 추가는 동일 세션에 섞지 말 것. 한 세션 1~2 기능 제한.

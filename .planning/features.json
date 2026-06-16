@@ -1,0 +1,133 @@
+{
+  "_comment": "기능 상태 레지스트리. 세션 시작 시 먼저 읽어 개발 여부 판단. 기능 확정/완료/연기/취소 시 즉시 업데이트.",
+  "version": "1.0",
+  "lastUpdated": "2026-06-16",
+  "statuses": ["done", "in_progress", "todo", "deferred", "cancelled"],
+  "features": [
+
+    {
+      "id": "F-04-01",
+      "title": "알림톡 통합 (Aligo API)",
+      "status": "done",
+      "completedAt": "2026-06-15",
+      "notes": "수납완료·보강·등록완료 3종 템플릿. Aligo 직접 호출 (IPv6 문제로 Worker 우회)."
+    },
+    {
+      "id": "F-04-02",
+      "title": "알림톡 makeup_lesson 템플릿 (UI_1527)",
+      "status": "in_progress",
+      "notes": "Aligo 재승인 대기 중. 승인 완료 시 utils.js의 throw 한 줄 제거만 하면 됨."
+    },
+
+    {
+      "id": "F-05-01",
+      "title": "수납 자동화 + 카카오뱅크 webhook",
+      "status": "in_progress",
+      "notes": "코드 구현 완료. 실제 입금 테스트 미완 (Tasker 설정 대기). 테스트 후 done 처리."
+    },
+
+    {
+      "id": "F-06-01",
+      "title": "분석 대시보드 (AnalyticsView)",
+      "status": "done",
+      "completedAt": "2026-06-15",
+      "notes": "월별 매출·악기별·연령별·출석률·수납현황 차트."
+    },
+
+    {
+      "id": "F-08-01",
+      "title": "그룹 레슨 슬롯 시스템",
+      "status": "done",
+      "completedAt": "2026-06-13",
+      "notes": "rye-lesson-slots 컬렉션. AdminTools 마이그레이션 UI. TimetableView 격자 시각화."
+    },
+
+    {
+      "id": "F-09-01",
+      "title": "슬롯 자동생성·연결 (학생 저장 시)",
+      "status": "done",
+      "completedAt": "2026-06-16",
+      "notes": "addStudentDoc/updateStudentDoc 후 autoSyncStudentSlots 자동 호출. 완전일치 탐색 → 없으면 신규 생성. 토스트 '슬롯 N개 생성됨'. 인간 UAT 대기."
+    },
+    {
+      "id": "F-09-02",
+      "title": "TimetableView 빈 셀 '+' 배정 UI",
+      "status": "done",
+      "completedAt": "2026-06-16",
+      "notes": "StudentSearchPopup (이름 검색 + 악기 자동선택/드롭다운). 강사 미선택 시 토스트. 인간 UAT 대기."
+    },
+    {
+      "id": "F-09-03",
+      "title": "그룹 슬롯 memberPopup '학생 추가'",
+      "status": "done",
+      "completedAt": "2026-06-16",
+      "notes": "기존 그룹 카드 클릭 팝업에 추가. 인간 UAT 대기."
+    },
+    {
+      "id": "F-09-04",
+      "title": "휴회 관리 뷰 (PauseManagementView)",
+      "status": "done",
+      "completedAt": "2026-06-16",
+      "notes": "사이드바 독립 메뉴. 케어로그 입력 + 복귀 처리 인라인 confirm. Dashboard 배너로 연결. 인간 UAT 대기."
+    },
+    {
+      "id": "F-09-05",
+      "title": "pauseHistory 스키마 (복귀 이력 누적)",
+      "status": "done",
+      "completedAt": "2026-06-16",
+      "notes": "paused→active 복귀 시 자동 append. {pausedAt, pausedReason, resumedAt, durationDays, slotIds}. 인간 UAT 대기."
+    },
+    {
+      "id": "F-09-06",
+      "title": "슬롯 폐강 (status: closed)",
+      "status": "done",
+      "completedAt": "2026-06-16",
+      "notes": "AdminTools LessonSlotsView에 폐강 버튼. TimetableView 자동 제거. 학생 lessons[].slotId는 DB 보존."
+    },
+
+    {
+      "id": "F-09-UAT",
+      "title": "Phase 9 인간 UAT (브라우저 테스트 6개)",
+      "status": "in_progress",
+      "notes": "슬롯 토스트·TimetableView '+' 배정·그룹 추가·PauseManagementView·pauseHistory Firestore·Dashboard 배너. Nick 로컬 npm run dev 검증 필요."
+    },
+
+    {
+      "id": "F-10-01",
+      "title": "resumeExpectedDate + 복귀 임박 알림",
+      "status": "todo",
+      "phase": 10,
+      "notes": "Phase 9에서 의도적 제외. 알림톡 연동 포함 예정."
+    },
+    {
+      "id": "F-10-02",
+      "title": "AnalyticsView 휴회 분석",
+      "status": "todo",
+      "phase": 10,
+      "notes": "사유별 통계, 평균 기간, 재휴회율. Phase 9에서 의도적 제외."
+    },
+
+    {
+      "id": "F-DEF-01",
+      "title": "수납 자동화 pausePolicy (skip/reduced/suspend)",
+      "status": "deferred",
+      "deferredTo": "미정",
+      "notes": "휴회 중 수납 처리 방식. 의도적으로 이후 Phase로 연기."
+    },
+    {
+      "id": "F-DEF-02",
+      "title": "예약 시스템 (포털 수강 신청 + 관리자 승인)",
+      "status": "deferred",
+      "deferredTo": "RESERVATION-01",
+      "notes": "별도 milestone으로 분리. Phase 9 논의에서 명시적 제외."
+    },
+    {
+      "id": "F-DEF-03",
+      "title": "강사 전체 UX 매뉴얼",
+      "status": "deferred",
+      "deferredTo": "미정",
+      "notes": "우선순위 낮음. 기능 안정화 후 작성 예정."
+    }
+
+  ]
+}
