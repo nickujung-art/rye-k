@@ -140,8 +140,35 @@ src/
 `monthlyFee` 전부 0 (미입력) · Firebase Auth ↔ 로컬 비번 동기화 깨짐 (fallback 동작 중)
 
 ## 개발 워크플로우
-이슈/질문 먼저 → 승인 → Edit/str_replace 정밀수정 → `npm run build` 통과 → **멈춤** → Nick 로컬검증(`npm run dev`) → 푸시 명시요청  
-릴리즈노트 포함 시 문구 컨펌 별도. AdminTools "샘플 데이터 초기화" 절대 금지.
+
+### 브랜치 구조
+| 브랜치 | 역할 | 배포 대상 |
+|--------|------|-----------|
+| `main` | 프로덕션 — 강사가 실제 사용하는 라이브 서버 | `rye-k-center.pages.dev` (또는 커스텀 도메인) |
+| `staging` | 스테이징 — 온라인 검수 전용 | `staging.rye-k-center.pages.dev` |
+
+**`main` 직접 커밋 금지.** 모든 개발은 `staging`에서 하고, 검수 통과 후 `main`으로 병합.
+
+### 표준 개발 플로우
+```
+1. staging 브랜치에서 코딩
+           ↓
+2. npm run build 통과 확인 (로컬)
+           ↓
+3. git push origin staging
+   → Cloudflare 자동 빌드 → staging URL 생성
+           ↓
+4. Nick이 staging URL에서 온라인 검수
+           ↓
+5. 승인 → staging을 main에 병합 → git push origin main
+   → 라이브 자동 반영
+```
+
+### 작업 규칙
+- 이슈/질문 먼저 보고 → 승인 → Edit/str_replace 정밀수정
+- `npm run build` 통과 → **멈추고 보고** → Nick 로컬검증(`npm run dev`) → staging push
+- 릴리즈노트 포함 시 문구 컨펌 별도
+- AdminTools "샘플 데이터 초기화" 절대 금지
 
 ---
 
