@@ -318,7 +318,7 @@ export default function PaymentsView({
         {canManageAll(currentUser.role) && (
           <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:2}}>
             <button className="btn btn-secondary btn-sm" title="알림톡 잔여포인트 확인"
-              style={aligoRemain !== null && aligoRemain >= 0 && aligoRemain < 5000 ? {color:"var(--red)",borderColor:"var(--red)"} : aligoRemain < 0 ? {color:"var(--red)",borderColor:"var(--red)"} : {}}
+              style={aligoRemain !== null && aligoRemain >= 0 && aligoRemain < 50 ? {color:"var(--red)",borderColor:"var(--red)"} : aligoRemain < 0 ? {color:"var(--red)",borderColor:"var(--red)"} : {}}
               onClick={async () => {
                 setAligoRemainLoading(true);
                 setAligoRemainErr("");
@@ -326,7 +326,7 @@ export default function PaymentsView({
                 catch(e) { setAligoRemain(-1); setAligoRemainErr(e.message || "오류"); }
                 finally { setAligoRemainLoading(false); }
               }}>
-              {aligoRemainLoading ? "..." : aligoRemain === null ? "💬 잔여P" : aligoRemain < 0 ? "💬 조회 실패" : `💬 ${aligoRemain.toLocaleString("ko-KR")}P`}
+              {aligoRemainLoading ? "..." : aligoRemain === null ? "💬 잔여건" : aligoRemain < 0 ? "💬 조회 실패" : `💬 ${aligoRemain.toLocaleString("ko-KR")}건`}
             </button>
             {aligoRemainErr && <span style={{fontSize:10,color:"var(--red)",maxWidth:160,textAlign:"right",lineHeight:1.3}}>{aligoRemainErr}</span>}
           </div>

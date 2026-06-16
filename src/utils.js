@@ -180,25 +180,20 @@ export async function sendAligoMessage(type, students, options = {}) {
 }
 
 export async function fetchAligoRemain() {
-  const apikey    = import.meta.env.VITE_ALIGO_APIKEY;
-  const userid    = import.meta.env.VITE_ALIGO_USERID;
-  const senderkey = import.meta.env.VITE_ALIGO_SENDERKEY;
+  const apikey = import.meta.env.VITE_ALIGO_APIKEY;
+  const userid = import.meta.env.VITE_ALIGO_USERID;
   if (!apikey) throw new Error("Aligo API 설정 없음");
   const params = new URLSearchParams({ apikey, userid });
-  const res = await fetch("https://kakaoapi.aligo.in/akv10/alimtalk/remain/", {
+  const res = await fetch("https://kakaoapi.aligo.in/akv10/heartinfo/", {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: params.toString(),
   });
   const text = await res.text();
-  // eslint-disable-next-line no-console
-  console.log("[Aligo remain raw]", text);
   let data;
   try { data = JSON.parse(text); } catch { throw new Error(`파싱실패: ${text.slice(0, 80)}`); }
-  if (data.code !== 0) throw new Error(`${data.message || "조회실패"} (code:${data.code})`);
-  // Aligo 응답 필드 이름이 버전마다 다를 수 있어 여러 경우 처리
-  const point = data.kakaoPoint ?? data.info?.kakao ?? data.point ?? 0;
-  return Math.floor(parseFloat(String(point || "0")));
+  if (data.code < 0) throw new Error(`${data.message || "조회실패"} (code:${data.code})`);
+  return parseInt(data.list?.ALT_CNT ?? 0, 10);
 }
 
 // ── Phase 0: 출석률 헬퍼 (Phase 2·3 공통 기반) ────────────────────────────────
