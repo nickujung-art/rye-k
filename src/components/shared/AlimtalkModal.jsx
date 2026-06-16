@@ -1,4 +1,4 @@
-﻿import { useState } from "react";
+import { useState } from "react";
 import { IC, THIS_MONTH } from "../../constants.jsx";
 import { monthLabel, fmtMoney, getAudience, sendAligoMessage } from "../../utils.js";
 import { aiPolishPaymentMessage } from "../../aiClient.js";
@@ -29,9 +29,14 @@ export default function AlimtalkModal({ type: initialType = "monthly_fee", stude
   const [aiToneLoading, setAiToneLoading] = useState(false);
   const [aiToneError, setAiToneError] = useState("");
   const [testPhone, setTestPhone] = useState("");
-  const [testResult, setTestResult] = useState(null); // null | {ok, msg}
+  const [testResult, setTestResult] = useState(null);
   const [isTestSending, setIsTestSending] = useState(false);
   const [sendError, setSendError] = useState("");
+
+  // 미납 독촉 전용: 발송 제외할 대상 체크박스
+  const [selectedIds, setSelectedIds] = useState(() =>
+    new Set(students.filter(s => !getPayment?.(s.id)?.paid).map(s => s.id))
+  );
 
   const autoFee = (s) => (s.monthlyFee || 0) + (s.instrumentRental ? (s.rentalFee || 0) : 0);
 
@@ -41,8 +46,14 @@ export default function AlimtalkModal({ type: initialType = "monthly_fee", stude
     return `${d.getFullYear()}년 ${String(d.getMonth()+1).padStart(2,"0")}월 15일`;
   })();
 
+  const unpaidStudents = students.filter(s => !getPayment?.(s.id)?.paid);
+  const allUnpaidSelected = unpaidStudents.length > 0 && unpaidStudents.every(s => selectedIds.has(s.id));
+
   const targets = (() => {
-    if (type === "unpaid_reminder" || targetMode === "unpaid") {
+    if (type === "unpaid_reminder") {
+      return unpaidStudents.filter(s => selectedIds.has(s.id));
+    }
+    if (targetMode === "unpaid") {
       return students.filter(s => !getPayment?.(s.id)?.paid);
     }
     return students;
@@ -156,20 +167,103 @@ export default function AlimtalkModal({ type: initialType = "monthly_fee", stude
           </>
         )}
 
-        {/* ── STEP 2: 발송 설정 ── */}
-        {step === "send" && (
+        {/* ── STEP 2 (unpaid_reminder): 미납자 목록 + 체크박스 ── */}
+        {step === "send" && type === "unpaid_reminder" && (
+          <>
+            <div className="modal-b">
+              <div style={{background:"var(--blue-lt)",border:"1px solid rgba(43,58,159,.15)",borderRadius:10,padding:"10px 14px",marginBottom:12,fontSize:12,color:"var(--blue)",lineHeight:1.6}}>
+                알림톡 프리셋(UI_3890)으로 자동 발송됩니다.<br/>
+                <strong>발송하지 않을 상대는 체크를 해제</strong>하세요.
+              </div>
+
+              {/* 목록 헤더 */}
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+                <span style={{fontSize:12,fontWeight:600,color:"var(--ink-60)"}}>
+                  미납자 ({unpaidStudents.length}명)
+                </span>
+                <button
+                  className="btn btn-ghost btn-sm"
+                  style={{fontSize:11,padding:"2px 8px"}}
+                  onClick={() => {
+                    if (allUnpaidSelected) setSelectedIds(new Set());
+                    else setSelectedIds(new Set(unpaidStudents.map(s => s.id)));
+                  }}>
+                  {allUnpaidSelected ? "전체 해제" : "전체 선택"}
+                </button>
+              </div>
+
+              {/* 미납자 체크리스트 */}
+              <div style={{border:"1px solid var(--border)",borderRadius:10,overflow:"hidden",maxHeight:360,overflowY:"auto"}}>
+                {unpaidStudents.length === 0 ? (
+                  <div style={{padding:"24px 14px",textAlign:"center",fontSize:13,color:"var(--ink-30)"}}>
+                    미납 회원이 없습니다.
+                  </div>
+                ) : (
+                  <>
+                    <div style={{display:"grid",gridTemplateColumns:"28px 1fr auto",padding:"7px 14px",background:"var(--bg)",borderBottom:"1px solid var(--border)",fontSize:11,fontWeight:600,color:"var(--ink-30)",letterSpacing:.5,alignItems:"center"}}>
+                      <span />
+                      <span>회원</span>
+                      <span style={{textAlign:"right"}}>미납액</span>
+                    </div>
+                    {unpaidStudents.map(s => {
+                      const p = getPayment?.(s.id);
+                      const amt = p?.amount ?? autoFee(s);
+                      const checked = selectedIds.has(s.id);
+                      return (
+                        <div
+                          key={s.id}
+                          onClick={() => {
+                            setSelectedIds(prev => {
+                              const next = new Set(prev);
+                              if (next.has(s.id)) next.delete(s.id);
+                              else next.add(s.id);
+                              return next;
+                            });
+                          }}
+                          style={{display:"grid",gridTemplateColumns:"28px 1fr auto",padding:"10px 14px",borderBottom:"1px solid var(--ink-10)",cursor:"pointer",background:checked?"transparent":"var(--ink-5,#F8F8F8)",opacity:checked?1:0.45,userSelect:"none",alignItems:"center",transition:"opacity .1s,background .1s"}}>
+                          <div style={{width:20,height:20,border:`1.5px solid ${checked?"var(--blue)":"var(--border)"}`,borderRadius:5,display:"flex",alignItems:"center",justifyContent:"center",background:checked?"var(--blue)":"var(--paper)",color:"#fff",fontSize:12,fontWeight:700,flexShrink:0,transition:"all .12s"}}>
+                            {checked && "✓"}
+                          </div>
+                          <span style={{fontSize:13,fontWeight:500,color:checked?"var(--ink)":"var(--ink-30)"}}>{s.name}</span>
+                          <span style={{fontSize:12,color:checked?"var(--red)":"var(--ink-30)",fontWeight:600,fontFamily:"'Noto Serif KR',serif"}}>{fmtMoney(amt)}</span>
+                        </div>
+                      );
+                    })}
+                  </>
+                )}
+              </div>
+
+              <div style={{fontSize:12,color:"var(--ink-30)",marginTop:8}}>
+                {targets.length > 0 ? `${targets.length}명에게 발송됩니다.` : "발송 대상이 없습니다."}
+              </div>
+
+              {sendError && (
+                <div style={{background:"var(--red-lt)",border:"1.5px solid var(--red)",borderRadius:8,padding:"8px 12px",marginTop:8,fontSize:13,color:"var(--red)",fontWeight:500}}>
+                  ⚠ {sendError}
+                </div>
+              )}
+            </div>
+            <div className="modal-f">
+              <button className="btn btn-secondary" onClick={onClose} disabled={isSubmitting}>취소</button>
+              <button className="btn btn-primary" disabled={!canSend} onClick={handleSend}>
+                {isSubmitting ? <><span className="spinner-sm" /> 발송 중…</> : `${targets.length}명에게 발송`}
+              </button>
+            </div>
+          </>
+        )}
+
+        {/* ── STEP 2 (monthly_fee / makeup_lesson): 기존 발송 설정 ── */}
+        {step === "send" && type !== "unpaid_reminder" && (
           <>
             <div className="modal-b">
               {/* 발송 대상 */}
-              {type !== "unpaid_reminder" && (
-                <div className="fg">
-                  <label className="fg-label">발송 대상</label>
-                  <div style={{display:"flex",gap:8}}>
-                    <button className={`btn btn-sm ${targetMode==="all"?"btn-primary":"btn-secondary"}`} onClick={() => setTargetMode("all")}>전체 ({students.length}명)</button>
-                    <button className={`btn btn-sm ${targetMode==="unpaid"?"btn-primary":"btn-secondary"}`} onClick={() => setTargetMode("unpaid")}>미납자만 ({students.filter(s=>!getPayment?.(s.id)?.paid).length}명)</button>
-                  </div>
+              <div className="fg">
+                <label className="fg-label">발송 대상</label>
+                <div style={{display:"flex",gap:8}}>
+                  <button className={`btn btn-sm ${targetMode==="all"?"btn-primary":"btn-secondary"}`} onClick={() => setTargetMode("all")}>전체 ({students.length}명)</button>
+                  <button className={`btn btn-sm ${targetMode==="unpaid"?"btn-primary":"btn-secondary"}`} onClick={() => setTargetMode("unpaid")}>미납자만 ({students.filter(s=>!getPayment?.(s.id)?.paid).length}명)</button>
                 </div>
-              )}
+              </div>
 
               {/* 보강 날짜/시간 */}
               {type === "makeup_lesson" && (

@@ -65,6 +65,7 @@ export default function PaymentsView({
   const [activeTab, setActiveTab] = useState("payments");
   const [aligoRemain, setAligoRemain] = useState(null);
   const [aligoRemainLoading, setAligoRemainLoading] = useState(false);
+  const [aligoRemainErr, setAligoRemainErr] = useState("");
   const [editSaveError, setEditSaveError] = useState("");
   const [saveEditSaving, setSaveEditSaving] = useState(false);
 
@@ -315,11 +316,20 @@ export default function PaymentsView({
         {canManageAll(currentUser.role) && <button className="btn btn-secondary btn-sm" onClick={() => setAlimtalkModal("monthly_fee")} title="이달의 수강료 안내 알림톡">💬 수강료 안내</button>}
         {canManageAll(currentUser.role) && <button className="btn btn-secondary btn-sm" onClick={() => setAlimtalkModal("unpaid_reminder")} title="미납자 독촉 알림톡">💬 미납 독촉</button>}
         {canManageAll(currentUser.role) && (
-          <button className="btn btn-secondary btn-sm" title="알림톡 잔여포인트 확인"
-            style={aligoRemain !== null && aligoRemain < 5000 ? {color:"var(--red)",borderColor:"var(--red)"} : {}}
-            onClick={async () => { setAligoRemainLoading(true); try { setAligoRemain(await fetchAligoRemain()); } catch { setAligoRemain(-1); } finally { setAligoRemainLoading(false); } }}>
-            {aligoRemainLoading ? "..." : aligoRemain === null ? "💬 잔여P" : aligoRemain < 0 ? "💬 조회 실패" : `💬 ${aligoRemain.toLocaleString("ko-KR")}P`}
-          </button>
+          <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:2}}>
+            <button className="btn btn-secondary btn-sm" title="알림톡 잔여포인트 확인"
+              style={aligoRemain !== null && aligoRemain >= 0 && aligoRemain < 5000 ? {color:"var(--red)",borderColor:"var(--red)"} : aligoRemain < 0 ? {color:"var(--red)",borderColor:"var(--red)"} : {}}
+              onClick={async () => {
+                setAligoRemainLoading(true);
+                setAligoRemainErr("");
+                try { setAligoRemain(await fetchAligoRemain()); }
+                catch(e) { setAligoRemain(-1); setAligoRemainErr(e.message || "오류"); }
+                finally { setAligoRemainLoading(false); }
+              }}>
+              {aligoRemainLoading ? "..." : aligoRemain === null ? "💬 잔여P" : aligoRemain < 0 ? "💬 조회 실패" : `💬 ${aligoRemain.toLocaleString("ko-KR")}P`}
+            </button>
+            {aligoRemainErr && <span style={{fontSize:10,color:"var(--red)",maxWidth:160,textAlign:"right",lineHeight:1.3}}>{aligoRemainErr}</span>}
+          </div>
         )}
         {canManageAll(currentUser.role) && <button className="btn btn-secondary btn-sm" onClick={exportCSV}>📥 엑셀</button>}
       </div></div>
