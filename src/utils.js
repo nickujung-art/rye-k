@@ -185,7 +185,7 @@ export async function fetchAligoRemain() {
   const senderkey = import.meta.env.VITE_ALIGO_SENDERKEY;
   if (!apikey) throw new Error("Aligo API 설정 없음");
   const params = new URLSearchParams({ apikey, userid, senderkey });
-  const res = await fetch("https://kakaoapi.aligo.in/akv10/remain/", {
+  const res = await fetch("https://kakaoapi.aligo.in/akv10/alimtalk/remain/", {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: params.toString(),
