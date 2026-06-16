@@ -144,8 +144,8 @@ src/
 ### 브랜치 구조
 | 브랜치 | 역할 | 배포 대상 |
 |--------|------|-----------|
-| `main` | 프로덕션 — 강사가 실제 사용하는 라이브 서버 | `rye-k-center.pages.dev` (또는 커스텀 도메인) |
-| `staging` | 스테이징 — 온라인 검수 전용 | `staging.rye-k-center.pages.dev` |
+| `main` | 프로덕션 — 강사가 실제 사용하는 라이브 서버 | `app.ryekorea.com` |
+| `staging` | 스테이징 — 온라인 검수 전용 | `https://staging.rye-k.pages.dev` |
 
 **`main` 직접 커밋 금지.** 모든 개발은 `staging`에서 하고, 검수 통과 후 `main`으로 병합.
 
