@@ -1,18 +1,19 @@
 import { useState, useRef, useMemo, useEffect } from "react";
 import { canManageAll } from "../utils.js";
 import { Av } from "./shared/CommonUI.jsx";
+import { TEACHER_PALETTE } from "../constants.jsx";
 
 const DAYS = ["월","화","수","목","금","토","일"];
 const TIME_START = 8;
 const TIME_END = 22;
 const ROWS = (TIME_END - TIME_START) * 2 + 1; // 29 rows: 08:00 ~ 22:00
 
-const TEACHER_COLORS = ["var(--blue)","var(--red)","var(--green)","#7C3AED","var(--gold-dk)","var(--blue-md)","var(--gold)","var(--red-dk)"];
-
 function getTeacherColor(id, list) {
   if (!id) return "var(--ink-30)";
-  const idx = list.findIndex(t => t.id === id);
-  return TEACHER_COLORS[Math.abs(idx) % TEACHER_COLORS.length] || "var(--ink-30)";
+  const t = list.find(tch => tch.id === id);
+  if (t?.color) return t.color;
+  const idx = list.findIndex(tch => tch.id === id);
+  return TEACHER_PALETTE[Math.abs(idx) % TEACHER_PALETTE.length]?.hex || "var(--ink-30)";
 }
 
 function formatTime(rowIdx) {

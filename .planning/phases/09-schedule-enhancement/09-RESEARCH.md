@@ -675,22 +675,25 @@ function StudentSearchPopup({ students, onSelect, onClose, top, left }) {
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **TimetableView "+" 버튼 — 빈 셀 전체 vs 활성 시간대만**
    - What we know: 08:00~22:00 전 시간대에 빈 셀이 존재함. rowLayout에는 `type: "empty"` gap 셀도 있음
    - What's unclear: gap 셀(압축된 빈 시간대)에도 "+" 버튼이 필요한지, 아니면 실제 slot row에만 표시할지
    - Recommendation: slot row(56px)에만 "+" 표시. gap 셀은 압축 표시라 클릭 영역이 너무 작음
+   - **RESOLVED: slot row만 표시 (09-03 Task 1 구현)**
 
 2. **악기 결정 — 학생이 해당 강사 레슨 없는 경우**
    - What we know: D-02에서 "악기 선택 드롭다운 추가" 명시
    - What's unclear: StudentSearchPopup에 악기 선택 드롭다운이 포함되는지, 아니면 별도 단계인지
    - Recommendation: StudentSearchPopup 내에서 학생 선택 후 악기가 모호하면 인라인으로 드롭다운 추가. 단일 악기라면 자동 선택
+   - **RESOLVED: StudentSearchPopup 내 인라인 악기 드롭다운 (09-03 Task 1 구현)**
 
 3. **D-05 폐강 UI 위치**
    - What we know: "TimetableView 슬롯 카드 또는 AdminTools에서 처리 (Phase 9에서 최소 구현)" (CONTEXT.md)
    - What's unclear: 플래너가 TimetableView 슬롯 카드 내 폐강 버튼을 넣을지 AdminTools에만 둘지
    - Recommendation: AdminTools `LessonSlotsView`에 폐강 버튼 추가 (canSeeAll만 접근 가능) — TimetableView UI 복잡도 증가 방지
+   - **RESOLVED: AdminTools LessonSlotsView에만 폐강 버튼 추가 (09-04 Task 2 구현)**
 
 ---
 

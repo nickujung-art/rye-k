@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, lazy, Suspense } from "react";
 import { db, auth, doc, setDoc, onSnapshot, runTransaction, collection, getDoc, addInstantCharge, updateInstantCharge, addLessonSlot, updateLessonSlot, deleteLessonSlot, firebaseSignIn, firebaseSignInAnon, firebaseLogout, onAuthStateChanged } from "./firebase.js";
-import { DEFAULT_CATEGORIES, DAYS, ADMIN, TODAY_STR, THIS_MONTH, TODAY_DAY, ATT_STATUS, PAY_METHODS, INST_TYPES, IC, CSS } from "./constants.jsx";
+import { DEFAULT_CATEGORIES, DAYS, ADMIN, TODAY_STR, THIS_MONTH, TODAY_DAY, ATT_STATUS, PAY_METHODS, INST_TYPES, IC, CSS, TEACHER_PALETTE } from "./constants.jsx";
 import { calcAge, isMinor, getCat, fmtDate, fmtDateShort, fmtDateTime, uid, fmtPhone, fmtMoney, allLessonInsts, allLessonDays, canManageAll, monthLabel, generateStudentCode, getBirthPassword, getPhoneInitialPassword, instTypeLabel, expandInstitutionsToMembers, getContractDaysLeft, formatLessonNoteSummary, calcLessonFeeWithFallback, slotMatchesLesson } from "./utils.js";
 import { InstitutionFormModal, InstitutionDetailModal, InstitutionsView } from "./components/institution/Institutions.jsx";
 import { Logo } from "./components/shared/CommonUI.jsx";
@@ -247,6 +247,7 @@ function MainApp() {
   const [instantCharges, setInstantCharges] = useState([]);
   const [shopItems, setShopItems] = useState({ categories: ["의상/공연복", "악세사리", "악기 가방", "기타"], items: [] });
   const [lessonSlots, setLessonSlots] = useState([]);
+  const colorAutoAssigned = useRef(false);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
   const [listenersKey, setListenersKey] = useState(0);
@@ -533,6 +534,25 @@ function MainApp() {
   const showToast = (msg, isError = false) => { setToast({msg, isError}); setTimeout(() => setToast(null), 2400); };
   const saveErrMsg = (e) => e?.code === "permission-denied" || e?.message?.includes("권한") ? e.message : `저장에 실패했습니다. (${e?.code || "네트워크 오류"})`;
   const saveTeachers = async u => { setTeachers(u); try { await sSet("rye-teachers", u); } catch (e) { showToast(saveErrMsg(e), true); } };
+
+  // 강사 테마 색상 일괄 자동 배정 (최초 1회, 미설정 강사에게만)
+  useEffect(() => {
+    if (colorAutoAssigned.current || loading || teachers.length === 0) return;
+    const uncolored = teachers.filter(t => !t.color);
+    if (uncolored.length === 0) { colorAutoAssigned.current = true; return; }
+    const usedHex = new Set(teachers.filter(t => t.color).map(t => t.color));
+    const available = TEACHER_PALETTE.filter(c => !usedHex.has(c.hex)).map(c => c.hex);
+    let ai = 0;
+    const upd = teachers.map(t => {
+      if (t.color) return t;
+      const color = available[ai++] ?? TEACHER_PALETTE[(teachers.indexOf(t)) % TEACHER_PALETTE.length].hex;
+      return { ...t, color };
+    });
+    colorAutoAssigned.current = true;
+    saveTeachers(upd);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [teachers, loading]);
+
   // 배열 전체 덮어쓰기 금지 — 아래 per-op 함수만 사용
   const saveStudents = () => { throw new Error("saveStudents 직접 호출 금지 — addStudentDoc/updateStudentDoc/deleteStudentDoc/batchStudentDocs 사용"); };
   const _studentsRef = doc(db, COLLECTION, "rye-students");
@@ -1569,7 +1589,7 @@ function MainApp() {
             try { await updateStudentDoc(upd); setSelected(upd); showToast(newStatus === "paused" ? "휴원 처리되었습니다." : "재원 복귀되었습니다."); } catch { showToast("저장에 실패했습니다. 네트워크를 확인 후 다시 시도해주세요.", true); }
           }
         }} />}
-      {modal === "tForm" && canManageAll(user.role) && <TeacherFormModal teacher={selected} categories={categories} shopItems={shopItems} onClose={() => setModal(null)} onSave={async data => {
+      {modal === "tForm" && canManageAll(user.role) && <TeacherFormModal teacher={selected} categories={categories} shopItems={shopItems} teachers={teachers} onClose={() => setModal(null)} onSave={async data => {
         const isNew = !data.id;
         const upd = data.id ? teachers.map(t => t.id === data.id ? data : t) : [...teachers, { ...data, id: uid() }];
         await saveTeachers(upd);

@@ -2,7 +2,7 @@
 import knotLineSvg from "../../assets/heritage/knot-line.svg";
 import { IC, TODAY_STR, THIS_MONTH } from "../../constants.jsx";
 import { compressImage, fmtPhone, getPhoneInitialPassword, canManageAll, fmtDate, allLessonInsts } from "../../utils.js";
-import { Av, PhotoUpload, RoleBadge, DeleteConfirmFooter } from "../shared/CommonUI.jsx";
+import { Av, PhotoUpload, RoleBadge, DeleteConfirmFooter, TeacherColorPicker } from "../shared/CommonUI.jsx";
 
 // ── INSTRUMENT SELECTOR ───────────────────────────────────────────────────────
 export function InstSelector({ selected, onChange, categories }) {
@@ -25,8 +25,8 @@ export function InstSelector({ selected, onChange, categories }) {
 }
 
 // ── TEACHER FORM ──────────────────────────────────────────────────────────────
-export function TeacherFormModal({ teacher, categories, onClose, onSave, shopItems }) {
-  const [form, setForm] = useState(teacher || { name: "", username: "", password: "", phone: "", email: "", instruments: [], birthDate: "", hireDate: TODAY_STR, photo: "", bio: "", role: "teacher", settlementRate: "", shopIncentiveRates: {} });
+export function TeacherFormModal({ teacher, categories, onClose, onSave, shopItems, teachers = [] }) {
+  const [form, setForm] = useState(teacher || { name: "", username: "", password: "", phone: "", email: "", instruments: [], birthDate: "", hireDate: TODAY_STR, photo: "", bio: "", role: "teacher", settlementRate: "", shopIncentiveRates: {}, color: "" });
   const [err, setErr] = useState("");
   const [confirming, setConfirming] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -89,6 +89,14 @@ export function TeacherFormModal({ teacher, categories, onClose, onSave, shopIte
             <InstSelector selected={form.instruments || []} onChange={v => set("instruments", v)} categories={categories} />
           </div>
           <div className="fg"><label className="fg-label">소개 / 경력</label><textarea className="inp" value={form.bio} onChange={e => set("bio", e.target.value)} placeholder="학력, 경력, 수상 이력 등" rows={3} /></div>
+          <div className="fg">
+            <label className="fg-label">테마 색상 <span style={{fontWeight:400,color:"var(--ink-30)",textTransform:"none",letterSpacing:0}}>(스케줄·시간표에 표시)</span></label>
+            <TeacherColorPicker
+              value={form.color || ""}
+              usedColors={teachers.filter(t => t.id !== teacher?.id).map(t => t.color).filter(Boolean)}
+              onChange={v => set("color", v)}
+            />
+          </div>
           <div className="divider" />
           {/* ── 정산 설정 ── */}
           <div style={{fontSize:12,fontWeight:700,color:"var(--ink-30)",letterSpacing:.5,marginBottom:10}}>정산 설정 (선택)</div>
@@ -153,7 +161,7 @@ export function TeacherDetailModal({ teacher: t, students, currentUser, categori
       <div className="modal">
         <div className="modal-h"><h2>강사/매니저 정보</h2><button className="modal-close" onClick={onClose}>{IC.x}</button></div>
         <div className="det-head">
-          {canManageAll(currentUser.role) && onPhotoUpdate ? <PhotoUpload photo={t.photo} name={t.name} size="av-lg" onUpload={(data) => onPhotoUpdate(t.id, data)} /> : <Av photo={t.photo} name={t.name} size="av-lg" />}
+          {canManageAll(currentUser.role) && onPhotoUpdate ? <PhotoUpload photo={t.photo} name={t.name} size="av-lg" onUpload={(data) => onPhotoUpdate(t.id, data)} /> : <Av photo={t.photo} name={t.name} size="av-lg" borderColor={t.color} />}
           <div style={{flex:1}}>
             <div className="det-name">{t.name}</div>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginBottom: 5 }}>{insts.map(i => <span key={i} className="tag tag-blue">{i}</span>)}</div>
@@ -234,7 +242,7 @@ export function TeachersView({ teachers, students, categories, onAdd, onSelect, 
             ).length;
             return (
               <div key={t.id} className="s-card" onClick={() => onSelect(t)}>
-                <Av photo={t.photo} name={t.name} />
+                <Av photo={t.photo} name={t.name} borderColor={t.color} />
                 <div className="s-card-info">
                   <div className="s-name">{t.name}</div>
                   <div className="s-inst">{insts.join(" · ") || "-"}</div>

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { IC } from "../../constants.jsx";
+import { HelpButton } from "../shared/HelpSystem.jsx";
 
 // ── CARE LOG MODAL (기존 Dashboard CareLogModal에서 이전) ─────────────────────
 function CareLogModal({ student, currentUser, onSave, onClose }) {
@@ -232,7 +233,7 @@ export default function PauseManagementView({
     <div className="pm-view">
       <div className="ph">
         <div>
-          <h1>휴회 관리</h1>
+          <div style={{display:"flex",alignItems:"center",gap:6}}><h1>휴회 관리</h1><HelpButton helpKey="pauseManagement" /></div>
           <p>휴회 학생 {paused.length}명</p>
         </div>
       </div>

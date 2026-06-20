@@ -4,6 +4,7 @@ import { TODAY_STR, THIS_MONTH, IC } from "../../constants.jsx";
 import { uid, fmtDateShort, canManageAll, monthLabel, formatLessonNoteSummary, getAudience } from "../../utils.js";
 import { aiPolishLessonNote, aiSuggestReply, aiPunctuate } from "../../aiClient.js";
 import { Av, MicButton } from "../shared/CommonUI.jsx";
+import { HelpButton } from "../shared/HelpSystem.jsx";
 
 // ── LESSON NOTE MODAL ─────────────────────────────────────────────────────────
 function LessonNoteModal({ student, teacher, date, existingNote, onSave, onClose, inlineMode, comments, onAddComment, onDeleteComment, currentUserType, currentUserName, currentUserId }) {
@@ -541,7 +542,7 @@ function AttendanceView({ students, teachers, currentUser, attendance, onSaveAtt
 
   return (
     <div>
-      <div className="ph"><div><h1>출석 체크</h1><div className="ph-sub">{dayName}요일 · {dayStudents.length}명</div></div></div>
+      <div className="ph"><div><div style={{display:"flex",alignItems:"center",gap:6}}><h1>출석 체크</h1><HelpButton helpKey="attendance" /></div><div className="ph-sub">{dayName}요일 · {dayStudents.length}명</div></div></div>
       <div style={{display:"flex",gap:8,marginBottom:14,flexWrap:"wrap"}}>
         <input className="inp" type="date" value={date} onChange={e => setDate(e.target.value)} style={{flex:1,maxWidth:180}} />
         {canManageAll(currentUser.role) && (
@@ -967,7 +968,7 @@ function LessonNotesView({ students, teachers, currentUser, attendance, onSaveAt
   return (
     <div>
       <div className="ph">
-        <div><h1>레슨노트</h1><div className="ph-sub">{monthLabel(filterMonth)}</div></div>
+        <div><div style={{display:"flex",alignItems:"center",gap:6}}><h1>레슨노트</h1><HelpButton helpKey="lessonNotes" /></div><div className="ph-sub">{monthLabel(filterMonth)}</div></div>
       </div>
 
       {/* 필터 행 */}

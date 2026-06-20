@@ -2,6 +2,7 @@
 import knotLineSvg from "../../assets/heritage/knot-line.svg";
 import { IC } from "../../constants.jsx";
 import { uid, fmtDateTime, fmtDate, fmtDateShort, canManageAll, compressImage } from "../../utils.js";
+import { HelpButton } from "../shared/HelpSystem.jsx";
 
 // ── NOTICE FORM ───────────────────────────────────────────────────────────────
 export function NoticeFormModal({ notice, currentUser, onClose, onSave }) {
@@ -287,7 +288,7 @@ export function StudentNoticeManager({ notices, currentUser, students = [], teac
   return (
     <div>
       <div className="ph">
-        <div><h1>수강생 공지</h1><div className="ph-sub">My RYE-K 포털에 표시</div></div>
+        <div><div style={{display:"flex",alignItems:"center",gap:6}}><h1>수강생 공지</h1><HelpButton helpKey="studentNotices" /></div><div className="ph-sub">My RYE-K 포털에 표시</div></div>
         {canManage && (
           <button className="btn btn-primary btn-sm" onClick={startNew} style={{display:"flex",alignItems:"center",gap:4,flexShrink:0}}>{IC.plus}<span>추가</span></button>
         )}

@@ -163,6 +163,12 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    // 레슨 슬롯 (독립 컬렉션) — 스태프 읽기, 관리자/매니저 쓰기
+    match /rye-lesson-slots/{docId} {
+      allow read:   if isEmailUser();
+      allow write:  if isManagerOrAbove();
+    }
+
     // 그 외 모든 경로 — 차단
     match /{document=**} {
       allow read, write: if false;

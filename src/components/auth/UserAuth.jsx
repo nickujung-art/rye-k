@@ -1,6 +1,6 @@
 import { useState, useRef } from "react";
 import { compressImage, fmtDate, fmtPhone } from "../../utils.js";
-import { Logo, Av, RoleBadge } from "../shared/CommonUI.jsx";
+import { Logo, Av, RoleBadge, TeacherColorPicker } from "../shared/CommonUI.jsx";
 import { InstSelector } from "../teacher/TeacherManagement.jsx";
 
 // ── 로그인 레이트 리밋 ─────────────────────────────────────────────────────────
@@ -138,6 +138,16 @@ export function ProfileView({ currentUser, teachers, students, onProfileSave, ca
             <div className="fg"><label className="fg-label">전공 / 담당 과목</label><InstSelector selected={form.instruments || []} onChange={v => set("instruments", v)} categories={categories} /></div>
           )}
           <div className="fg"><label className="fg-label">소개 / 경력</label><textarea className="inp" value={form.bio || ""} onChange={e => set("bio", e.target.value)} rows={3} /></div>
+          {currentUser.role !== "admin" && (
+            <div className="fg">
+              <label className="fg-label">테마 색상 <span style={{fontWeight:400,color:"var(--ink-30)",textTransform:"none",letterSpacing:0}}>(스케줄·시간표에 표시)</span></label>
+              <TeacherColorPicker
+                value={form.color || ""}
+                usedColors={teachers.filter(t => t.id !== currentUser.id).map(t => t.color).filter(Boolean)}
+                onChange={v => set("color", v)}
+              />
+            </div>
+          )}
           <div className="divider" />
           <div style={{fontSize:12,fontWeight:600,color:"var(--ink-30)",marginBottom:8}}>비밀번호 변경</div>
           <div className="fg"><label className="fg-label">새 비밀번호 <span style={{fontWeight:400,color:"var(--ink-30)",textTransform:"none",letterSpacing:0}}>(변경 시만 입력)</span></label><input className="inp" type="password" value={form.newPassword || ""} onChange={e => set("newPassword", e.target.value)} placeholder="새 비밀번호" autoComplete="new-password" /></div>
@@ -160,7 +170,7 @@ export function ProfileView({ currentUser, teachers, students, onProfileSave, ca
       </div>
       <div className="card" style={{ overflow: "hidden" }}>
         <div className="det-head">
-          <Av photo={info?.photo} name={currentUser.name} size="av-lg" />
+          <Av photo={info?.photo} name={currentUser.name} size="av-lg" borderColor={info?.color} />
           <div>
             <div className="det-name">{info?.name || currentUser.name}</div>
             <div style={{ fontSize: 11.5, color: "var(--ink-30)", marginBottom: 5 }}>@{currentUser.username}</div>

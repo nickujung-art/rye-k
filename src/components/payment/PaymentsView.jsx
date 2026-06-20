@@ -2,6 +2,7 @@
 import knotLineSvg from "../../assets/heritage/knot-line.svg";
 import { PAY_METHODS, IC, TODAY_STR, THIS_MONTH } from "../../constants.jsx";
 import { canManageAll, monthLabel, fmtMoney, fmtDateShort, fmtDate, calcAge, isMinor, instTypeLabel, uid, sendAligoMessage, fetchAligoRemain, calcTotalFee } from "../../utils.js";
+import { HelpButton } from "../shared/HelpSystem.jsx";
 import { Av } from "../shared/CommonUI.jsx";
 import AlimtalkModal from "../shared/AlimtalkModal.jsx";
 
@@ -81,7 +82,7 @@ export default function PaymentsView({
   const visibleStudents = (filterTeacher === "all" ? students : students.filter(s => s.teacherId === filterTeacher || (s.lessons||[]).some(l=>l.teacherId===filterTeacher)))
     .filter(s => (s.status || "active") === "active")
     .filter(s => !searchQuery.trim() || s.name.includes(searchQuery.trim()))
-    .filter(s => !filterUnpaid || !getPayment(s.id)?.paid);
+    .filter(s => { if (!filterUnpaid) return true; const p = getPayment(s.id); return !p?.paid || (p.paidAmount||0) < (p.amount ?? autoFee(s)); });
 
   function getPayment(studentId) { return payments.find(p => p.studentId === studentId && p.month === month); }
 
@@ -92,7 +93,7 @@ export default function PaymentsView({
     return sum + (p?.amount ?? autoFee(s));
   }, 0);
   const totalPaid = visibleStudents.reduce((sum, s) => { const p = getPayment(s.id); return sum + (p?.paid ? (p.paidAmount || p.amount) : 0); }, 0);
-  const unpaidCount = visibleStudents.filter(s => { const p = getPayment(s.id); return !p?.paid; }).length;
+  const unpaidCount = visibleStudents.filter(s => { const p = getPayment(s.id); const total = p?.amount ?? autoFee(s); return !p?.paid || (p.paidAmount||0) < total; }).length;
   const paidCount = visibleStudents.length - unpaidCount;
   const paidRate = visibleStudents.length > 0 ? Math.round(paidCount / visibleStudents.length * 100) : 0;
 
@@ -302,7 +303,7 @@ export default function PaymentsView({
         <span style={{fontSize:11,color:"#6366F1",flexShrink:0,fontWeight:500}}>{acctToast ? "✓ 복사됨" : "📋 복사"}</span>
       </div>
       {acctToast && <div style={{position:"fixed",bottom:80,left:"50%",transform:"translateX(-50%)",background:"#1E1B4B",color:"#fff",fontSize:13,fontWeight:500,padding:"10px 20px",borderRadius:24,zIndex:9999,boxShadow:"0 4px 20px rgba(0,0,0,.25)",whiteSpace:"nowrap",pointerEvents:"none"}}>안내 멘트가 복사되었습니다!</div>}
-      <div className="ph"><div><h1>수납 관리</h1><div className="ph-sub">{monthLabel(month)}</div></div><div style={{display:"flex",gap:6,flexWrap:"wrap",justifyContent:"flex-end"}}>
+      <div className="ph"><div><div style={{display:"flex",alignItems:"center",gap:6}}><h1>수납 관리</h1><HelpButton helpKey="payments" /></div><div className="ph-sub">{monthLabel(month)}</div></div><div style={{display:"flex",gap:6,flexWrap:"wrap",justifyContent:"flex-end"}}>
         {canManageAll(currentUser.role) && pendingInstantCount > 0 && (
           <button className="btn btn-sm"
             style={{background:"var(--blue-lt)",border:"1.5px solid var(--blue)",color:"var(--blue)",fontWeight:700}}
@@ -415,8 +416,10 @@ export default function PaymentsView({
         <div className="empty"><img src={knotLineSvg} style={{width:44,height:55,opacity:0.28,marginBottom:10}} alt="" /><div className="empty-txt">{filterUnpaid ? "미납 회원이 없습니다." : searchQuery ? "검색 결과가 없습니다." : "회원이 없습니다."}</div></div>
       ) : visibleStudents.map(s => {
         const p = getPayment(s.id);
-        const isPaid = p?.paid;
-        const amt = isPaid ? (p.amount || autoFee(s)) : (p?.amount ?? autoFee(s));
+        const totalAmt = p?.amount ?? autoFee(s);
+        const isPaid = p?.paid && (p.paidAmount||0) >= totalAmt;
+        const isPartialPaid = p?.paid && (p.paidAmount||0) > 0 && (p.paidAmount||0) < totalAmt;
+        const amt = totalAmt;
         const isInst = s.isInstitution;
         return (
           <div key={s.id} className="pay-row" onClick={() => openEdit(s)} style={isInst ? {background:"rgba(43,58,159,.02)"} : undefined}>
@@ -428,12 +431,12 @@ export default function PaymentsView({
                   {isInst && <span style={{fontSize:9.5,padding:"1px 5px",background:"var(--blue-lt)",color:"var(--blue)",borderRadius:4,fontWeight:700,flexShrink:0}}>🏢</span>}
                   <span style={{whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{s.name}</span>
                 </div>
-                <div className={`pay-status ${isPaid ? "paid" : "unpaid"}`}>
-                  {isPaid ? `✓ ${fmtDateShort(p.paidDate)} 입금` : "미납"}
+                <div className={`pay-status ${isPaid ? "paid" : isPartialPaid ? "partial" : "unpaid"}`}>
+                  {isPaid ? `✓ ${fmtDateShort(p.paidDate)} 입금` : isPartialPaid ? `부분납부 · 잔액 ${fmtMoney(totalAmt - (p.paidAmount||0))}` : "미납"}
                   {p?.method && isPaid ? ` · ${PAY_METHODS[p.method] || p.method}` : ""}
                 </div>
               </div>
-              {!isTeacher && <div className="pay-amount" style={{color: isPaid ? "var(--green)" : "var(--ink)"}}>{fmtMoney(amt)}</div>}
+              {!isTeacher && <div className="pay-amount" style={{color: isPaid ? "var(--green)" : isPartialPaid ? "var(--gold-dk)" : "var(--ink)"}}>{fmtMoney(amt)}</div>}
             </div>
             {/* 2줄: 액션 버튼 + 수강료 입력 (관리자·매니저만) */}
             {canManageAll(currentUser.role) && !isInst && (
@@ -667,15 +670,24 @@ export default function PaymentsView({
                 )}
 
                 {/* 강사: 납부 상태만 읽기 전용 표시 */}
-                {isTeacher && (
-                  <div style={{background:editForm.paid?"var(--green-lt)":"var(--red-lt)",border:`1px solid ${editForm.paid?"rgba(26,122,64,.2)":"rgba(232,40,28,.15)"}`,borderRadius:10,padding:"14px 16px",marginBottom:14,display:"flex",alignItems:"center",gap:10}}>
-                    <span style={{fontSize:22}}>{editForm.paid ? "✅" : "⏳"}</span>
-                    <div>
-                      <div style={{fontSize:14,fontWeight:600,color:editForm.paid?"var(--green)":"var(--red)"}}>{editForm.paid ? "입금 완료" : "미납"}</div>
-                      {editForm.paid && editForm.paidDate && <div style={{fontSize:12,color:"var(--ink-60)",marginTop:2}}>납부일: {fmtDate(editForm.paidDate)}</div>}
+                {isTeacher && (() => {
+                  const mPaid = editForm.paid && (editForm.paidAmount||0) >= editForm.amount;
+                  const mPartial = editForm.paid && (editForm.paidAmount||0) > 0 && (editForm.paidAmount||0) < editForm.amount;
+                  const bg = mPaid ? "var(--green-lt)" : mPartial ? "var(--gold-lt)" : "var(--red-lt)";
+                  const bd = mPaid ? "rgba(26,122,64,.2)" : mPartial ? "rgba(245,158,11,.2)" : "rgba(232,40,28,.15)";
+                  const color = mPaid ? "var(--green)" : mPartial ? "var(--gold-dk)" : "var(--red)";
+                  const icon = mPaid ? "✅" : mPartial ? "⚠️" : "⏳";
+                  const label = mPaid ? "입금 완료" : mPartial ? "부분납부" : "미납";
+                  return (
+                    <div style={{background:bg,border:`1px solid ${bd}`,borderRadius:10,padding:"14px 16px",marginBottom:14,display:"flex",alignItems:"center",gap:10}}>
+                      <span style={{fontSize:22}}>{icon}</span>
+                      <div>
+                        <div style={{fontSize:14,fontWeight:600,color}}>{label}</div>
+                        {editForm.paid && editForm.paidDate && <div style={{fontSize:12,color:"var(--ink-60)",marginTop:2}}>납부일: {fmtDate(editForm.paidDate)}</div>}
+                      </div>
                     </div>
-                  </div>
-                )}
+                  );
+                })()}
 
                 {canManageAll(currentUser.role) ? (
                   <>
@@ -702,6 +714,13 @@ export default function PaymentsView({
                   </>
                 ) : !isTeacher && (
                   <div style={{fontSize:12.5,color:"var(--ink-30)",background:"var(--ink-10)",padding:"10px 14px",borderRadius:8,marginBottom:14}}>💡 입금 확인은 매니저 이상만 가능합니다.</div>
+                )}
+
+                {/* 추가 청구 미수납 경고 */}
+                {canManageAll(currentUser.role) && !isTeacher && editForm.paid && (editForm.paidAmount||0) > 0 && (editForm.paidAmount||0) < editForm.amount && (
+                  <div style={{background:"var(--gold-lt)",border:"1px solid var(--gold)",borderRadius:8,padding:"10px 14px",marginBottom:10,fontSize:12.5,color:"var(--gold-dk)"}}>
+                    ⚠ 추가 청구 {fmtMoney(editForm.amount - (editForm.paidAmount||0))}원 미수납 — 입금 확인 후 '입금액'을 업데이트하세요.
+                  </div>
                 )}
 
                 {/* 추가 청구 항목 */}
@@ -1293,7 +1312,7 @@ function UnmatchedPaymentsTab({
         id: existing?.id || uid(),
         studentId: sid,
         month,
-        amount: baseAmount,
+        amount: Math.max(baseAmount, newPaidAmount), // paidAmount > amount 역전 방지
         paid: true,
         paidAmount: newPaidAmount,
         paidDate: isSplit ? (existing.paidDate || depositDate) : depositDate,

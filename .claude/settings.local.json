@@ -36,7 +36,25 @@
       "Bash(Remove-Item *)",
       "PowerShell(New-Item *)",
       "Bash(Get-ChildItem \"C:\\\\Users\\\\GIGABYTE\\\\Coding\\\\rye-k\\\\functions\\\\api\\\\ai\" -Recurse)",
-      "Bash(Select-Object Name, Length)"
+      "Bash(Select-Object Name, Length)",
+      "Skill(gsd-plan-phase)",
+      "Skill(gsd-execute-phase)",
+      "Skill(gsd-ui-phase)",
+      "PowerShell(git *)",
+      "Bash(dir *)",
+      "PowerShell(Copy-Item *)",
+      "Bash(powershell *)",
+      "Bash(npm *)",
+      "Bash(cmd *)",
+      "Bash(Get-Location *)",
+      "PowerShell(head *)",
+      "PowerShell(git add *)",
+      "WebSearch",
+      "mcp__plugin_cloudflare_cloudflare-observability__workers_list",
+      "mcp__plugin_cloudflare_cloudflare-bindings__set_active_account",
+      "mcp__plugin_cloudflare_cloudflare-bindings__kv_namespaces_list",
+      "mcp__plugin_cloudflare_cloudflare-api__execute",
+      "PowerShell($PROFILE)"
     ]
   }
 }

@@ -1,8 +1,8 @@
 # Requirements — RYE-K K-Culture Center
 
-> Scoped to current milestone (레슨 관리 완성)  
-> Out of scope: SaaS/멀티테넌트, 한복·악기 판매, 공연·이벤트, TypeScript 마이그레이션  
-> Version: 1.0 | Created: 2026-05-05
+> Scoped to current milestone (레슨 관리 완성) + Phase 10 회계 앱 신규  
+> Out of scope: SaaS/멀티테넌트(Phase 10 이후), 한복·악기 판매, 공연·이벤트, TypeScript 마이그레이션  
+> Version: 1.1 | Created: 2026-05-05 | Updated: 2026-06-16
 
 ---
 
@@ -18,6 +18,7 @@
 | ANL | Analytics & Dashboard |
 | GRP | Group Lesson Enhancement |
 | SHOP | Instant Charge & Shop Catalog |
+| ACC | Accounting App (Phase 10) |
 
 ---
 
@@ -211,3 +212,40 @@
 | PAY-09 | Phase 7 | ✓ Complete |
 | PAY-10 | Phase 7 | ✓ Complete |
 | PAY-11 | Phase 7 | ✓ Complete |
+| ACC-01 | Phase 10 | Pending |
+| ACC-02 | Phase 10 | Pending |
+| ACC-03 | Phase 10 | Pending |
+| ACC-04 | Phase 10 | Pending |
+| ACC-05 | Phase 10 | Pending |
+| ACC-06 | Phase 10 | Pending |
+| ACC-07 | Phase 10 | Pending |
+| ACC-08 | Phase 10 | Pending |
+| ACC-09 | Phase 10 | Pending |
+| ACC-10 | Phase 10 | Pending |
+| ACC-11 | Phase 10 | Pending |
+| ACC-12 | Phase 10 | Pending |
+| ACC-13 | Phase 10 | Pending |
+| ACC-14 | Phase 10 | Pending |
+| ACC-15 | Phase 10 | Pending |
+
+---
+
+## ACC — Accounting App (Phase 10)
+
+| ID | Requirement | Priority | Phase |
+|----|-------------|----------|-------|
+| ACC-01 | 별도 Git 리포(rye-k-accounting) + Vite+React+TS 프로젝트 셋업, Cloudflare Pages 연결 (accounting.ryekorea.com) | P0 | 10 |
+| ACC-02 | Supabase 프로젝트 생성 + 전체 스키마 마이그레이션(tenants, accounts, journal_entries, journal_lines, bank_imports, bank_transactions, bank_rules, payroll_records, invoices, ryek_sync_log, tax_exports, recurring_templates) + RLS 정책 적용 | P0 | 10 |
+| ACC-03 | 학원 표준 계정과목 Seed 데이터 (1010~5900, 26개) 자동 삽입 + Supabase Auth (이메일/비밀번호) + 테넌트 자동 생성 온보딩 | P0 | 10 |
+| ACC-04 | 복식부기 엔진: 분개 CRUD + draft→posted 전환 시 차대변 균형 DB 트리거 검증 + sourceId 중복 방지 | P0 | 10 |
+| ACC-05 | RYE-K Firebase 수납 폴링 연동: Supabase Edge Function(5분 간격) → 수납완료 항목 조회 → journal_entries draft 자동 생성(source_type: ryek_payment) + 멱등성(sourceId unique) | P0 | 10 |
+| ACC-06 | 지출 입력 UI: 빠른 입력(FAB → 모달, 날짜/금액/계정과목/메모/영수증) + 반복 전표 템플릿(매월 DD일 자동 초안 생성) | P0 | 10 |
+| ACC-07 | 은행 CSV 업로드 & 대사: 5대 은행 파서(카카오/신한/국민/우리/기업) + Bank Rules 엔진(조건: 금액/설명/거래처, 액션: 계정과목 자동배정) + 3상태(자동매칭/규칙적용/수동처리) | P0 | 10 |
+| ACC-08 | 강사 급여 명세: 지급 유형(사업소득 3.3%/근로소득) + 원천세 자동 계산 + 급여 전표 자동 생성 + 월별 원천세 집계 | P1 | 10 |
+| ACC-09 | B2B 계산서 관리: RYE-K 기관 데이터 연동 + 계산서 초안 작성 + 홈택스 직접 발행 링크 제공(무료) + 발행 완료 기록 | P1 | 10 |
+| ACC-10 | 손익계산서(P&L): 월별/분기별/연간 수입-지출 집계 + 계정별 원장 드릴다운 + 최근 6개월 차트 | P0 | 10 |
+| ACC-11 | 더블체크 대시보드: RYE-K 수납 집계 vs 회계 원장 집계 비교 + 차이 발생 시 빨간 표시 + 월별 수납률/입금률 비교 | P0 | 10 |
+| ACC-12 | AR Aging(미수금 현황): 학생별 미납 0-30/31-60/61-90/90+ 일 구간 표시 + 기관 미수금 별도 섹션 | P1 | 10 |
+| ACC-13 | 세무사 이메일 자동 전송: 월별 손익 PDF 생성 + 이메일 발송(매월 N일 자동 or 수동) + 전송 이력 저장 | P1 | 10 |
+| ACC-14 | 모바일 퍼스트 반응형 UI: 하단 탭바(모바일)/좌측 사이드바(데스크탑), FAB, 카드 목록, 한국식 금액 포맷, 다크모드 | P0 | 10 |
+| ACC-15 | Cloudflare Pages 배포 설정: 환경변수(VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY, VITE_RYEK_FIREBASE_*), 빌드 명령, 커스텀 도메인 | P0 | 10 |

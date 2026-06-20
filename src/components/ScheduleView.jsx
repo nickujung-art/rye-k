@@ -1,15 +1,17 @@
 import { useState, useRef } from "react";
 import knotLineSvg from "../assets/heritage/knot-line.svg";
-import { DAYS, TODAY_STR, IC } from "../constants.jsx";
+import { DAYS, TODAY_STR, IC, TEACHER_PALETTE } from "../constants.jsx";
 import { canManageAll, allLessonInsts, uid, fmtDateShort, sendAligoMessage } from "../utils.js";
 import { Av } from "./shared/CommonUI.jsx";
+import { HelpButton } from "./shared/HelpSystem.jsx";
 import TimetableView from "./TimetableView.jsx";
 
-const TEACHER_COLORS = ["var(--blue)","var(--red)","var(--green)","#7C3AED","var(--gold-dk)","var(--blue-md)","var(--gold)","var(--red-dk)"];
 function getTeacherColor(id, teachersList) {
   if (!id) return "var(--ink-30)";
-  const idx = teachersList.findIndex(t => t.id === id);
-  return TEACHER_COLORS[Math.abs(idx) % TEACHER_COLORS.length] || "var(--ink-30)";
+  const t = teachersList.find(tch => tch.id === id);
+  if (t?.color) return t.color;
+  const idx = teachersList.findIndex(tch => tch.id === id);
+  return TEACHER_PALETTE[Math.abs(idx) % TEACHER_PALETTE.length]?.hex || "var(--ink-30)";
 }
 
 function ScheduleView({ students, teachers, currentUser, attendance, onSaveAttendance, onSaveScheduleOverride, scheduleOverrides, notices, lessonSlots, onUpdateSlot, onAddStudentToSlot }) {
@@ -242,7 +244,7 @@ function ScheduleView({ students, teachers, currentUser, attendance, onSaveAtten
     return (
       <div className="sched-wrap">
         {alimToast && <div style={{position:"fixed",top:72,left:"50%",transform:"translateX(-50%)",zIndex:9999,background:"var(--paper)",border:"1px solid var(--border)",borderRadius:10,padding:"10px 20px",boxShadow:"0 4px 16px rgba(0,0,0,.14)",fontSize:13,fontWeight:600,whiteSpace:"nowrap"}}>{alimToast}</div>}
-        <div className="ph"><div><h1>강사 스케줄</h1><div className="ph-sub">레슨 시간표 · 보강 현황</div></div></div>
+        <div className="ph"><div><div style={{display:"flex",alignItems:"center",gap:6}}><h1>강사 스케줄</h1><HelpButton helpKey="schedule" /></div><div className="ph-sub">레슨 시간표 · 보강 현황</div></div></div>
         <div className="sched-toolbar">
           <button className={"sched-mode-btn " + (viewMode==="week"?"active":"")} onClick={() => setViewMode("week")}>주간</button>
           <button className={"sched-mode-btn " + (viewMode==="month"?"active":"")} onClick={() => setViewMode("month")}>월간</button>
@@ -427,7 +429,7 @@ function ScheduleView({ students, teachers, currentUser, attendance, onSaveAtten
 
   return (
     <div className="sched-wrap">
-      <div className="ph"><div><h1>강사 스케줄</h1><div className="ph-sub">월간 레슨 현황</div></div></div>
+      <div className="ph"><div><div style={{display:"flex",alignItems:"center",gap:6}}><h1>강사 스케줄</h1><HelpButton helpKey="schedule" /></div><div className="ph-sub">월간 레슨 현황</div></div></div>
       <div className="sched-toolbar">
         <button className={"sched-mode-btn " + (viewMode==="week"?"active":"")} onClick={() => setViewMode("week")}>주간</button>
         <button className={"sched-mode-btn " + (viewMode==="month"?"active":"")} onClick={() => setViewMode("month")}>월간</button>
