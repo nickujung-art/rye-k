@@ -13,7 +13,8 @@ function getTeacherColor(id, list) {
   const t = list.find(tch => tch.id === id);
   if (t?.color) return t.color;
   const idx = list.findIndex(tch => tch.id === id);
-  return TEACHER_PALETTE[Math.abs(idx) % TEACHER_PALETTE.length]?.hex || "var(--ink-30)";
+  if (idx === -1) return "var(--ink-30)";
+  return TEACHER_PALETTE[idx % TEACHER_PALETTE.length]?.hex || "var(--ink-30)";
 }
 
 function formatTime(rowIdx) {

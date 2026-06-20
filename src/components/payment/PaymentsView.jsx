@@ -82,7 +82,7 @@ export default function PaymentsView({
   const visibleStudents = (filterTeacher === "all" ? students : students.filter(s => s.teacherId === filterTeacher || (s.lessons||[]).some(l=>l.teacherId===filterTeacher)))
     .filter(s => (s.status || "active") === "active")
     .filter(s => !searchQuery.trim() || s.name.includes(searchQuery.trim()))
-    .filter(s => { if (!filterUnpaid) return true; const p = getPayment(s.id); return !p?.paid || (p.paidAmount||0) < (p.amount ?? autoFee(s)); });
+    .filter(s => { if (!filterUnpaid) return true; const p = getPayment(s.id); return !p?.paid || (p.paidAmount != null && (p.paidAmount||0) < (p.amount ?? autoFee(s))); });
 
   function getPayment(studentId) { return payments.find(p => p.studentId === studentId && p.month === month); }
 
@@ -93,7 +93,7 @@ export default function PaymentsView({
     return sum + (p?.amount ?? autoFee(s));
   }, 0);
   const totalPaid = visibleStudents.reduce((sum, s) => { const p = getPayment(s.id); return sum + (p?.paid ? (p.paidAmount || p.amount) : 0); }, 0);
-  const unpaidCount = visibleStudents.filter(s => { const p = getPayment(s.id); const total = p?.amount ?? autoFee(s); return !p?.paid || (p.paidAmount||0) < total; }).length;
+  const unpaidCount = visibleStudents.filter(s => { const p = getPayment(s.id); const total = p?.amount ?? autoFee(s); return !p?.paid || (p.paidAmount != null && (p.paidAmount||0) < total); }).length;
   const paidCount = visibleStudents.length - unpaidCount;
   const paidRate = visibleStudents.length > 0 ? Math.round(paidCount / visibleStudents.length * 100) : 0;
 
@@ -417,8 +417,8 @@ export default function PaymentsView({
       ) : visibleStudents.map(s => {
         const p = getPayment(s.id);
         const totalAmt = p?.amount ?? autoFee(s);
-        const isPaid = p?.paid && (p.paidAmount||0) >= totalAmt;
-        const isPartialPaid = p?.paid && (p.paidAmount||0) > 0 && (p.paidAmount||0) < totalAmt;
+        const isPaid = p?.paid && (p.paidAmount == null || (p.paidAmount||0) >= totalAmt);
+        const isPartialPaid = p?.paid && p.paidAmount != null && (p.paidAmount||0) > 0 && (p.paidAmount||0) < totalAmt;
         const amt = totalAmt;
         const isInst = s.isInstitution;
         return (
@@ -432,7 +432,7 @@ export default function PaymentsView({
                   <span style={{whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{s.name}</span>
                 </div>
                 <div className={`pay-status ${isPaid ? "paid" : isPartialPaid ? "partial" : "unpaid"}`}>
-                  {isPaid ? `✓ ${fmtDateShort(p.paidDate)} 입금` : isPartialPaid ? `부분납부 · 잔액 ${fmtMoney(totalAmt - (p.paidAmount||0))}` : "미납"}
+                  {isPaid ? `✓ ${fmtDateShort(p.paidDate)} 입금` : isPartialPaid ? (isTeacher ? "부분납부" : `부분납부 · 잔액 ${fmtMoney(totalAmt - (p.paidAmount||0))}`) : "미납"}
                   {p?.method && isPaid ? ` · ${PAY_METHODS[p.method] || p.method}` : ""}
                 </div>
               </div>

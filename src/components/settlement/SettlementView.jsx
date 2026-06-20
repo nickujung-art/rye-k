@@ -9,6 +9,7 @@ const ATTENDED = ["present", "late", "excused"];
 function findGroupMembers(student, lesson, allStudents) {
   return allStudents.filter(s => {
     if (s.id === student.id || s.isInstitution) return false;
+    if ((s.status || "active") !== "active") return false;
     return (s.lessons || []).some(l =>
       l.teacherId === lesson.teacherId &&
       l.instrument === lesson.instrument &&
@@ -32,6 +33,7 @@ function calcResult({ teacher, month, allStudents, attendance, payments, institu
 
   const teacherStudents = allStudents.filter(s =>
     !s.isInstitution &&
+    (s.status || "active") === "active" &&
     (s.teacherId === teacher.id || (s.lessons || []).some(l => l.teacherId === teacher.id))
   );
 
@@ -206,6 +208,7 @@ async function drawPayslipCanvas({ teacher, month, studentRows, groupRows, instR
   const canvas = document.createElement("canvas");
   canvas.width = W; canvas.height = H;
   const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("캔버스를 생성할 수 없습니다.");
 
   // ── White background ──
   ctx.fillStyle = WHITE;
@@ -332,6 +335,7 @@ export default function SettlementView({
   const [confirmErr, setConfirmErr] = useState("");
   const [showPayslip, setShowPayslip] = useState(false);
   const [sharing, setSharing] = useState(false);
+  const [shareErr, setShareErr] = useState("");
 
   const availableTeachers = teachers.filter(t => canManageAll(currentUser?.role) || t.id === currentUser?.id);
   const selectedTeacher = teachers.find(t => t.id === selectedTeacherId);
@@ -382,6 +386,25 @@ export default function SettlementView({
     setTimeout(() => setCalculated(true), 0);
   };
 
+  const handleCancelConfirm = async () => {
+    setConfirmLoading(true);
+    setConfirmErr("");
+    try {
+      await runTransaction(db, async (tx) => {
+        const ref = doc(db, COLLECTION, "rye-settlement-records");
+        const snap = await tx.get(ref);
+        const existing = snap.exists() ? (snap.data().value ?? []) : [];
+        tx.set(ref, { value: existing.filter(r => !(r.teacherId === selectedTeacherId && r.month === month)), updatedAt: Date.now() });
+      });
+      setConfirmed(false);
+    } catch (e) {
+      console.error("확정 취소 오류:", e);
+      setConfirmErr("확정 취소 중 오류가 발생했습니다.");
+    } finally {
+      setConfirmLoading(false);
+    }
+  };
+
   const handleConfirm = async () => {
     if (!effResult || !selectedTeacher || confirmLoading) return;
     setConfirmLoading(true);
@@ -417,9 +440,11 @@ export default function SettlementView({
   const handleGenerateImage = async () => {
     if (!effResult || !selectedTeacher || sharing) return;
     setSharing(true);
+    setShareErr("");
     try {
       const canvas = await drawPayslipCanvas({ teacher: selectedTeacher, month, ...effResult });
       const blob = await new Promise(resolve => canvas.toBlob(resolve, "image/png"));
+      if (!blob) throw new Error("PNG 인코딩에 실패했습니다.");
       const filename = `${selectedTeacher.name}_${month}_강사료지급명세서.png`;
       const file = new File([blob], filename, { type: "image/png" });
 
@@ -434,7 +459,10 @@ export default function SettlementView({
         URL.revokeObjectURL(url);
       }
     } catch (e) {
-      if (e?.name !== "AbortError") console.error("이미지 생성 오류:", e);
+      if (e?.name !== "AbortError") {
+        console.error("이미지 생성 오류:", e);
+        setShareErr("이미지 생성에 실패했습니다. 다시 시도해주세요.");
+      }
     } finally {
       setSharing(false);
     }
@@ -703,10 +731,11 @@ export default function SettlementView({
             ) : (
               <button
                 className="btn btn-secondary btn-sm"
-                onClick={() => setConfirmed(false)}
+                onClick={handleCancelConfirm}
+                disabled={confirmLoading}
                 style={{ color: "var(--ink-30)", fontSize: 11 }}
               >
-                확정 취소
+                {confirmLoading ? "처리 중…" : "확정 취소"}
               </button>
             )}
           </div>
@@ -813,6 +842,7 @@ export default function SettlementView({
 
               </div>
             </div>
+            {shareErr && <div style={{ padding: "0 16px 4px", fontSize: 12, color: "var(--red)" }}>⚠ {shareErr}</div>}
             <div className="modal-f" style={{ display: "flex", gap: 8 }}>
               <button className="btn btn-primary" onClick={handleGenerateImage} disabled={sharing} style={{ flex: 1 }}>
                 {sharing ? "생성 중…" : "📤 이미지 저장 / 공유"}

@@ -176,7 +176,7 @@ export function TeacherColorPicker({ value, usedColors = [], onChange, disabled 
                   key={c.id}
                   type="button"
                   title={isUsed ? `${c.name} (사용중)` : c.name}
-                  onClick={() => { if (!isUsed) { onChange(c.hex); setOpen(false); } }}
+                  onClick={() => { if (!isUsed) { onChange?.(c.hex); setOpen(false); } }}
                   style={{
                     width: 36, height: 36, borderRadius: "50%",
                     background: c.hex,

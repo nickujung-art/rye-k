@@ -131,7 +131,7 @@ export default function Dashboard({ students, teachers, currentUser, notices, ca
   const [careModal, setCareModal] = useState(null);
   const [notiCollapsed, setNotiCollapsed] = useState(true);
   const toggleNotice = (id) => setExpandedNotices(prev => { const next = new Set(prev); if (next.has(id)) next.delete(id); else next.add(id); return next; });
-  const catCounts = Object.entries(categories).map(([cat, insts]) => ({ cat, count: students.filter(s => (s.lessons || []).some(l => insts.includes(l.instrument))).length })).filter(x => x.count > 0).sort((a, b) => b.count - a.count);
+  const catCounts = Object.entries(categories).map(([cat, insts]) => ({ cat, count: students.filter(s => (s.status||"active") === "active" && (s.lessons || []).some(l => insts.includes(l.instrument))).length })).filter(x => x.count > 0).sort((a, b) => b.count - a.count);
   const todayStudents = students.filter(s => (s.status === "paused" || s.status === "withdrawn") ? false : (s.lessons || []).some(l => (l.schedule || []).some(sc => sc.day === TODAY_DAY)));
   const todayAtt = attendance.filter(a => a.date === TODAY_STR);
   const todayChecked = todayStudents.filter(s => todayAtt.find(a => a.studentId === s.id));
