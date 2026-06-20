@@ -56,6 +56,7 @@ export default function PaymentsView({
   const [rejectInstantId, setRejectInstantId] = useState(null); // 인라인 거절 확인 중인 charge id
   const [rejectReason, setRejectReason] = useState("");
   const [rejectSaving, setRejectSaving] = useState(false);
+  const [rejectErr, setRejectErr] = useState("");
   const [confirmingPaymentId, setConfirmingPaymentId] = useState(null);
   const [bulkPrepModal, setBulkPrepModal] = useState(false);
   const [bulkPrepData, setBulkPrepData] = useState({});
@@ -63,6 +64,8 @@ export default function PaymentsView({
   const [bulkInstModal, setBulkInstModal] = useState(false);
   const [bulkInstData, setBulkInstData] = useState({});
   const [bulkInstSaving, setBulkInstSaving] = useState(false);
+  const [bulkErr, setBulkErr] = useState("");
+  const [bulkInstErr, setBulkInstErr] = useState("");
   const [activeTab, setActiveTab] = useState("payments");
   const [aligoRemain, setAligoRemain] = useState(null);
   const [aligoRemainLoading, setAligoRemainLoading] = useState(false);
@@ -92,7 +95,7 @@ export default function PaymentsView({
     const p = getPayment(s.id);
     return sum + (p?.amount ?? autoFee(s));
   }, 0);
-  const totalPaid = visibleStudents.reduce((sum, s) => { const p = getPayment(s.id); return sum + (p?.paid ? (p.paidAmount || p.amount) : 0); }, 0);
+  const totalPaid = visibleStudents.reduce((sum, s) => { const p = getPayment(s.id); return sum + (p?.paid ? (p.paidAmount != null ? p.paidAmount : p.amount) : 0); }, 0);
   const unpaidCount = visibleStudents.filter(s => { const p = getPayment(s.id); const total = p?.amount ?? autoFee(s); return !p?.paid || (p.paidAmount != null && (p.paidAmount||0) < total); }).length;
   const paidCount = visibleStudents.length - unpaidCount;
   const paidRate = visibleStudents.length > 0 ? Math.round(paidCount / visibleStudents.length * 100) : 0;
@@ -245,7 +248,7 @@ export default function PaymentsView({
       }
       await onSavePayments(updated);
       setBulkPrepModal(false);
-    } catch (e) { console.error("일괄 수납 청구 실패:", e); } finally { setBulkSaving(false); }
+    } catch (e) { console.error("일괄 수납 청구 실패:", e); setBulkErr("저장 실패. 잠시 후 다시 시도해주세요."); } finally { setBulkSaving(false); }
   };
 
   const openBulkPrepInst = () => {
@@ -288,7 +291,7 @@ export default function PaymentsView({
       }
       await onSavePayments(updated);
       setBulkInstModal(false);
-    } catch (e) { console.error("기관 수납 청구 실패:", e); } finally { setBulkInstSaving(false); }
+    } catch (e) { console.error("기관 수납 청구 실패:", e); setBulkInstErr("저장 실패. 잠시 후 다시 시도해주세요."); } finally { setBulkInstSaving(false); }
   };
 
   return (
@@ -582,18 +585,22 @@ export default function PaymentsView({
                             <button className="btn btn-danger btn-sm" disabled={rejectSaving}
                               onClick={async () => {
                                 setRejectSaving(true);
+                                setRejectErr("");
                                 try {
                                   await onRejectInstantCharge(charge.id, rejectReason.trim() || "사유 없음");
-                                } finally {
-                                  setRejectSaving(false);
                                   setRejectInstantId(null);
                                   setRejectReason("");
+                                } catch {
+                                  setRejectErr("거절 처리 중 오류가 발생했습니다.");
+                                } finally {
+                                  setRejectSaving(false);
                                 }
                               }}>
                               {rejectSaving ? "처리 중..." : "거절 확인"}
                             </button>
-                            <button className="btn btn-secondary btn-sm" onClick={() => { setRejectInstantId(null); setRejectReason(""); }}>취소</button>
+                            <button className="btn btn-secondary btn-sm" onClick={() => { setRejectInstantId(null); setRejectReason(""); setRejectErr(""); }}>취소</button>
                           </div>
+                          {rejectErr && <div style={{fontSize:11.5,color:"var(--red)",marginTop:6}}>⚠ {rejectErr}</div>}
                         </div>
                       ) : (
                         <div style={{display:"flex",gap:6}}>
@@ -945,11 +952,14 @@ export default function PaymentsView({
                   );
                 })}
               </div>
-              <div className="modal-f">
-                <button className="btn btn-secondary" onClick={() => setBulkPrepModal(false)} disabled={bulkSaving}>취소</button>
-                <button className="btn btn-primary" onClick={confirmBulkPrep} disabled={bulkSaving}>
-                  {bulkSaving ? <><span className="spinner-sm"/> 저장 중…</> : `${allActive.length}명 수강료 확정`}
-                </button>
+              <div className="modal-f" style={{flexDirection:"column",gap:8,alignItems:"stretch"}}>
+                {bulkErr && <div style={{fontSize:12.5,color:"var(--red)",background:"var(--red-lt)",border:"1px solid rgba(232,40,28,.2)",borderRadius:7,padding:"8px 12px"}}>⚠ {bulkErr}</div>}
+                <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
+                  <button className="btn btn-secondary" onClick={() => { setBulkPrepModal(false); setBulkErr(""); }} disabled={bulkSaving}>취소</button>
+                  <button className="btn btn-primary" onClick={confirmBulkPrep} disabled={bulkSaving}>
+                    {bulkSaving ? <><span className="spinner-sm"/> 저장 중…</> : `${allActive.length}명 수강료 확정`}
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -996,11 +1006,14 @@ export default function PaymentsView({
                   );
                 })}
               </div>
-              <div className="modal-f">
-                <button className="btn btn-secondary" onClick={() => setBulkInstModal(false)} disabled={bulkInstSaving}>취소</button>
-                <button className="btn btn-primary" onClick={confirmBulkInstPrep} disabled={bulkInstSaving}>
-                  {bulkInstSaving ? <><span className="spinner-sm"/> 저장 중…</> : `${instActive.length}개 청구 확정`}
-                </button>
+              <div className="modal-f" style={{flexDirection:"column",gap:8,alignItems:"stretch"}}>
+                {bulkInstErr && <div style={{fontSize:12.5,color:"var(--red)",background:"var(--red-lt)",border:"1px solid rgba(232,40,28,.2)",borderRadius:7,padding:"8px 12px"}}>⚠ {bulkInstErr}</div>}
+                <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
+                  <button className="btn btn-secondary" onClick={() => { setBulkInstModal(false); setBulkInstErr(""); }} disabled={bulkInstSaving}>취소</button>
+                  <button className="btn btn-primary" onClick={confirmBulkInstPrep} disabled={bulkInstSaving}>
+                    {bulkInstSaving ? <><span className="spinner-sm"/> 저장 중…</> : `${instActive.length}개 청구 확정`}
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -1263,6 +1276,7 @@ function UnmatchedPaymentsTab({
   const [matchingId, setMatchingId] = useState(null);
   const [selectedStudentId, setSelectedStudentId] = useState({});
   const [confirmId, setConfirmId] = useState(null);
+  const [matchErr, setMatchErr] = useState("");
   const pending = unmatchedPayments.filter(u => !u.matchedAt);
   const matched = unmatchedPayments.filter(u => u.matchedAt);
 
@@ -1281,8 +1295,12 @@ function UnmatchedPaymentsTab({
   const handleDismiss = async (id) => {
     const target = unmatchedPayments.find(u => u.id === id);
     const upd = unmatchedPayments.filter(u => u.id !== id);
-    await onSaveUnmatched(upd);
-    onLog(`미처리 입금 삭제 — ${target?.senderName || "알 수 없음"} ${(target?.amount || 0).toLocaleString()}원`);
+    try {
+      await onSaveUnmatched(upd);
+      onLog(`미처리 입금 삭제 — ${target?.senderName || "알 수 없음"} ${(target?.amount || 0).toLocaleString()}원`);
+    } catch {
+      setMatchErr("삭제 중 오류가 발생했습니다. 새로고침 후 확인해주세요.");
+    }
   };
 
   const handleMatch = async (unmatched) => {
@@ -1325,14 +1343,14 @@ function UnmatchedPaymentsTab({
       const updPayments = existing
         ? payments.map(p => p.id === existing.id ? record : p)
         : [...payments, record];
-      await onSavePayments(updPayments);
-
       const updUnmatched = unmatchedPayments.map(u =>
         u.id === unmatched.id
           ? { ...u, matchedAt: Date.now(), matchedStudentId: sid }
           : u
       );
+      // 미매칭 먼저 업데이트: 실패 시 수납 미저장 → 재처리 가능, 이중 수납 방지
       await onSaveUnmatched(updUnmatched);
+      await onSavePayments(updPayments);
 
       onLog(isSplit
         ? `분할납부 추가 처리 — ${unmatched.senderName} → ${s.name} +${(unmatched.amount || 0).toLocaleString()}원 (합계 ${newPaidAmount.toLocaleString()}원)`
@@ -1340,6 +1358,7 @@ function UnmatchedPaymentsTab({
       setSelectedStudentId(prev => { const n = { ...prev }; delete n[unmatched.id]; return n; });
     } catch (e) {
       onLog("미매칭 매칭 실패: " + e.message);
+      setMatchErr("매칭 처리 중 오류가 발생했습니다. 다시 시도해주세요.");
     } finally {
       setMatchingId(null);
     }
@@ -1347,6 +1366,11 @@ function UnmatchedPaymentsTab({
 
   return (
     <div>
+      {matchErr && (
+        <div style={{fontSize:12.5,color:"var(--red)",background:"var(--red-lt)",border:"1px solid rgba(232,40,28,.2)",borderRadius:8,padding:"10px 14px",marginBottom:12}}>
+          ⚠ {matchErr}
+        </div>
+      )}
       {pending.length > 0 && (
         <>
           <div style={{fontSize:12,color:"var(--ink-60)",marginBottom:8,fontWeight:600}}>

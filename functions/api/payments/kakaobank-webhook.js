@@ -58,9 +58,8 @@ async function handlePost(request, env) {
   }
 
   // 4. Timestamp — use body value if provided, else server time
-  const ts = typeof body.timestamp === "number"
-    ? body.timestamp
-    : (body.timestamp ? parseInt(body.timestamp) : Date.now());
+  const tsRaw = typeof body.timestamp === "number" ? body.timestamp : parseInt(body.timestamp);
+  const ts = Number.isFinite(tsRaw) ? tsRaw : Date.now();
   const now = Date.now();
   if (Math.abs(now - ts) > 5 * 60 * 1000) {
     return json({ error: "Request expired" }, 400);
@@ -121,7 +120,7 @@ async function handlePost(request, env) {
   try {
     const cached = await env.RATE_LIMIT_KV.get("students_cache");
     if (cached) students = JSON.parse(cached);
-  } catch { /* no cache — proceed as unmatched */ }
+  } catch (e) { console.error("[webhook] students_cache parse error:", e.message); }
 
   // 7. Fuzzy match
   const { match, confidence } = fuzzyMatchStudent(name, students);
@@ -190,7 +189,7 @@ async function handlePost(request, env) {
         const m2 = fuzzyMatchStudent(n2, students);
         const ok1 = m1.confidence === "exact" || m1.confidence === "fuzzy_1" || m1.confidence === "guardian_exact" || m1.confidence === "guardian_fuzzy";
         const ok2 = m2.confidence === "exact" || m2.confidence === "fuzzy_1" || m2.confidence === "guardian_exact" || m2.confidence === "guardian_fuzzy";
-        if (ok1 && ok2) {
+        if (ok1 && ok2 && m1.match.id !== m2.match.id) {
           for (const [nm, mt] of [[n1, m1], [n2, m2]]) {
             const rid = crypto.randomUUID();
             const splitRec = {
@@ -264,8 +263,12 @@ async function handleGet(request, env) {
     for (const key of mList.keys) {
       const val = await env.RATE_LIMIT_KV.get(key.name);
       if (val) {
-        try { matched.push(JSON.parse(val)); } catch {}
-        await env.RATE_LIMIT_KV.delete(key.name);
+        try {
+          matched.push(JSON.parse(val));
+          await env.RATE_LIMIT_KV.delete(key.name);
+        } catch (e) {
+          console.error("[webhook] matched KV parse error, preserving:", key.name, e.message);
+        }
       }
     }
 
@@ -273,8 +276,12 @@ async function handleGet(request, env) {
     for (const key of uList.keys) {
       const val = await env.RATE_LIMIT_KV.get(key.name);
       if (val) {
-        try { unmatched.push(JSON.parse(val)); } catch {}
-        await env.RATE_LIMIT_KV.delete(key.name);
+        try {
+          unmatched.push(JSON.parse(val));
+          await env.RATE_LIMIT_KV.delete(key.name);
+        } catch (e) {
+          console.error("[webhook] unmatched KV parse error, preserving:", key.name, e.message);
+        }
       }
     }
   } catch (e) {

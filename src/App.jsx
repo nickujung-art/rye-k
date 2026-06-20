@@ -851,76 +851,97 @@ function MainApp() {
           let txAutoUnmatched = [];
           let mergedForShortfall = [];
           let processedCount = 0;
-          await runTransaction(db, async (tx) => {
-            txAutoUnmatched = [];
-            processedCount = 0;
-            const snap = await tx.get(_paymentsRef);
-            const cur = snap.exists() ? (snap.data().value || []) : [];
-            const merged = [...cur];
-            for (const np of newPayments) {
-              if (merged.some(p => p.id === np.id)) continue;
-              const idx = merged.findIndex(p => p.studentId === np.studentId && p.month === np.month);
-              if (idx >= 0) {
-                if (merged[idx].paid) {
-                  txAutoUnmatched.push({
-                    id: np.id,
-                    senderName: np.senderName || "알 수 없음",
-                    amount: np.amount,
-                    timestamp: np.createdAt,
-                    source: "kakaobank",
-                    rawText: np.note || "",
-                    createdAt: np.createdAt,
-                    confidence: "duplicate_paid",
-                    matchedAt: null,
-                    matchedStudentId: null,
-                  });
+          try {
+            await runTransaction(db, async (tx) => {
+              txAutoUnmatched = [];
+              processedCount = 0;
+              const snap = await tx.get(_paymentsRef);
+              const cur = snap.exists() ? (snap.data().value || []) : [];
+              const merged = [...cur];
+              for (const np of newPayments) {
+                if (merged.some(p => p.id === np.id)) continue;
+                const idx = merged.findIndex(p => p.studentId === np.studentId && p.month === np.month);
+                if (idx >= 0) {
+                  if (merged[idx].paid) {
+                    txAutoUnmatched.push({
+                      id: np.id,
+                      senderName: np.senderName || "알 수 없음",
+                      amount: np.amount,
+                      timestamp: np.createdAt,
+                      source: "kakaobank",
+                      rawText: np.note || "",
+                      createdAt: np.createdAt,
+                      confidence: "duplicate_paid",
+                      matchedAt: null,
+                      matchedStudentId: null,
+                    });
+                  } else {
+                    const expectedAmount = merged[idx].amount || np.amount;
+                    merged[idx] = {
+                      ...merged[idx],
+                      ...np,
+                      amount: expectedAmount,
+                      paidAmount: np.paidAmount,
+                    };
+                    processedCount++;
+                  }
                 } else {
-                  const expectedAmount = merged[idx].amount || np.amount;
-                  merged[idx] = {
-                    ...merged[idx],
-                    ...np,
-                    amount: expectedAmount,
-                    paidAmount: np.paidAmount,
-                  };
+                  merged.push(np);
                   processedCount++;
                 }
-              } else {
-                merged.push(np);
-                processedCount++;
               }
-            }
-            tx.set(_paymentsRef, { value: merged, updatedAt: Date.now() });
-            mergedForShortfall = merged;
-          });
-          autoUnmatched.push(...txAutoUnmatched);
-          setPayments(mergedForShortfall);
+              tx.set(_paymentsRef, { value: merged, updatedAt: Date.now() });
+              mergedForShortfall = merged;
+            });
+            autoUnmatched.push(...txAutoUnmatched);
+            setPayments(mergedForShortfall);
 
-          const shortfalls = mergedForShortfall.filter(p =>
-            p.source === "kakaobank" && p.paidAmount > 0 && p.paidAmount < p.amount
-          );
-          if (shortfalls.length > 0) {
-            const names = shortfalls.map(p => {
-              const st = students.find(s => s.id === p.studentId);
-              return `${st?.name || "알 수 없음"} (${(p.paidAmount||0).toLocaleString()}원 / ${(p.amount||0).toLocaleString()}원)`;
-            }).join(", ");
-            showToast(`⚠ 금액 부족 입금 — ${names}`, true);
-          } else {
-            showToast(`카카오뱅크 입금 ${processedCount}건 자동 처리되었습니다.`);
+            const shortfalls = mergedForShortfall.filter(p =>
+              p.source === "kakaobank" && p.paidAmount > 0 && p.paidAmount < p.amount
+            );
+            if (shortfalls.length > 0) {
+              const names = shortfalls.map(p => {
+                const st = students.find(s => s.id === p.studentId);
+                return `${st?.name || "알 수 없음"} (${(p.paidAmount||0).toLocaleString()}원 / ${(p.amount||0).toLocaleString()}원)`;
+              }).join(", ");
+              showToast(`⚠ 금액 부족 입금 — ${names}`, true);
+            } else {
+              showToast(`카카오뱅크 입금 ${processedCount}건 자동 처리되었습니다.`);
+            }
+          } catch (txErr) {
+            console.error("[drainPending] Firestore tx failed, saving as unmatched:", txErr);
+            // KV already drained — preserve all matched records as unmatched for manual review
+            for (const r of newPayments) {
+              autoUnmatched.push({
+                id: r.id,
+                senderName: r.senderName || "알 수 없음",
+                amount: r.amount || 0,
+                timestamp: r.createdAt,
+                source: "kakaobank",
+                rawText: r.note || "",
+                createdAt: r.createdAt || Date.now(),
+                confidence: "drain_tx_error",
+                matchedAt: null,
+                matchedStudentId: null,
+              });
+            }
+            showToast("⚠ 자동 수납 처리 실패. 미매칭 탭에서 확인 후 수동 처리해주세요.", true);
           }
         }
 
         // Process unmatched records → add to rye-unmatched-payments
         const allNew = [...autoUnmatched, ...unmatched];
         if (allNew.length > 0) {
-          // stale closure 방어: 실시간 리스너로 갱신된 최신 state 사용
+          // stale closure 방어: functional updater로 최신 state 참조
+          let mergedUnmatched;
           setUnmatchedPayments(prev => {
             const existingIds = new Set(prev.map(e => e.id));
             const deduped = allNew.filter(e => !existingIds.has(e.id));
-            if (deduped.length === 0) return prev;
-            const merged = [...prev, ...deduped];
-            saveUnmatchedPayments(merged).catch(() => {});
-            return merged;
+            if (deduped.length === 0) { mergedUnmatched = null; return prev; }
+            mergedUnmatched = [...prev, ...deduped];
+            return mergedUnmatched;
           });
+          if (mergedUnmatched) saveUnmatchedPayments(mergedUnmatched).catch(() => {});
         }
 
         // Append all processed transfers to payment log
@@ -947,15 +968,15 @@ function MainApp() {
           })),
         ];
         if (logEntries.length > 0) {
-          // stale closure 방어 + id 기반 중복 제거
+          let mergedLog;
           setPaymentLog(prev => {
             const existingIds = new Set(prev.map(e => e.id));
             const deduped = logEntries.filter(e => !existingIds.has(e.id));
-            if (deduped.length === 0) return prev;
-            const merged = [...prev, ...deduped];
-            savePaymentLog(merged).catch(() => {});
-            return merged;
+            if (deduped.length === 0) { mergedLog = null; return prev; }
+            mergedLog = [...prev, ...deduped];
+            return mergedLog;
           });
+          if (mergedLog) savePaymentLog(mergedLog).catch(() => {});
         }
       } catch {
         // Silent fail — drain is best-effort, never block the UI
@@ -1443,14 +1464,7 @@ function MainApp() {
               onConfirmInstantPayment={async (charge, student) => {
                 // 중복 실행 방어: 동일 paymentId가 이미 존재하면 얼리 리턴
                 if (payments.some(p => p.id === charge.id + "_pay")) return;
-                // 1. rye-instant-charges status → "paid"
-                await updateInstantCharge(charge.id, {
-                  status: "paid",
-                  paidAt: Date.now(),
-                  paymentId: charge.id + "_pay",
-                });
-
-                // 2. rye-payments에 type:"instant" 입립 레코드 추가
+                // 1. rye-payments에 수납 레코드 먼저 추가 (실패 시 charge는 "approved" 유지 → 재처리 가능)
                 const kstNow = new Date(Date.now() + 9 * 60 * 60 * 1000);
                 const payMonth = kstNow.toISOString().slice(0, 7); // "YYYY-MM"
                 const payRecord = {
@@ -1469,6 +1483,13 @@ function MainApp() {
                 };
                 const updatedPayments = [...payments, payRecord];
                 await savePayments(updatedPayments);
+
+                // 2. charge status → "paid" (실패해도 수납은 저장됨 — id 기반 중복방어로 재처리 가능)
+                await updateInstantCharge(charge.id, {
+                  status: "paid",
+                  paidAt: Date.now(),
+                  paymentId: charge.id + "_pay",
+                });
 
                 addLog(`즉시청구 입금 확인 — ${student?.name || "미확인"} ${fmtMoney(charge.amount||0)}`);
                 showToast("입금 확인 완료. 수납 레코드가 생성되었습니다.");
