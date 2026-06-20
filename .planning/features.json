@@ -1,7 +1,7 @@
 {
   "_comment": "기능 상태 레지스트리. 세션 시작 시 먼저 읽어 개발 여부 판단. 기능 확정/완료/연기/취소 시 즉시 업데이트.",
   "version": "1.0",
-  "lastUpdated": "2026-06-16",
+  "lastUpdated": "2026-06-20",
   "statuses": ["done", "in_progress", "todo", "deferred", "cancelled"],
   "features": [
 
@@ -47,35 +47,35 @@
       "title": "슬롯 자동생성·연결 (학생 저장 시)",
       "status": "done",
       "completedAt": "2026-06-16",
-      "notes": "addStudentDoc/updateStudentDoc 후 autoSyncStudentSlots 자동 호출. 완전일치 탐색 → 없으면 신규 생성. 토스트 '슬롯 N개 생성됨'. 인간 UAT 대기."
+      "notes": "addStudentDoc/updateStudentDoc 후 autoSyncStudentSlots 자동 호출. 완전일치 탐색 → 없으면 신규 생성. 토스트 '슬롯 N개 생성됨'."
     },
     {
       "id": "F-09-02",
       "title": "TimetableView 빈 셀 '+' 배정 UI",
       "status": "done",
       "completedAt": "2026-06-16",
-      "notes": "StudentSearchPopup (이름 검색 + 악기 자동선택/드롭다운). 강사 미선택 시 토스트. 인간 UAT 대기."
+      "notes": "StudentSearchPopup (이름 검색 + 악기 자동선택/드롭다운). 강사 미선택 시 토스트."
     },
     {
       "id": "F-09-03",
       "title": "그룹 슬롯 memberPopup '학생 추가'",
       "status": "done",
       "completedAt": "2026-06-16",
-      "notes": "기존 그룹 카드 클릭 팝업에 추가. 인간 UAT 대기."
+      "notes": "기존 그룹 카드 클릭 팝업에 추가."
     },
     {
       "id": "F-09-04",
       "title": "휴회 관리 뷰 (PauseManagementView)",
       "status": "done",
       "completedAt": "2026-06-16",
-      "notes": "사이드바 독립 메뉴. 케어로그 입력 + 복귀 처리 인라인 confirm. Dashboard 배너로 연결. 인간 UAT 대기."
+      "notes": "사이드바 독립 메뉴. 케어로그 입력 + 복귀 처리 인라인 confirm. Dashboard 배너로 연결."
     },
     {
       "id": "F-09-05",
       "title": "pauseHistory 스키마 (복귀 이력 누적)",
       "status": "done",
       "completedAt": "2026-06-16",
-      "notes": "paused→active 복귀 시 자동 append. {pausedAt, pausedReason, resumedAt, durationDays, slotIds}. 인간 UAT 대기."
+      "notes": "paused→active 복귀 시 자동 append. {pausedAt, pausedReason, resumedAt, durationDays, slotIds}."
     },
     {
       "id": "F-09-06",
@@ -97,8 +97,32 @@
       "id": "F-SETTLE-01",
       "title": "정산 관리 리디자인 — 강사료 지급명세서",
       "status": "done",
-      "completedAt": "2026-06-19",
-      "notes": "세무신고/CSV/엑셀 제거. 기여액 인라인 수정(overrides). 지급 확정(appData/rye-settlement-records Firestore). 강사료 지급명세서 Canvas 이미지 생성·공유. 위탁용역수수료 법적 문구. 프로페셔널 인보이스 레이아웃(2컬럼 헤더·파란 테이블·빨간 도장). 나비 로고(logo.png) 헤더 + 빨간 원+logo_white.png 도장. Canvas 비동기(async+loadImage). 미커밋(2026-06-20 기준)."
+      "completedAt": "2026-06-20",
+      "notes": "세무신고/CSV/엑셀 제거. 기여액 인라인 수정(overrides). 지급 확정(appData/rye-settlement-records Firestore runTransaction). 강사료 지급명세서 Canvas 이미지 생성·공유. 위탁용역수수료 법적 문구. 프로페셔널 인보이스 레이아웃(2컬럼 헤더·파란 테이블·빨간 도장). 나비 로고(logo.png) 헤더 + 빨간 원+logo_white.png 도장. Canvas 비동기(async+loadImage). 커밋 edbcd3a+b1203a1, main 배포 완료."
+    },
+
+    {
+      "id": "F-COLOR-01",
+      "title": "강사 테마색상 시스템 (TEACHER_PALETTE)",
+      "status": "done",
+      "completedAt": "2026-06-20",
+      "notes": "TEACHER_PALETTE 20색 (constants.jsx). TeacherColorPicker 컴포넌트 (CommonUI.jsx). 강사 form + UserAuth ProfileView에 적용. 첫 관리자 로드 시 자동 배정 마이그레이션 (App.jsx). Av borderColor prop. ScheduleView/TimetableView getTeacherColor() idx=-1 fallback 수정. 커밋 edbcd3a+b1203a1."
+    },
+
+    {
+      "id": "F-PAY-02",
+      "title": "부분납부 지원 (paidAmount)",
+      "status": "done",
+      "completedAt": "2026-06-20",
+      "notes": "paidAmount 필드 추가. 기존 결제 역호환성 보장 (paidAmount == null → 완납 처리). PaymentsView 부분납부 배지·잔액 표시. teacher 역할에게 잔액 금액 숨김. 수납확정 모달 활성 회원만 표시. 커밋 edbcd3a+b1203a1."
+    },
+
+    {
+      "id": "F-HELP-01",
+      "title": "도움말 시스템 (HelpSystem)",
+      "status": "done",
+      "completedAt": "2026-06-20",
+      "notes": "HelpButton + HelpPanel 공유 컴포넌트 (shared/HelpSystem.jsx). Attendance·NoticeManagement·PauseManagementView에 적용. 커밋 edbcd3a."
     },
 
     {

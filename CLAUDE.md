@@ -4,7 +4,7 @@
 
 ## 기술 스택
 React 18 + Vite 5 · CSS-in-JS(`src/constants.jsx` CSS 문자열 → `<style>`) · Firebase v10 Firestore+Auth  
-GitHub(`nickujung-art/rye-k`) → Cloudflare Pages 자동 배포 · 번들 ~1190KB / gzip ~298KB
+GitHub(`nickujung-art/rye-k`) → Cloudflare Pages 자동 배포 · 번들 ~1228KB / gzip ~311KB
 
 ## CRITICAL — 데이터 안전
 
@@ -59,7 +59,7 @@ src/
 ├── utils.js             — 순수 헬퍼 함수 (expandInstitutionsToMembers 포함)
 ├── firebase.js          — Firebase 초기화·인증·runTransaction export
 └── components/
-    ├── shared/CommonUI.jsx · layout/NavLayout.jsx · auth/UserAuth.jsx
+    ├── shared/CommonUI.jsx · HelpSystem.jsx · layout/NavLayout.jsx · auth/UserAuth.jsx
     ├── dashboard/Dashboard.jsx
     ├── student/StudentManagement.jsx — LessonEditor★, StudentFormModal, BulkFeeModal, StudentsView
     ├── teacher/TeacherManagement.jsx — InstSelector★, TeacherFormModal, TeachersView
@@ -85,6 +85,7 @@ src/
 | `rye-unmatched-payments` / `rye-payment-log` | UnmatchedPayment[] / PaymentLog[] |
 | `rye-shop-items` / `rye-ai-reports` / `rye-settings` | ShopItems / AiReport[] / Settings |
 | `rye-activity` / `rye-pending` / `rye-trash` | Log[] / Pending[] / TrashItem[] |
+| `rye-settlement-records` | SettlementRecord[] |
 
 별도 최상위 컬렉션 (`appData` 외부):
 
@@ -104,6 +105,21 @@ src/
 { id, name, birthDate, startDate, phone, guardianPhone, teacherId,
   lessons: [{ instrument, teacherId, schedule: [{ day, time }], slotId }],
   photo, notes, monthlyFee, status: "active"|"paused"|"withdrawn", studentCode, createdAt }
+
+// 강사
+{ id, name, instrument, phone, email, role: "teacher"|"manager"|"admin",
+  color?: string,              // TEACHER_PALETTE hex (예: "#F97316"), 자동배정
+  colorAutoAssigned?: boolean, // true: 시스템 자동배정, false/undefined: 수동선택
+  pwResetV12?: boolean, createdAt }
+
+// 수납 (partial payment 지원)
+{ id, studentId, month, amount, paid: boolean,
+  paidAmount?: number,  // undefined/null → 완납으로 간주 (역호환), 0 → 실제 미납
+  paidDate?: string, note?: string, createdAt }
+
+// 정산 레코드 (appData/rye-settlement-records)
+{ teacherId, month, confirmedAt, confirmedBy,
+  result: { baseSalary, deductions, netPay, ... } }
 
 // 레슨 슬롯 (rye-lesson-slots 별도 컬렉션)
 { id, name, teacherId, instrument, day, time, type: "individual"|"group", studentIds: [] }
@@ -138,6 +154,13 @@ src/
 
 ## 알려진 이슈
 `monthlyFee` 전부 0 (미입력) · Firebase Auth ↔ 로컬 비번 동기화 깨짐 (fallback 동작 중)
+
+## 최근 배포 이력
+| 날짜 | 커밋 | 내용 |
+|---|---|---|
+| 2026-06-20 | `b1203a1` | 안전성 패치 9건 (isPaid 역호환·정산 DB·teacher 권한·색상 fallback 등) |
+| 2026-06-20 | `edbcd3a` | 강사 테마색상·정산뷰 전면 재작성·부분납부·도움말 시스템 |
+| 2026-06-16 | — | Phase 9 스케줄 고도화 (슬롯 자동생성·PauseManagementView) |
 
 ## 개발 워크플로우
 
