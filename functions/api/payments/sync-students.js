@@ -1,7 +1,7 @@
 // functions/api/payments/sync-students.js
 // POST /api/payments/sync-students
 // 브라우저 앱 → Worker → KV students_cache 갱신
-// Auth: Firebase JWT Bearer + body.role ("admin"|"manager"만 허용)
+// Auth: Firebase JWT Bearer (email/password 로그인 사용자만 허용)
 
 import { verifyToken } from "../ai/_utils/auth.js";
 
@@ -32,9 +32,10 @@ export async function onRequest(context) {
   try { body = await request.json(); }
   catch { return json({ error: "Bad Request" }, 400); }
 
-  // 3. 역할 체크 — JWT payload의 custom claim에서 role 읽기 (body.role 신뢰 금지)
-  const jwtRole = String(payload?.role || "").toLowerCase();
-  if (jwtRole !== "admin" && jwtRole !== "manager") {
+  // 3. 역할 체크 — email/password 로그인 사용자만 허용
+  //    JWT custom claim(role)은 set-role을 호출해야 설정되므로 sign_in_provider로 대체
+  //    학생 포털은 별도 코드 인증(email/password 계정 없음) → 효과적으로 admin+강사만 통과
+  if (payload.firebase?.sign_in_provider !== "password") {
     return json({ error: "Forbidden" }, 403);
   }
 
