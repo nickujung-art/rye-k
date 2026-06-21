@@ -26,11 +26,11 @@
 
 ## Active Work
 
-**Phase 11: 할인 시스템** — Plan 03 완료 (2026-06-22)
+**Phase 11: 할인 시스템** — COMPLETE (2026-06-22)
 - 11-01: calcTotalFee 확장 (객체 반환) + saveDiscountTypes + App.jsx 4개 컴포넌트 배선
 - 11-02: StudentFormModal 할인 섹션 UI + discountTypes prop + calcTotalFee 호출부 .total/.original 수정
 - 11-03: PaymentsView 할인 관리 5번째 탭 + DiscountTypeManager CRUD + AdminTools DEFAULT_DISCOUNT_TYPES
-- 다음: 11-04 (수납 리스트 할인 표시 + 모달 브레이크다운)
+- 11-04: autoFeeResult 래퍼 + 수납 리스트 할인 표시 + 모달 브레이크다운 + Dashboard/SettlementView NaN 제거 (DIS-01~DIS-08 전체 완료)
 
 **Phase 9: 스케줄 고도화** — Plans 01~04 완료 (2026-06-16)
 - 09-01: CSS + slotMatchesLesson 유틸 + IC.pause 아이콘
@@ -61,6 +61,8 @@
 - [11-02] StudentFormModal 할인 섹션: canManageAll 조건부, 다과목 시 lessonInstrument 드롭다운 표시
 - [11-03] DiscountTypeManager는 PaymentsView.jsx 상단 별도 함수 컴포넌트로 정의 (export default 전)
 - [11-03] 할인 관리 탭: canManageAll 조건 블록 내 탭 버튼 추가 → teacher 역할 미노출
+- [11-04] autoFeeResult 래퍼 패턴: autoFee(s) = autoFeeResult(s).total — 기존 호출부 무수정, 할인 표시 전용으로 autoFeeResult(s) 사용
+- [11-04] 수납 행 할인 표시: !p?.amount 조건 — 자동계산 수강료에만 표시, 관리자 수동 입력 금액 제외
 
 ## DB 백업 체계
 
