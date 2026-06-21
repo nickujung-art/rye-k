@@ -26,9 +26,10 @@
 
 ## Active Work
 
-**Phase 11: 할인 시스템** — Plan 01 완료 (2026-06-22)
+**Phase 11: 할인 시스템** — Plan 02 완료 (2026-06-22)
 - 11-01: calcTotalFee 확장 (객체 반환) + saveDiscountTypes + App.jsx 4개 컴포넌트 배선
-- 다음: 11-02 (StudentFormModal 할인 섹션 + 호출부 수정)
+- 11-02: StudentFormModal 할인 섹션 UI + discountTypes prop + calcTotalFee 호출부 .total/.original 수정
+- 다음: 11-03 (PaymentsView 할인 관리 탭 + DiscountTypeManager CRUD)
 
 **Phase 9: 스케줄 고도화** — Plans 01~04 완료 (2026-06-16)
 - 09-01: CSS + slotMatchesLesson 유틸 + IC.pause 아이콘
@@ -55,6 +56,8 @@
 - [09-04] Dashboard 케어 관리 섹션 → pm-link-banner 교체 (케어 기능 PauseManagementView로 집중)
 - [11-01] calcTotalFee: number → { total, original, discountAmount, discountName } 객체 반환 (역호환)
 - [11-01] rye-discounts: setDoc 배열 전체 교체 안전 (소수 항목, D-07)
+- [11-02] monthlyFee 저장 = 원가(original) 기준; 할인은 student.discount 별도 관리
+- [11-02] StudentFormModal 할인 섹션: canManageAll 조건부, 다과목 시 lessonInstrument 드롭다운 표시
 
 ## DB 백업 체계
 

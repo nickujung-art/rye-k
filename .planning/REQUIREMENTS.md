@@ -261,7 +261,7 @@
 | DIS-02 | rye-discounts Firestore 리스너 + discountTypes state + saveDiscountTypes 함수 (App.jsx) | P0 | 11 | ✓ 2026-06-22 |
 | DIS-03 | 할인 타입 CRUD UI (PaymentsView 5번째 탭, admin/manager only): 리스트·추가·수정·삭제·활성/비활성 토글 | P0 | 11 |
 | DIS-04 | 초기 할인 타입 7개 씨드 상수 (AdminTools에서 0개일 때 표시, 버튼 클릭 시 생성) | P1 | 11 |
-| DIS-05 | StudentFormModal 할인 배정 섹션 — 할인 타입 선택·시작일·종료일·다과목 과목 선택·메모 (canManageAll만) | P0 | 11 |
+| DIS-05 | StudentFormModal 할인 배정 섹션 — 할인 타입 선택·시작일·종료일·다과목 과목 선택·메모 (canManageAll만) | P0 | 11 | ✓ 2026-06-22 |
 | DIS-06 | 수납 리스트 행 할인 표시 — 원가 취소선 + 할인가 + 할인명 뱃지 (자동계산 수강료에만) | P0 | 11 |
 | DIS-07 | 수납 상세 모달 할인 브레이크다운 섹션 — "할인 적용: [할인명] -[할인액]원 (원가: [원가]원)" | P0 | 11 |
-| DIS-08 | 모든 calcTotalFee 호출부 역호환 업데이트: Dashboard(라인 145), SettlementView(라인 44·79), StudentManagement(라인 132·234) | P0 | 11 |
+| DIS-08 | 모든 calcTotalFee 호출부 역호환 업데이트: Dashboard(라인 145), SettlementView(라인 44·79), StudentManagement(라인 132·234) | P0 | 11 | ✓ 2026-06-22 (StudentManagement 완료; Dashboard·SettlementView는 11-04에서) |
