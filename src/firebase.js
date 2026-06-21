@@ -118,4 +118,15 @@ export async function getPortalIdToken() {
   }
 }
 
+// ── rye-discounts (appData 컬렉션, 배열 전체 교체 — 소수 항목이므로 안전, D-07) ─
+export async function saveDiscountTypes(types) {
+  try {
+    await setDoc(doc(db, "appData", "rye-discounts"), { value: types, updatedAt: Date.now() });
+  } catch (e) {
+    if (e?.code === "permission-denied")
+      throw Object.assign(new Error("쓰기 권한이 없습니다. 재로그인 후 다시 시도하세요."), { code: "permission-denied" });
+    throw e;
+  }
+}
+
 export { db, auth, doc, setDoc, onSnapshot, runTransaction, collection, getDoc, firebaseSignIn, firebaseSignInAnon, firebaseLogout, onAuthStateChanged };

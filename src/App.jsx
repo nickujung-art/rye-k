@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, lazy, Suspense } from "react";
-import { db, auth, doc, setDoc, onSnapshot, runTransaction, collection, getDoc, addInstantCharge, updateInstantCharge, addLessonSlot, updateLessonSlot, deleteLessonSlot, firebaseSignIn, firebaseSignInAnon, firebaseLogout, onAuthStateChanged } from "./firebase.js";
+import { db, auth, doc, setDoc, onSnapshot, runTransaction, collection, getDoc, addInstantCharge, updateInstantCharge, addLessonSlot, updateLessonSlot, deleteLessonSlot, firebaseSignIn, firebaseSignInAnon, firebaseLogout, onAuthStateChanged, saveDiscountTypes } from "./firebase.js";
 import { DEFAULT_CATEGORIES, DAYS, ADMIN, TODAY_STR, THIS_MONTH, TODAY_DAY, ATT_STATUS, PAY_METHODS, INST_TYPES, IC, CSS, TEACHER_PALETTE } from "./constants.jsx";
 import { calcAge, isMinor, getCat, fmtDate, fmtDateShort, fmtDateTime, uid, fmtPhone, fmtMoney, allLessonInsts, allLessonDays, canManageAll, monthLabel, generateStudentCode, getBirthPassword, getPhoneInitialPassword, instTypeLabel, expandInstitutionsToMembers, getContractDaysLeft, formatLessonNoteSummary, calcLessonFeeWithFallback, slotMatchesLesson } from "./utils.js";
 import { InstitutionFormModal, InstitutionDetailModal, InstitutionsView } from "./components/institution/Institutions.jsx";
@@ -246,6 +246,7 @@ function MainApp() {
   const [ryeSettings, setRyeSettings] = useState({ aiEnabled: true, aiSafeMode: false });
   const [instantCharges, setInstantCharges] = useState([]);
   const [shopItems, setShopItems] = useState({ categories: ["의상/공연복", "악세사리", "악기 가방", "기타"], items: [] });
+  const [discountTypes, setDiscountTypes] = useState([]);
   const [lessonSlots, setLessonSlots] = useState([]);
   const colorAutoAssigned = useRef(false);
   const [loading, setLoading] = useState(true);
@@ -387,6 +388,7 @@ function MainApp() {
       { key: "rye-ai-reports", setter: setAiReports, default: [] },
       { key: "rye-settings", setter: setRyeSettings, default: { aiEnabled: true, aiSafeMode: false } },
       { key: "rye-shop-items", setter: setShopItems, default: { categories: ["의상/공연복", "악세사리", "악기 가방", "기타"], items: [] } },
+      { key: "rye-discounts", setter: setDiscountTypes, default: [] },
     ];
 
     const checkAllLoaded = async () => {
@@ -863,18 +865,32 @@ function MainApp() {
                 const idx = merged.findIndex(p => p.studentId === np.studentId && p.month === np.month);
                 if (idx >= 0) {
                   if (merged[idx].paid) {
-                    txAutoUnmatched.push({
-                      id: np.id,
-                      senderName: np.senderName || "알 수 없음",
-                      amount: np.amount,
-                      timestamp: np.createdAt,
-                      source: "kakaobank",
-                      rawText: np.note || "",
-                      createdAt: np.createdAt,
-                      confidence: "duplicate_paid",
-                      matchedAt: null,
-                      matchedStudentId: null,
-                    });
+                    const existingPaid = merged[idx].paidAmount ?? merged[idx].amount ?? 0;
+                    const expectedAmt = merged[idx].amount || np.amount;
+                    if (existingPaid < expectedAmt) {
+                      // 부분납부 잔액 입금 — paidAmount 누적
+                      merged[idx] = {
+                        ...merged[idx],
+                        paidAmount: existingPaid + (np.paidAmount || np.amount || 0),
+                        note: `${merged[idx].note ? merged[idx].note + " / " : ""}잔액 추가 입금 — ${np.senderName} ${((np.paidAmount || np.amount || 0)).toLocaleString()}원`,
+                        updatedAt: Date.now(),
+                      };
+                      processedCount++;
+                    } else {
+                      // 이미 완납 → 이중입금
+                      txAutoUnmatched.push({
+                        id: np.id,
+                        senderName: np.senderName || "알 수 없음",
+                        amount: np.amount,
+                        timestamp: np.createdAt,
+                        source: "kakaobank",
+                        rawText: np.note || "",
+                        createdAt: np.createdAt,
+                        confidence: "duplicate_paid",
+                        matchedAt: null,
+                        matchedStudentId: null,
+                      });
+                    }
                   } else {
                     const expectedAmount = merged[idx].amount || np.amount;
                     merged[idx] = {
@@ -1417,6 +1433,7 @@ function MainApp() {
               nav={navigate}
               onUnpaidCardClick={() => { setPaymentsInitFilter(true); navigate("payments"); }}
               feePresets={feePresets}
+              discountTypes={discountTypes}
               instantCharges={instantCharges}
               onUpdateStudent={async (s) => { await updateStudentDoc(s); }}
             />}
@@ -1434,6 +1451,12 @@ function MainApp() {
               initFilterUnpaid={paymentsInitFilter}
               onMountFilterConsumed={() => setPaymentsInitFilter(false)}
               feePresets={feePresets}
+              discountTypes={discountTypes}
+              onSaveDiscountTypes={async (upd) => {
+                await saveDiscountTypes(upd);
+                addLog("할인 타입 수정");
+                showToast("할인 타입이 저장되었습니다.");
+              }}
               instantCharges={instantCharges}
               shopItems={shopItems}
               onAddInstantCharge={async (data) => {
@@ -1536,6 +1559,7 @@ function MainApp() {
               institutions={institutions}
               instantCharges={instantCharges}
               feePresets={feePresets}
+              discountTypes={discountTypes}
               shopItems={shopItems}
               currentUser={user}
             />}
@@ -1563,7 +1587,7 @@ function MainApp() {
         />
       )}
 
-      {modal === "sForm" && <StudentFormModal student={selected} teachers={teachers} currentUser={user} categories={categories} feePresets={feePresets} onClose={() => setModal(null)} onSave={async data => {
+      {modal === "sForm" && <StudentFormModal student={selected} teachers={teachers} currentUser={user} categories={categories} feePresets={feePresets} discountTypes={discountTypes} onClose={() => setModal(null)} onSave={async data => {
         const isNew = !data.id;
         if (isNew && !canManageAll(user.role)) {
           // Teacher: send to pending for manager/admin approval
