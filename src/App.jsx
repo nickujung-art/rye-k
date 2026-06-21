@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, lazy, Suspense } from "react";
 import { db, auth, doc, setDoc, onSnapshot, runTransaction, collection, getDoc, addInstantCharge, updateInstantCharge, addLessonSlot, updateLessonSlot, deleteLessonSlot, firebaseSignIn, firebaseSignInAnon, firebaseLogout, onAuthStateChanged, saveDiscountTypes } from "./firebase.js";
 import { DEFAULT_CATEGORIES, DAYS, ADMIN, TODAY_STR, THIS_MONTH, TODAY_DAY, ATT_STATUS, PAY_METHODS, INST_TYPES, IC, CSS, TEACHER_PALETTE } from "./constants.jsx";
-import { calcAge, isMinor, getCat, fmtDate, fmtDateShort, fmtDateTime, uid, fmtPhone, fmtMoney, allLessonInsts, allLessonDays, canManageAll, monthLabel, generateStudentCode, getBirthPassword, getPhoneInitialPassword, instTypeLabel, expandInstitutionsToMembers, getContractDaysLeft, formatLessonNoteSummary, calcLessonFeeWithFallback, slotMatchesLesson } from "./utils.js";
+import { calcAge, isMinor, getCat, fmtDate, fmtDateShort, fmtDateTime, uid, fmtPhone, fmtMoney, allLessonInsts, allLessonDays, canManageAll, monthLabel, generateStudentCode, getBirthPassword, getPhoneInitialPassword, instTypeLabel, expandInstitutionsToMembers, getContractDaysLeft, formatLessonNoteSummary, calcLessonFeeWithFallback, slotMatchesLesson, calcTotalFee } from "./utils.js";
 import { InstitutionFormModal, InstitutionDetailModal, InstitutionsView } from "./components/institution/Institutions.jsx";
 import { Logo } from "./components/shared/CommonUI.jsx";
 import { AttendanceView, LessonNotesView, NoteCommentsPanel } from "./components/attendance/Attendance.jsx";
@@ -1040,7 +1040,7 @@ function MainApp() {
       const cur = snap.exists() ? (snap.data().value || []) : [];
       const newRecords = allActive
         .filter(s => !cur.some(p => p.studentId === s.id && p.month === THIS_MONTH))
-        .map(s => ({ id: uid(), studentId: s.id, month: THIS_MONTH, amount: (s.monthlyFee || 0) + (s.instrumentRental ? (s.rentalFee || 0) : 0), paid: false, createdAt: Date.now() }));
+        .map(s => ({ id: uid(), studentId: s.id, month: THIS_MONTH, amount: calcTotalFee(s, feePresets, discountTypes).total, paid: false, createdAt: Date.now() }));
       if (newRecords.length === 0) return;
       tx.set(_paymentsRef, { value: [...cur, ...newRecords], updatedAt: Date.now() });
     }).catch(() => {});
@@ -1189,6 +1189,7 @@ function MainApp() {
         "rye-trash": trash,
         "rye-student-notices": studentNotices,
         "rye-institutions": institutions,
+        "rye-discounts": discountTypes,
       };
       const blob = new Blob([JSON.stringify(snapshot, null, 2)], { type: "application/json" });
       const url = URL.createObjectURL(blob);
