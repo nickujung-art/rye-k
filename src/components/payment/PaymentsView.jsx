@@ -1086,6 +1086,26 @@ export default function PaymentsView({
                     )}
                   </div>
                 )}
+                {/* 할인 브레이크다운 — 자동계산 수강료 + 할인 적용 시만 표시 (DIS-07) */}
+                {canManageAll(currentUser.role) && !isTeacher && !s?.isInstitution && (() => {
+                  if (editForm.amount && getPayment(s?.id)?.amount) return null; // 수동 입력 금액인 경우 표시 안 함
+                  const feeRes = autoFeeResult(s);
+                  if (!feeRes || feeRes.discountAmount <= 0) return null;
+                  return (
+                    <div style={{ background: "var(--blue-lt,#EFF6FF)", border: "1px solid rgba(59,130,246,.2)", borderRadius: 10, padding: "10px 14px", marginBottom: 8, fontSize: 12.5 }}>
+                      <div style={{ fontWeight: 700, fontSize: 11, color: "var(--blue,#3B82F6)", marginBottom: 6, letterSpacing: .3 }}>할인 적용</div>
+                      <div style={{ display: "flex", justifyContent: "space-between", color: "var(--ink-60)", marginBottom: 3 }}>
+                        <span>원가</span><span>{fmtMoney(feeRes.original)}</span>
+                      </div>
+                      <div style={{ display: "flex", justifyContent: "space-between", color: "var(--blue,#3B82F6)", marginBottom: 3 }}>
+                        <span>{feeRes.discountName}</span><span>-{fmtMoney(feeRes.discountAmount)}</span>
+                      </div>
+                      <div style={{ borderTop: "1px dashed rgba(59,130,246,.25)", paddingTop: 6, display: "flex", justifyContent: "space-between", fontWeight: 700, color: "var(--ink)", fontSize: 13 }}>
+                        <span>할인 적용가</span><span>{fmtMoney(feeRes.total)}</span>
+                      </div>
+                    </div>
+                  );
+                })()}
                 {/* 합계 브레이크다운 — 추가 청구 항목이 있을 때만 */}
                 {canManageAll(currentUser.role) && !isTeacher && extraSum > 0 && (
                   <div style={{background:"var(--ink-5,#F8F8F8)",border:"1px solid var(--border)",borderRadius:10,padding:"10px 14px",marginBottom:8,fontSize:12.5}}>

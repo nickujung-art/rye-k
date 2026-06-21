@@ -25,7 +25,7 @@ function groupKey(teacherId, lesson) {
   return `${teacherId}-${lesson.instrument}-${sched}`;
 }
 
-function calcResult({ teacher, month, allStudents, attendance, payments, institutions, instantCharges, feePresets }) {
+function calcResult({ teacher, month, allStudents, attendance, payments, institutions, instantCharges, feePresets, discountTypes = [] }) {
   const rate = teacher.settlementRate || 0;
   const processedGroups = new Set();
   const studentRows = [];
@@ -41,7 +41,7 @@ function calcResult({ teacher, month, allStudents, attendance, payments, institu
     const teacherLessons = (student.lessons || []).filter(l => l.teacherId === teacher.id);
     if (teacherLessons.length === 0) return;
 
-    const studentTotalFee = calcTotalFee(student, feePresets);
+    const studentTotalFee = calcTotalFee(student, feePresets, discountTypes).total;
     const payment = payments.find(p => p.studentId === student.id && p.month === month && p.paid);
     const paidAmount = payment?.paidAmount || 0;
     const stuAtt = attendance.filter(a =>
@@ -76,7 +76,7 @@ function calcResult({ teacher, month, allStudents, attendance, payments, institu
             l.teacherId === teacher.id && l.instrument === lesson.instrument
           );
           if (gLessons.length === 0) return;
-          const gTotalFee = calcTotalFee(gs, feePresets);
+          const gTotalFee = calcTotalFee(gs, feePresets, discountTypes).total;
           const fallback = gs.lessons?.length > 0 ? Math.round((gs.monthlyFee || 0) / gs.lessons.length) : 0;
           const gLessonFee = gLessons.reduce((s, l) => s + calcLessonFeeWithFallback(l, feePresets, fallback), 0);
           const prop = gTotalFee > 0 ? gLessonFee / gTotalFee : 1;
@@ -322,7 +322,7 @@ async function drawPayslipCanvas({ teacher, month, studentRows, groupRows, instR
 
 export default function SettlementView({
   teachers, students, attendance, payments, institutions,
-  instantCharges, feePresets, currentUser,
+  instantCharges, feePresets, currentUser, discountTypes = [],
 }) {
   const [selectedTeacherId, setSelectedTeacherId] = useState("");
   const [month, setMonth] = useState(THIS_MONTH);
@@ -342,8 +342,8 @@ export default function SettlementView({
 
   const result = useMemo(() => {
     if (!selectedTeacher || !calculated) return null;
-    return calcResult({ teacher: selectedTeacher, month, allStudents: students, attendance, payments, institutions, instantCharges, feePresets });
-  }, [selectedTeacher, month, students, attendance, payments, institutions, instantCharges, feePresets, calculated]);
+    return calcResult({ teacher: selectedTeacher, month, allStudents: students, attendance, payments, institutions, instantCharges, feePresets, discountTypes });
+  }, [selectedTeacher, month, students, attendance, payments, institutions, instantCharges, feePresets, discountTypes, calculated]);
 
   const effResult = useMemo(() => {
     if (!result) return null;
