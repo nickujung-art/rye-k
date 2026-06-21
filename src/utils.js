@@ -260,21 +260,61 @@ export function calcLessonFeeWithFallback(lesson, feePresets, fallbackPerLesson 
   return fallbackPerLesson;
 }
 
-// student 전체 월 수강료 계산 (레슨별 fee 합산 + 대여료)
-// - lessons[].fee 있으면 해당 값 우선
-// - feePresets[instrument] 있으면 preset 사용
-// - 둘 다 없으면 monthlyFee를 lessons 수로 균등 분배
-// - lessons가 비어있으면 monthlyFee + rental 반환 (구 데이터 호환)
-export function calcTotalFee(student, feePresets) {
+// student 전체 월 수강료 계산 (레슨별 fee 합산 + 대여료 + 할인 적용)
+// - discountTypes: DiscountType[] (미전달 시 [] → 할인 없음)
+// - 반환: { total, original, discountAmount, discountName }
+// - 역호환: discountTypes 미전달 또는 student.discount 없을 시 total === original, discountAmount === 0
+export function calcTotalFee(student, feePresets, discountTypes = []) {
   const lessons = student.lessons || [];
   const rental = student.instrumentRental ? (student.rentalFee || 0) : 0;
-  if (lessons.length === 0) return (student.monthlyFee || 0) + rental;
-  const legacyPerLesson = Math.round((student.monthlyFee || 0) / lessons.length);
-  const lessonSum = lessons.reduce(
-    (sum, l) => sum + calcLessonFeeWithFallback(l, feePresets, legacyPerLesson),
-    0
-  );
-  return lessonSum + rental;
+  let original;
+  if (lessons.length === 0) {
+    original = (student.monthlyFee || 0) + rental;
+  } else {
+    const legacyPerLesson = Math.round((student.monthlyFee || 0) / lessons.length);
+    const lessonSum = lessons.reduce(
+      (sum, l) => sum + calcLessonFeeWithFallback(l, feePresets, legacyPerLesson),
+      0
+    );
+    original = lessonSum + rental;
+  }
+  // 할인 적용 (D-02: 학생 단위 단수 할인, D-03: student.discount 단수 객체)
+  let discountAmount = 0;
+  let discountName = null;
+  const disc = student.discount;
+  if (disc?.discountId && discountTypes.length > 0) {
+    const dtype = discountTypes.find(d => d.id === disc.discountId && d.active !== false);
+    if (dtype) {
+      const today = new Date().toISOString().slice(0, 10);
+      const started = !disc.startDate || disc.startDate <= today;
+      const notEnded = !disc.endDate || disc.endDate >= today;
+      if (started && notEnded) {
+        if (disc.lessonInstrument && lessons.length > 0) {
+          // 특정 과목에만 적용 (D-02: lessonInstrument 옵션 필드)
+          const target = lessons.find(l => l.instrument === disc.lessonInstrument);
+          if (target) {
+            const fallback = Math.round((student.monthlyFee || 0) / lessons.length);
+            const lFee = calcLessonFeeWithFallback(target, feePresets, fallback);
+            discountAmount = dtype.type === "percent"
+              ? Math.round(lFee * dtype.value / 100)
+              : Math.min(dtype.value, lFee);
+          }
+        } else {
+          // 전 수강료에 적용
+          discountAmount = dtype.type === "percent"
+            ? Math.round(original * dtype.value / 100)
+            : Math.min(dtype.value, original);
+        }
+        discountName = dtype.name;
+      }
+    }
+  }
+  return {
+    total: Math.max(0, original - discountAmount),
+    original,
+    discountAmount,
+    discountName,
+  };
 }
 
 // Phase 9 — 슬롯-레슨 완전 일치 판단 (teacherId + instrument + schedule 배열 정렬 비교)
