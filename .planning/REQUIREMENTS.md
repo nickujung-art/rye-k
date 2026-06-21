@@ -19,6 +19,7 @@
 | GRP | Group Lesson Enhancement |
 | SHOP | Instant Charge & Shop Catalog |
 | ACC | Accounting App (Phase 10) |
+| DIS | Discount System (Phase 11) |
 
 ---
 
@@ -249,3 +250,18 @@
 | ACC-13 | 세무사 이메일 자동 전송: 월별 손익 PDF 생성 + 이메일 발송(매월 N일 자동 or 수동) + 전송 이력 저장 | P1 | 10 |
 | ACC-14 | 모바일 퍼스트 반응형 UI: 하단 탭바(모바일)/좌측 사이드바(데스크탑), FAB, 카드 목록, 한국식 금액 포맷, 다크모드 | P0 | 10 |
 | ACC-15 | Cloudflare Pages 배포 설정: 환경변수(VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY, VITE_RYEK_FIREBASE_*), 빌드 명령, 커스텀 도메인 | P0 | 10 |
+
+---
+
+## DIS — Discount System (Phase 11)
+
+| ID | Requirement | Priority | Phase |
+|----|-------------|----------|-------|
+| DIS-01 | calcTotalFee(student, feePresets, discountTypes?) 할인 반영 — 반환: { total, original, discountAmount, discountName }. discountTypes 미전달 시 역호환 | P0 | 11 | ✓ 2026-06-22 |
+| DIS-02 | rye-discounts Firestore 리스너 + discountTypes state + saveDiscountTypes 함수 (App.jsx) | P0 | 11 | ✓ 2026-06-22 |
+| DIS-03 | 할인 타입 CRUD UI (PaymentsView 5번째 탭, admin/manager only): 리스트·추가·수정·삭제·활성/비활성 토글 | P0 | 11 |
+| DIS-04 | 초기 할인 타입 7개 씨드 상수 (AdminTools에서 0개일 때 표시, 버튼 클릭 시 생성) | P1 | 11 |
+| DIS-05 | StudentFormModal 할인 배정 섹션 — 할인 타입 선택·시작일·종료일·다과목 과목 선택·메모 (canManageAll만) | P0 | 11 |
+| DIS-06 | 수납 리스트 행 할인 표시 — 원가 취소선 + 할인가 + 할인명 뱃지 (자동계산 수강료에만) | P0 | 11 |
+| DIS-07 | 수납 상세 모달 할인 브레이크다운 섹션 — "할인 적용: [할인명] -[할인액]원 (원가: [원가]원)" | P0 | 11 |
+| DIS-08 | 모든 calcTotalFee 호출부 역호환 업데이트: Dashboard(라인 145), SettlementView(라인 44·79), StudentManagement(라인 132·234) | P0 | 11 |
