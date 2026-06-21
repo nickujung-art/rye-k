@@ -347,7 +347,8 @@ export default function PaymentsView({
 
   function getPayment(studentId) { return payments.find(p => p.studentId === studentId && p.month === month); }
 
-  const autoFee = (s) => calcTotalFee(s, feePresets);
+  const autoFeeResult = (s) => calcTotalFee(s, feePresets, discountTypes);
+  const autoFee = (s) => autoFeeResult(s).total;
 
   const totalDue = visibleStudents.reduce((sum, s) => {
     const p = getPayment(s.id);
@@ -682,6 +683,7 @@ export default function PaymentsView({
       ) : visibleStudents.map(s => {
         const p = getPayment(s.id);
         const totalAmt = p?.amount ?? autoFee(s);
+        const feeResult = autoFeeResult(s);
         const isPaid = p?.paid && (p.paidAmount == null || (p.paidAmount||0) >= totalAmt);
         const isPartialPaid = p?.paid && p.paidAmount != null && (p.paidAmount||0) > 0 && (p.paidAmount||0) < totalAmt;
         const amt = totalAmt;
@@ -701,7 +703,27 @@ export default function PaymentsView({
                   {p?.method && isPaid ? ` · ${PAY_METHODS[p.method] || p.method}` : ""}
                 </div>
               </div>
-              {!isTeacher && <div className="pay-amount" style={{color: isPaid ? "var(--green)" : isPartialPaid ? "var(--gold-dk)" : "var(--ink)"}}>{fmtMoney(amt)}</div>}
+              {!isTeacher && (
+                <div style={{ textAlign: "right" }}>
+                  {!p?.amount && feeResult.discountAmount > 0 ? (
+                    <>
+                      <div style={{ fontSize: 11, color: "var(--ink-30)", textDecoration: "line-through", lineHeight: 1.3 }}>
+                        {fmtMoney(feeResult.original)}
+                      </div>
+                      <div className="pay-amount" style={{ color: isPaid ? "var(--green)" : isPartialPaid ? "var(--gold-dk)" : "var(--ink)" }}>
+                        {fmtMoney(amt)}
+                      </div>
+                      <div style={{ fontSize: 9.5, background: "var(--blue-lt,#EFF6FF)", color: "var(--blue,#3B82F6)", borderRadius: 4, padding: "1px 5px", fontWeight: 600, marginTop: 1, display: "inline-block", whiteSpace: "nowrap" }}>
+                        {feeResult.discountName}
+                      </div>
+                    </>
+                  ) : (
+                    <div className="pay-amount" style={{ color: isPaid ? "var(--green)" : isPartialPaid ? "var(--gold-dk)" : "var(--ink)" }}>
+                      {fmtMoney(amt)}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
             {/* 2줄: 액션 버튼 + 수강료 입력 (관리자·매니저만) */}
             {canManageAll(currentUser.role) && !isInst && (
