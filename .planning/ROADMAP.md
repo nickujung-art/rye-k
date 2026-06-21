@@ -209,7 +209,7 @@ Plans:
 Plans:
 - [x] 11-01-PLAN.md — calcTotalFee 확장 + saveDiscountTypes + App.jsx 배선 (DIS-01, DIS-02) ✓ 2026-06-22
 - [x] 11-02-PLAN.md — StudentFormModal 할인 섹션 + calcTotalFee 호출부 업데이트 (DIS-05, DIS-08) ✓ 2026-06-22
-- [ ] 11-03-PLAN.md — PaymentsView 5번째 탭 + DiscountTypeManager + AdminTools 씨드 상수 (DIS-03, DIS-04)
+- [x] 11-03-PLAN.md — PaymentsView 5번째 탭 + DiscountTypeManager + AdminTools 씨드 상수 (DIS-03, DIS-04) ✓ 2026-06-22
 - [ ] 11-04-PLAN.md — 수납 리스트 할인 표시 + 모달 브레이크다운 + Dashboard/SettlementView 업데이트 (DIS-06, DIS-07, DIS-08)
 
 ### Phase SHOP-01: 즉시 청구 & 상품 관리 시스템 (Instant Charge & Shop)
