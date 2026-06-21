@@ -98,10 +98,10 @@ export function LessonEditor({ lessons, onChange, categories, teachers, feePrese
 }
 
 // ── STUDENT FORM ──────────────────────────────────────────────────────────────
-export function StudentFormModal({ student, teachers, currentUser, categories, feePresets, onClose, onSave }) {
+export function StudentFormModal({ student, teachers, currentUser, categories, feePresets, discountTypes = [], onClose, onSave }) {
   const [form, setForm] = useState(student
-    ? { ...student, instrumentRental: student.instrumentRental ?? false, rentalType: student.rentalType ?? "", rentalFee: student.rentalFee ?? 0, pendingOneTimeCharges: student.pendingOneTimeCharges ?? [], guardianName: student.guardianName ?? "" }
-    : { name: "", birthDate: "", startDate: TODAY_STR, phone: "", guardianPhone: "", guardianName: "", teacherId: currentUser.role === "teacher" ? currentUser.id : "", lessons: [], photo: "", notes: "", monthlyFee: 0, status: "active", instrumentRental: false, rentalType: "", rentalFee: 0, pendingOneTimeCharges: [] });
+    ? { ...student, instrumentRental: student.instrumentRental ?? false, rentalType: student.rentalType ?? "", rentalFee: student.rentalFee ?? 0, pendingOneTimeCharges: student.pendingOneTimeCharges ?? [], guardianName: student.guardianName ?? "", discount: student.discount ?? null }
+    : { name: "", birthDate: "", startDate: TODAY_STR, phone: "", guardianPhone: "", guardianName: "", teacherId: currentUser.role === "teacher" ? currentUser.id : "", lessons: [], photo: "", notes: "", monthlyFee: 0, status: "active", instrumentRental: false, rentalType: "", rentalFee: 0, pendingOneTimeCharges: [], discount: null });
   const [err, setErr] = useState("");
   const [confirming, setConfirming] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -270,6 +270,83 @@ export function StudentFormModal({ student, teachers, currentUser, categories, f
               </div>
             );
           })()}
+          {canManageAll(currentUser.role) && (
+            <div className="fg">
+              <label className="fg-label">할인 적용</label>
+              <select
+                className="sel"
+                value={form.discount?.discountId || ""}
+                onChange={e => {
+                  const id = e.target.value;
+                  if (!id) { set("discount", null); return; }
+                  const today = new Date().toISOString().slice(0, 10);
+                  set("discount", {
+                    discountId: id,
+                    startDate: form.discount?.startDate || today,
+                    endDate: form.discount?.endDate || null,
+                    lessonInstrument: form.discount?.lessonInstrument || "",
+                    appliedBy: currentUser.id,
+                    notes: form.discount?.notes || "",
+                  });
+                }}
+              >
+                <option value="">할인 없음</option>
+                {(discountTypes.filter(d => d.active !== false)).map(d => (
+                  <option key={d.id} value={d.id}>
+                    {d.name} ({d.type === "percent" ? `${d.value}%` : `${Number(d.value).toLocaleString("ko-KR")}원`} 할인)
+                  </option>
+                ))}
+              </select>
+              {form.discount?.discountId && (
+                <>
+                  <div className="fg-row" style={{ marginTop: 6 }}>
+                    <div className="fg">
+                      <label className="fg-label" style={{ fontWeight: 400, fontSize: 11 }}>시작일</label>
+                      <input
+                        className="inp"
+                        type="date"
+                        value={form.discount.startDate || ""}
+                        onChange={e => set("discount", { ...form.discount, startDate: e.target.value })}
+                      />
+                    </div>
+                    <div className="fg">
+                      <label className="fg-label" style={{ fontWeight: 400, fontSize: 11 }}>종료일 (미입력 시 무기한)</label>
+                      <input
+                        className="inp"
+                        type="date"
+                        value={form.discount.endDate || ""}
+                        onChange={e => set("discount", { ...form.discount, endDate: e.target.value || null })}
+                      />
+                    </div>
+                  </div>
+                  {(form.lessons || []).length > 1 && (
+                    <div className="fg" style={{ marginTop: 6 }}>
+                      <label className="fg-label" style={{ fontWeight: 400, fontSize: 11 }}>특정 과목만 적용 (미선택 시 전 과목)</label>
+                      <select
+                        className="sel"
+                        value={form.discount.lessonInstrument || ""}
+                        onChange={e => set("discount", { ...form.discount, lessonInstrument: e.target.value })}
+                      >
+                        <option value="">전 과목 적용</option>
+                        {(form.lessons || []).map(l => (
+                          <option key={l.instrument} value={l.instrument}>{l.instrument}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+                  <div className="fg" style={{ marginTop: 6 }}>
+                    <label className="fg-label" style={{ fontWeight: 400, fontSize: 11 }}>메모</label>
+                    <input
+                      className="inp"
+                      value={form.discount.notes || ""}
+                      onChange={e => set("discount", { ...form.discount, notes: e.target.value })}
+                      placeholder="예: 지인 소개 — 박지연님"
+                    />
+                  </div>
+                </>
+              )}
+            </div>
+          )}
           {isEdit && (canManageAll(currentUser.role) || currentUser.role === "teacher") && (
             <div className="fg">
               <label className="fg-label">수강 상태</label>
