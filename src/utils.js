@@ -288,7 +288,7 @@ export function calcTotalFee(student, feePresets, discountTypes = []) {
       const today = new Date().toISOString().slice(0, 10);
       const started = !disc.startDate || disc.startDate <= today;
       const notEnded = !disc.endDate || disc.endDate >= today;
-      if (started && notEnded) {
+      if (started && notEnded && Number.isFinite(dtype.value) && dtype.value >= 0) {
         if (disc.lessonInstrument && lessons.length > 0) {
           // 특정 과목에만 적용 (D-02: lessonInstrument 옵션 필드)
           const target = lessons.find(l => l.instrument === disc.lessonInstrument);

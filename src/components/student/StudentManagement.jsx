@@ -112,6 +112,13 @@ export function StudentFormModal({ student, teachers, currentUser, categories, f
       const next = { ...f, [k]: v };
       if (k === "lessons") {
         next.lessons = (v || []).map(l => ({ ...l, fee: l.fee ?? 0 }));
+        // H-4: 삭제된 레슨의 lessonInstrument 자동 초기화 (할인 silent 미적용 방지)
+        if (next.discount?.lessonInstrument) {
+          const instruments = next.lessons.map(l => l.instrument);
+          if (!instruments.includes(next.discount.lessonInstrument)) {
+            next.discount = { ...next.discount, lessonInstrument: "" };
+          }
+        }
       }
       return next;
     });
@@ -313,7 +320,7 @@ export function StudentFormModal({ student, teachers, currentUser, categories, f
                   </option>
                 ))}
               </select>
-              {form.discount?.discountId && (
+              {form.discount?.discountId && discountTypes.some(d => d.id === form.discount.discountId && d.active !== false) && (
                 <>
                   <div className="fg-row" style={{ marginTop: 6 }}>
                     <div className="fg">

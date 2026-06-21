@@ -1025,9 +1025,9 @@ function MainApp() {
   useEffect(() => {
     if (!user || !canManageAll(user.role)) return;
     if (students.length === 0) return;
+    if (Object.keys(feePresets).length === 0) return; // C-2: feePresets·discountTypes 로드 대기 후 시딩
     const seedKey = "ryek_payment_seed_v2";
     if (localStorage.getItem(seedKey) === THIS_MONTH) return;
-    localStorage.setItem(seedKey, THIS_MONTH); // 동일 세션 재실행 방지 (정확성은 트랜잭션이 보장)
 
     const activeStudents = students.filter(s => (s.status || "active") === "active");
     const activeInstMembers = expandInstitutionsToMembers(institutions).filter(m => (m.status || "active") === "active");
@@ -1043,8 +1043,12 @@ function MainApp() {
         .map(s => ({ id: uid(), studentId: s.id, month: THIS_MONTH, amount: calcTotalFee(s, feePresets, discountTypes).total, paid: false, createdAt: Date.now() }));
       if (newRecords.length === 0) return;
       tx.set(_paymentsRef, { value: [...cur, ...newRecords], updatedAt: Date.now() });
-    }).catch(() => {});
-  }, [user?.id, students.length, institutions.length]); // payments.length 제거 — seed 후 재트리거 방지
+    }).then(() => {
+      localStorage.setItem(seedKey, THIS_MONTH); // C-1: transaction 성공 후 세팅 (실패 시 재시도 허용)
+    }).catch(e => {
+      console.error("[payment-seed] 시딩 실패:", e);
+    });
+  }, [user?.id, students.length, institutions.length, feePresets, discountTypes]); // C-2: 할인·수강료 로드 후 재실행
 
   // 1회 마이그레이션: 악기대여료 누락된 미납 레코드 자동 보정
   useEffect(() => {
@@ -1166,11 +1170,12 @@ function MainApp() {
     const log = { id: uid(), userId: user?.id, userName: user?.name || "?", action, timestamp: Date.now() };
     const upd = [log, ...activity].slice(0, 200);
     setActivity(upd);
-    try { await sSet("rye-activity", upd); } catch {}
+    try { await sSet("rye-activity", upd); } catch (e) { console.error("[addLog] 감사 로그 저장 실패:", e); }
   };
 
   const requestFullBackup = () => setBackupConfirm(true);
   const handleFullBackup = () => {
+    if (!canManageAll(user?.role)) return; // H-7: 역할 이중 확인
     setBackupConfirm(false);
     try {
       const snapshot = {

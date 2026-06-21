@@ -26,7 +26,12 @@ function DiscountTypeManager({ discountTypes, onSaveDiscountTypes, uid: uidFn })
 
   const handleSaveEdit = async () => {
     if (!editForm.name?.trim()) { setErr("이름을 입력하세요."); return; }
-    const upd = discountTypes.map(d => d.id === editId ? { ...d, ...editForm } : d);
+    const val = Number(editForm.value);
+    if (!Number.isFinite(val) || val < 0) { setErr("할인 값은 0 이상 숫자여야 합니다."); return; }
+    if (editForm.type === "percent" && val > 100) { setErr("퍼센트 할인은 100% 이하여야 합니다."); return; }
+    const finalEdit = { ...editForm, value: val };
+    if (finalEdit.burden === "split" && !finalEdit.splitRatio) finalEdit.splitRatio = { academy: 0.5, teacher: 0.5 };
+    const upd = discountTypes.map(d => d.id === editId ? { ...d, ...finalEdit } : d);
     setSaving(true);
     try { await onSaveDiscountTypes(upd); setEditId(null); setErr(""); }
     catch (e) { setErr("저장 실패: " + e.message); }
@@ -43,7 +48,10 @@ function DiscountTypeManager({ discountTypes, onSaveDiscountTypes, uid: uidFn })
 
   const handleAddNew = async () => {
     if (!newForm.name?.trim()) { setErr("이름을 입력하세요."); return; }
-    const entry = { ...newForm, id: uidFn(), value: Number(newForm.value), createdAt: Date.now() };
+    const val = Number(newForm.value);
+    if (!Number.isFinite(val) || val < 0) { setErr("할인 값은 0 이상 숫자여야 합니다."); return; }
+    if (newForm.type === "percent" && val > 100) { setErr("퍼센트 할인은 100% 이하여야 합니다."); return; }
+    const entry = { ...newForm, id: uidFn(), value: val, createdAt: Date.now() };
     if (entry.burden === "split" && !entry.splitRatio) entry.splitRatio = { academy: 0.5, teacher: 0.5 };
     const upd = [...discountTypes, entry];
     setSaving(true);
@@ -139,7 +147,7 @@ function DiscountTypeManager({ discountTypes, onSaveDiscountTypes, uid: uidFn })
                         max="100"
                         value={Math.round((editForm.splitRatio?.academy ?? 0.5) * 100)}
                         onChange={e => {
-                          const v = Number(e.target.value) / 100;
+                          const v = Math.max(0, Math.min(1, Number(e.target.value) / 100));
                           setEditForm(f => ({ ...f, splitRatio: { academy: v, teacher: 1 - v } }));
                         }}
                       />
@@ -705,7 +713,7 @@ export default function PaymentsView({
               </div>
               {!isTeacher && (
                 <div style={{ textAlign: "right" }}>
-                  {!p?.amount && feeResult.discountAmount > 0 ? (
+                  {feeResult.discountAmount > 0 && (p == null || p.amount > feeResult.total) ? (
                     <>
                       <div style={{ fontSize: 11, color: "var(--ink-30)", textDecoration: "line-through", lineHeight: 1.3 }}>
                         {fmtMoney(feeResult.original)}
