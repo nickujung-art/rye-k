@@ -129,7 +129,7 @@ export function StudentFormModal({ student, teachers, currentUser, categories, f
   const handleConfirm = async () => {
     if (saving) return; setSaving(true);
     try {
-      const totalFee = calcTotalFee(form, feePresets);
+      const { original: totalFee } = calcTotalFee(form, feePresets, discountTypes);
       const finalLessons = (form.lessons || []).map(l => ({
         ...l,
         teacherId: l.teacherId || form.teacherId || "",
@@ -231,7 +231,23 @@ export function StudentFormModal({ student, teachers, currentUser, categories, f
                     )}
                     <div style={{ borderTop: "1px dashed var(--border)", paddingTop: 6, marginTop: 4, display: "flex", justifyContent: "space-between", fontWeight: 700, fontSize: 14 }}>
                       <span>합계</span>
-                      <span>{calcTotalFee(form, feePresets).toLocaleString("ko-KR")}원</span>
+                      {(() => {
+                        const fee = calcTotalFee(form, feePresets, discountTypes);
+                        if (fee.discountAmount > 0) {
+                          return (
+                            <span>
+                              <span style={{ textDecoration: "line-through", color: "var(--ink-30)", fontSize: 12, marginRight: 4 }}>
+                                {fee.original.toLocaleString("ko-KR")}원
+                              </span>
+                              {fee.total.toLocaleString("ko-KR")}원
+                              <span style={{ marginLeft: 6, fontSize: 10, background: "var(--blue-lt,#EFF6FF)", color: "var(--blue,#3B82F6)", borderRadius: 99, padding: "1px 6px", fontWeight: 600 }}>
+                                {fee.discountName}
+                              </span>
+                            </span>
+                          );
+                        }
+                        return <span>{fee.total.toLocaleString("ko-KR")}원</span>;
+                      })()}
                     </div>
                   </>
                 )}
