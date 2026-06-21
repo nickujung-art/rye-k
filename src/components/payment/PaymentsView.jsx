@@ -348,15 +348,14 @@ export default function PaymentsView({
   };
   const isTeacher = currentUser.role === "teacher";
 
+  function getPayment(studentId) { return payments.find(p => p.studentId === studentId && p.month === month); }
+  const autoFeeResult = (s) => calcTotalFee(s, feePresets, discountTypes);
+  const autoFee = (s) => autoFeeResult(s).total;
+
   const visibleStudents = (filterTeacher === "all" ? students : students.filter(s => s.teacherId === filterTeacher || (s.lessons||[]).some(l=>l.teacherId===filterTeacher)))
     .filter(s => (s.status || "active") === "active")
     .filter(s => !searchQuery.trim() || s.name.includes(searchQuery.trim()))
     .filter(s => { if (!filterUnpaid) return true; const p = getPayment(s.id); return !p?.paid || (p.paidAmount != null && (p.paidAmount||0) < (p.amount ?? autoFee(s))); });
-
-  function getPayment(studentId) { return payments.find(p => p.studentId === studentId && p.month === month); }
-
-  const autoFeeResult = (s) => calcTotalFee(s, feePresets, discountTypes);
-  const autoFee = (s) => autoFeeResult(s).total;
 
   const totalDue = visibleStudents.reduce((sum, s) => {
     const p = getPayment(s.id);
