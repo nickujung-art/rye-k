@@ -6,6 +6,17 @@ import { fmtDate, fmtDateTime, fmtMoney, fmtPhone, isMinor, calcAge, generateStu
 import { Av } from "../shared/CommonUI.jsx";
 import { LessonEditor } from "../student/StudentManagement.jsx";
 
+// ── 초기 할인 타입 씨드 데이터 (D-05) ────────────────────────────────────────
+export const DEFAULT_DISCOUNT_TYPES = [
+  { name: "광고 프로모션",   type: "percent", value: 10, burden: "academy", active: true, notes: "" },
+  { name: "지인 소개",       type: "percent", value: 10, burden: "split",   splitRatio: { academy: 0.5, teacher: 0.5 }, active: true, notes: "" },
+  { name: "제휴 업체/기관",  type: "percent", value: 10, burden: "academy", active: true, notes: "" },
+  { name: "다자녀 등록",     type: "percent", value: 10, burden: "split",   splitRatio: { academy: 0.5, teacher: 0.5 }, active: true, notes: "" },
+  { name: "다과목 수강",     type: "percent", value: 10, burden: "split",   splitRatio: { academy: 0.5, teacher: 0.5 }, active: true, notes: "" },
+  { name: "특별 프로모션",   type: "percent", value: 25, burden: "academy", active: true, notes: "" },
+  { name: "3개월 선납 할인", type: "percent", value:  5, burden: "academy", active: true, notes: "" },
+];
+
 // ── ACTIVITY LOG ──────────────────────────────────────────────────────────────
 export function ActivityView({ activity, onFullBackup }) {
   const [searchQuery, setSearchQuery] = useState("");
