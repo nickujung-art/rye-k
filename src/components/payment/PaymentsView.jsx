@@ -351,6 +351,7 @@ export default function PaymentsView({
   function getPayment(studentId) { return payments.find(p => p.studentId === studentId && p.month === month); }
   const autoFeeResult = (s) => calcTotalFee(s, feePresets, discountTypes);
   const autoFee = (s) => autoFeeResult(s).total;
+  const isAllLessonsPaused = (s) => { const ls = s.lessons || []; return ls.length > 0 && ls.every(l => l.pausedAt); };
 
   const visibleStudents = (filterTeacher === "all" ? students : students.filter(s => s.teacherId === filterTeacher || (s.lessons||[]).some(l=>l.teacherId===filterTeacher)))
     .filter(s => (s.status || "active") === "active")
@@ -704,11 +705,15 @@ export default function PaymentsView({
                 <div style={{fontSize:13.5,fontWeight:600,display:"flex",alignItems:"center",gap:4,overflow:"hidden"}}>
                   {isInst && <span style={{fontSize:9.5,padding:"1px 5px",background:"var(--blue-lt)",color:"var(--blue)",borderRadius:4,fontWeight:700,flexShrink:0}}>🏢</span>}
                   <span style={{whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{s.name}</span>
+                  {isAllLessonsPaused(s) && <span style={{fontSize:9.5,padding:"1px 5px",background:"var(--gold-lt)",color:"var(--gold-dk)",borderRadius:4,fontWeight:700,flexShrink:0,whiteSpace:"nowrap"}}>단기 휴원</span>}
                 </div>
                 <div className={`pay-status ${isPaid ? "paid" : isPartialPaid ? "partial" : "unpaid"}`}>
                   {isPaid ? `✓ ${fmtDateShort(p.paidDate)} 입금` : isPartialPaid ? (isTeacher ? "부분납부" : `부분납부 · 잔액 ${fmtMoney(totalAmt - (p.paidAmount||0))}`) : "미납"}
                   {p?.method && isPaid ? ` · ${PAY_METHODS[p.method] || p.method}` : ""}
                 </div>
+                {!isTeacher && !isPaid && p?.amount != null && p.amount !== autoFee(s) && autoFee(s) > 0 && (
+                  <div style={{fontSize:10.5,color:"var(--gold-dk)",marginTop:2}}>⚠ 수강료 변경 ({fmtMoney(p.amount)} → {fmtMoney(autoFee(s))})</div>
+                )}
               </div>
               {!isTeacher && (
                 <div style={{ textAlign: "right" }}>
@@ -971,6 +976,16 @@ export default function PaymentsView({
                       }} style={{paddingRight:30}} />
                       <span style={{position:"absolute",right:12,top:"50%",transform:"translateY(-50%)",fontSize:13,color:"var(--ink-30)",pointerEvents:"none"}}>원</span>
                     </div>
+                    {/* 수강료 변경 감지: 저장된 수강료와 현재 설정이 다를 때 */}
+                    {s && editForm.amount != null && autoFee(s) > 0 && editForm.amount !== autoFee(s) && (
+                      <div style={{display:"flex",alignItems:"center",gap:8,marginTop:6,padding:"8px 12px",background:"var(--gold-lt)",border:"1.5px solid rgba(245,168,0,.3)",borderRadius:8,fontSize:12,color:"var(--gold-dk)"}}>
+                        <span style={{flex:1}}>현재 수강료 기준: <strong>{fmtMoney(autoFee(s))}</strong></span>
+                        <button className="btn btn-secondary btn-xs" onClick={() => setEditForm(f => {
+                          const newBase = autoFee(s) - (f.extraCharges||[]).reduce((sum,x)=>sum+(x.amount||0),0);
+                          return {...f, amount: autoFee(s), baseAmount: Math.max(0, newBase)};
+                        })}>반영</button>
+                      </div>
+                    )}
                     {absenceCount > 0 && (
                       <div style={{display:"flex",alignItems:"center",gap:8,marginTop:8,padding:"10px 14px",background:"var(--gold-lt)",border:"1.5px solid #F59E0B",borderRadius:10,fontSize:13,color:"var(--gold-dk)",fontWeight:600}}>
                         <span style={{fontSize:18,flexShrink:0}}>⚠️</span>
