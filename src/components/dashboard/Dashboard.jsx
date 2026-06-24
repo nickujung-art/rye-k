@@ -125,7 +125,7 @@ function CareLogModal({ student, currentUser, onClose, onSave }) {
   );
 }
 
-export default function Dashboard({ students, teachers, currentUser, notices, categories, attendance, payments, pending, institutions, nav, onUnpaidCardClick, feePresets = {}, instantCharges = [], onUpdateStudent = null }) {
+export default function Dashboard({ students, teachers, currentUser, notices, categories, attendance, payments, pending, institutions, nav, onUnpaidCardClick, feePresets = {}, instantCharges = [], onUpdateStudent = null, discountTypes = [] }) {
   const [todayListModal, setTodayListModal] = useState(false);
   const [expandedNotices, setExpandedNotices] = useState(new Set());
   const [careModal, setCareModal] = useState(null);
@@ -142,7 +142,7 @@ export default function Dashboard({ students, teachers, currentUser, notices, ca
   const unpaidAmount = activeStudents.reduce((sum, s) => {
     const p = monthPayments.find(mp => mp.studentId === s.id);
     if (p?.paid) return sum;
-    return sum + (p?.amount ?? calcTotalFee(s, feePresets));
+    return sum + (p?.amount ?? calcTotalFee(s, feePresets, discountTypes).total);
   }, 0);
   const paidActiveCount = activeStudents.filter(s => monthPayments.find(p => p.studentId === s.id && p.paid)).length;
   const payRate = activeStudents.length > 0 ? Math.round(paidActiveCount / activeStudents.length * 100) : 0;

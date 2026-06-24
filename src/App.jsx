@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, lazy, Suspense } from "react";
-import { db, auth, doc, setDoc, onSnapshot, runTransaction, collection, getDoc, addInstantCharge, updateInstantCharge, addLessonSlot, updateLessonSlot, deleteLessonSlot, firebaseSignIn, firebaseSignInAnon, firebaseLogout, onAuthStateChanged } from "./firebase.js";
+import { db, auth, doc, setDoc, onSnapshot, runTransaction, collection, getDoc, addInstantCharge, updateInstantCharge, addLessonSlot, updateLessonSlot, deleteLessonSlot, firebaseSignIn, firebaseSignInAnon, firebaseLogout, onAuthStateChanged, saveDiscountTypes } from "./firebase.js";
 import { DEFAULT_CATEGORIES, DAYS, ADMIN, TODAY_STR, THIS_MONTH, TODAY_DAY, ATT_STATUS, PAY_METHODS, INST_TYPES, IC, CSS, TEACHER_PALETTE } from "./constants.jsx";
-import { calcAge, isMinor, getCat, fmtDate, fmtDateShort, fmtDateTime, uid, fmtPhone, fmtMoney, allLessonInsts, allLessonDays, canManageAll, monthLabel, generateStudentCode, getBirthPassword, getPhoneInitialPassword, instTypeLabel, expandInstitutionsToMembers, getContractDaysLeft, formatLessonNoteSummary, calcLessonFeeWithFallback, slotMatchesLesson } from "./utils.js";
+import { calcAge, isMinor, getCat, fmtDate, fmtDateShort, fmtDateTime, uid, fmtPhone, fmtMoney, allLessonInsts, allLessonDays, canManageAll, monthLabel, generateStudentCode, getBirthPassword, getPhoneInitialPassword, instTypeLabel, expandInstitutionsToMembers, getContractDaysLeft, formatLessonNoteSummary, calcLessonFeeWithFallback, slotMatchesLesson, calcTotalFee } from "./utils.js";
 import { InstitutionFormModal, InstitutionDetailModal, InstitutionsView } from "./components/institution/Institutions.jsx";
 import { Logo } from "./components/shared/CommonUI.jsx";
 import { AttendanceView, LessonNotesView, NoteCommentsPanel } from "./components/attendance/Attendance.jsx";
@@ -246,6 +246,7 @@ function MainApp() {
   const [ryeSettings, setRyeSettings] = useState({ aiEnabled: true, aiSafeMode: false });
   const [instantCharges, setInstantCharges] = useState([]);
   const [shopItems, setShopItems] = useState({ categories: ["의상/공연복", "악세사리", "악기 가방", "기타"], items: [] });
+  const [discountTypes, setDiscountTypes] = useState([]);
   const [lessonSlots, setLessonSlots] = useState([]);
   const colorAutoAssigned = useRef(false);
   const [loading, setLoading] = useState(true);
@@ -387,6 +388,7 @@ function MainApp() {
       { key: "rye-ai-reports", setter: setAiReports, default: [] },
       { key: "rye-settings", setter: setRyeSettings, default: { aiEnabled: true, aiSafeMode: false } },
       { key: "rye-shop-items", setter: setShopItems, default: { categories: ["의상/공연복", "악세사리", "악기 가방", "기타"], items: [] } },
+      { key: "rye-discounts", setter: setDiscountTypes, default: [] },
     ];
 
     const checkAllLoaded = async () => {
@@ -863,18 +865,32 @@ function MainApp() {
                 const idx = merged.findIndex(p => p.studentId === np.studentId && p.month === np.month);
                 if (idx >= 0) {
                   if (merged[idx].paid) {
-                    txAutoUnmatched.push({
-                      id: np.id,
-                      senderName: np.senderName || "알 수 없음",
-                      amount: np.amount,
-                      timestamp: np.createdAt,
-                      source: "kakaobank",
-                      rawText: np.note || "",
-                      createdAt: np.createdAt,
-                      confidence: "duplicate_paid",
-                      matchedAt: null,
-                      matchedStudentId: null,
-                    });
+                    const existingPaid = merged[idx].paidAmount ?? merged[idx].amount ?? 0;
+                    const expectedAmt = merged[idx].amount || np.amount;
+                    if (existingPaid < expectedAmt) {
+                      // 부분납부 잔액 입금 — paidAmount 누적
+                      merged[idx] = {
+                        ...merged[idx],
+                        paidAmount: existingPaid + (np.paidAmount || np.amount || 0),
+                        note: `${merged[idx].note ? merged[idx].note + " / " : ""}잔액 추가 입금 — ${np.senderName} ${((np.paidAmount || np.amount || 0)).toLocaleString()}원`,
+                        updatedAt: Date.now(),
+                      };
+                      processedCount++;
+                    } else {
+                      // 이미 완납 → 이중입금
+                      txAutoUnmatched.push({
+                        id: np.id,
+                        senderName: np.senderName || "알 수 없음",
+                        amount: np.amount,
+                        timestamp: np.createdAt,
+                        source: "kakaobank",
+                        rawText: np.note || "",
+                        createdAt: np.createdAt,
+                        confidence: "duplicate_paid",
+                        matchedAt: null,
+                        matchedStudentId: null,
+                      });
+                    }
                   } else {
                     const expectedAmount = merged[idx].amount || np.amount;
                     merged[idx] = {
@@ -1009,9 +1025,9 @@ function MainApp() {
   useEffect(() => {
     if (!user || !canManageAll(user.role)) return;
     if (students.length === 0) return;
+    if (Object.keys(feePresets).length === 0) return; // C-2: feePresets·discountTypes 로드 대기 후 시딩
     const seedKey = "ryek_payment_seed_v2";
     if (localStorage.getItem(seedKey) === THIS_MONTH) return;
-    localStorage.setItem(seedKey, THIS_MONTH); // 동일 세션 재실행 방지 (정확성은 트랜잭션이 보장)
 
     const activeStudents = students.filter(s => (s.status || "active") === "active");
     const activeInstMembers = expandInstitutionsToMembers(institutions).filter(m => (m.status || "active") === "active");
@@ -1024,11 +1040,15 @@ function MainApp() {
       const cur = snap.exists() ? (snap.data().value || []) : [];
       const newRecords = allActive
         .filter(s => !cur.some(p => p.studentId === s.id && p.month === THIS_MONTH))
-        .map(s => ({ id: uid(), studentId: s.id, month: THIS_MONTH, amount: (s.monthlyFee || 0) + (s.instrumentRental ? (s.rentalFee || 0) : 0), paid: false, createdAt: Date.now() }));
+        .map(s => ({ id: uid(), studentId: s.id, month: THIS_MONTH, amount: calcTotalFee(s, feePresets, discountTypes).total, paid: false, createdAt: Date.now() }));
       if (newRecords.length === 0) return;
       tx.set(_paymentsRef, { value: [...cur, ...newRecords], updatedAt: Date.now() });
-    }).catch(() => {});
-  }, [user?.id, students.length, institutions.length]); // payments.length 제거 — seed 후 재트리거 방지
+    }).then(() => {
+      localStorage.setItem(seedKey, THIS_MONTH); // C-1: transaction 성공 후 세팅 (실패 시 재시도 허용)
+    }).catch(e => {
+      console.error("[payment-seed] 시딩 실패:", e);
+    });
+  }, [user?.id, students.length, institutions.length, feePresets, discountTypes]); // C-2: 할인·수강료 로드 후 재실행
 
   // 1회 마이그레이션: 악기대여료 누락된 미납 레코드 자동 보정
   useEffect(() => {
@@ -1150,11 +1170,12 @@ function MainApp() {
     const log = { id: uid(), userId: user?.id, userName: user?.name || "?", action, timestamp: Date.now() };
     const upd = [log, ...activity].slice(0, 200);
     setActivity(upd);
-    try { await sSet("rye-activity", upd); } catch {}
+    try { await sSet("rye-activity", upd); } catch (e) { console.error("[addLog] 감사 로그 저장 실패:", e); }
   };
 
   const requestFullBackup = () => setBackupConfirm(true);
   const handleFullBackup = () => {
+    if (!canManageAll(user?.role)) return; // H-7: 역할 이중 확인
     setBackupConfirm(false);
     try {
       const snapshot = {
@@ -1173,6 +1194,7 @@ function MainApp() {
         "rye-trash": trash,
         "rye-student-notices": studentNotices,
         "rye-institutions": institutions,
+        "rye-discounts": discountTypes,
       };
       const blob = new Blob([JSON.stringify(snapshot, null, 2)], { type: "application/json" });
       const url = URL.createObjectURL(blob);
@@ -1417,6 +1439,7 @@ function MainApp() {
               nav={navigate}
               onUnpaidCardClick={() => { setPaymentsInitFilter(true); navigate("payments"); }}
               feePresets={feePresets}
+              discountTypes={discountTypes}
               instantCharges={instantCharges}
               onUpdateStudent={async (s) => { await updateStudentDoc(s); }}
             />}
@@ -1434,6 +1457,12 @@ function MainApp() {
               initFilterUnpaid={paymentsInitFilter}
               onMountFilterConsumed={() => setPaymentsInitFilter(false)}
               feePresets={feePresets}
+              discountTypes={discountTypes}
+              onSaveDiscountTypes={async (upd) => {
+                await saveDiscountTypes(upd);
+                addLog("할인 타입 수정");
+                showToast("할인 타입이 저장되었습니다.");
+              }}
               instantCharges={instantCharges}
               shopItems={shopItems}
               onAddInstantCharge={async (data) => {
@@ -1536,6 +1565,7 @@ function MainApp() {
               institutions={institutions}
               instantCharges={instantCharges}
               feePresets={feePresets}
+              discountTypes={discountTypes}
               shopItems={shopItems}
               currentUser={user}
             />}
@@ -1563,7 +1593,7 @@ function MainApp() {
         />
       )}
 
-      {modal === "sForm" && <StudentFormModal student={selected} teachers={teachers} currentUser={user} categories={categories} feePresets={feePresets} onClose={() => setModal(null)} onSave={async data => {
+      {modal === "sForm" && <StudentFormModal student={selected} teachers={teachers} currentUser={user} categories={categories} feePresets={feePresets} discountTypes={discountTypes} onClose={() => setModal(null)} onSave={async data => {
         const isNew = !data.id;
         if (isNew && !canManageAll(user.role)) {
           // Teacher: send to pending for manager/admin approval

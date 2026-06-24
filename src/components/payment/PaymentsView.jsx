@@ -5,6 +5,270 @@ import { canManageAll, monthLabel, fmtMoney, fmtDateShort, fmtDate, calcAge, isM
 import { HelpButton } from "../shared/HelpSystem.jsx";
 import { Av } from "../shared/CommonUI.jsx";
 import AlimtalkModal from "../shared/AlimtalkModal.jsx";
+import { DEFAULT_DISCOUNT_TYPES } from "../admin/AdminTools.jsx";
+
+function DiscountTypeManager({ discountTypes, onSaveDiscountTypes, uid: uidFn }) {
+  const [editId, setEditId] = useState(null);
+  const [editForm, setEditForm] = useState({});
+  const [deleteConfirmId, setDeleteConfirmId] = useState(null);
+  const [adding, setAdding] = useState(false);
+  const [newForm, setNewForm] = useState({ name: "", type: "percent", value: 10, burden: "academy", notes: "", active: true });
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState("");
+
+  const handleToggleActive = async (id) => {
+    const upd = discountTypes.map(d => d.id === id ? { ...d, active: d.active === false ? true : false } : d);
+    setSaving(true);
+    try { await onSaveDiscountTypes(upd); setErr(""); }
+    catch (e) { setErr("저장 실패: " + e.message); }
+    finally { setSaving(false); }
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editForm.name?.trim()) { setErr("이름을 입력하세요."); return; }
+    const val = Number(editForm.value);
+    if (!Number.isFinite(val) || val < 0) { setErr("할인 값은 0 이상 숫자여야 합니다."); return; }
+    if (editForm.type === "percent" && val > 100) { setErr("퍼센트 할인은 100% 이하여야 합니다."); return; }
+    const finalEdit = { ...editForm, value: val };
+    if (finalEdit.burden === "split" && !finalEdit.splitRatio) finalEdit.splitRatio = { academy: 0.5, teacher: 0.5 };
+    const upd = discountTypes.map(d => d.id === editId ? { ...d, ...finalEdit } : d);
+    setSaving(true);
+    try { await onSaveDiscountTypes(upd); setEditId(null); setErr(""); }
+    catch (e) { setErr("저장 실패: " + e.message); }
+    finally { setSaving(false); }
+  };
+
+  const handleDelete = async (id) => {
+    const upd = discountTypes.filter(d => d.id !== id);
+    setSaving(true);
+    try { await onSaveDiscountTypes(upd); setDeleteConfirmId(null); setErr(""); }
+    catch (e) { setErr("삭제 실패: " + e.message); }
+    finally { setSaving(false); }
+  };
+
+  const handleAddNew = async () => {
+    if (!newForm.name?.trim()) { setErr("이름을 입력하세요."); return; }
+    const val = Number(newForm.value);
+    if (!Number.isFinite(val) || val < 0) { setErr("할인 값은 0 이상 숫자여야 합니다."); return; }
+    if (newForm.type === "percent" && val > 100) { setErr("퍼센트 할인은 100% 이하여야 합니다."); return; }
+    const entry = { ...newForm, id: uidFn(), value: val, createdAt: Date.now() };
+    if (entry.burden === "split" && !entry.splitRatio) entry.splitRatio = { academy: 0.5, teacher: 0.5 };
+    const upd = [...discountTypes, entry];
+    setSaving(true);
+    try {
+      await onSaveDiscountTypes(upd);
+      setAdding(false);
+      setNewForm({ name: "", type: "percent", value: 10, burden: "academy", notes: "", active: true });
+      setErr("");
+    }
+    catch (e) { setErr("저장 실패: " + e.message); }
+    finally { setSaving(false); }
+  };
+
+  const handleSeedDefaults = async () => {
+    const upd = DEFAULT_DISCOUNT_TYPES.map(d => ({ ...d, id: uidFn(), createdAt: Date.now() }));
+    setSaving(true);
+    try { await onSaveDiscountTypes(upd); setErr(""); }
+    catch (e) { setErr("초기화 실패: " + e.message); }
+    finally { setSaving(false); }
+  };
+
+  const burdenLabel = (d) => {
+    if (d.burden === "teacher") return "강사";
+    if (d.burden === "split") return `분담 (학원 ${Math.round((d.splitRatio?.academy ?? 0.5) * 100)}%)`;
+    return "학원";
+  };
+
+  return (
+    <div>
+      <div className="ph">
+        <div>
+          <h1>할인 관리</h1>
+          <div className="ph-sub">등록된 할인 타입 {discountTypes.length}개</div>
+        </div>
+      </div>
+      {err && <div className="form-err" style={{ marginBottom: 8 }}>⚠ {err}</div>}
+      <div className="card" style={{ padding: 0, overflow: "hidden", marginBottom: 10 }}>
+        {discountTypes.length === 0 && !adding && (
+          <div style={{ padding: 28, textAlign: "center", color: "var(--ink-30)" }}>
+            <div style={{ marginBottom: 12 }}>등록된 할인 타입이 없습니다.</div>
+            <button
+              className="btn btn-secondary btn-sm"
+              onClick={handleSeedDefaults}
+              disabled={saving}
+            >
+              {saving ? "생성 중…" : "초기 할인 타입 7개 생성"}
+            </button>
+          </div>
+        )}
+        {discountTypes.map((d, idx) => (
+          <div
+            key={d.id}
+            style={{
+              borderBottom: idx < discountTypes.length - 1 ? "1px solid var(--border)" : "none",
+              padding: "12px 16px",
+            }}
+          >
+            {editId === d.id ? (
+              <div>
+                <div className="fg-row" style={{ marginBottom: 8 }}>
+                  <div className="fg">
+                    <label className="fg-label">이름</label>
+                    <input className="inp" value={editForm.name || ""} onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))} />
+                  </div>
+                  <div className="fg">
+                    <label className="fg-label">타입</label>
+                    <select className="sel" value={editForm.type || "percent"} onChange={e => setEditForm(f => ({ ...f, type: e.target.value }))}>
+                      <option value="percent">% 할인</option>
+                      <option value="fixed">금액 할인(원)</option>
+                    </select>
+                  </div>
+                  <div className="fg">
+                    <label className="fg-label">값</label>
+                    <input className="inp" type="number" min="0" value={editForm.value ?? ""} onChange={e => setEditForm(f => ({ ...f, value: Number(e.target.value) }))} />
+                  </div>
+                </div>
+                <div className="fg-row" style={{ marginBottom: 8 }}>
+                  <div className="fg">
+                    <label className="fg-label">부담 주체</label>
+                    <select className="sel" value={editForm.burden || "academy"} onChange={e => setEditForm(f => ({ ...f, burden: e.target.value }))}>
+                      <option value="academy">학원</option>
+                      <option value="teacher">강사</option>
+                      <option value="split">분담</option>
+                    </select>
+                  </div>
+                  {editForm.burden === "split" && (
+                    <div className="fg">
+                      <label className="fg-label">학원 부담 비율 (%)</label>
+                      <input
+                        className="inp"
+                        type="number"
+                        min="0"
+                        max="100"
+                        value={Math.round((editForm.splitRatio?.academy ?? 0.5) * 100)}
+                        onChange={e => {
+                          const v = Math.max(0, Math.min(1, Number(e.target.value) / 100));
+                          setEditForm(f => ({ ...f, splitRatio: { academy: v, teacher: 1 - v } }));
+                        }}
+                      />
+                    </div>
+                  )}
+                </div>
+                <div className="fg" style={{ marginBottom: 8 }}>
+                  <label className="fg-label">메모</label>
+                  <input className="inp" value={editForm.notes || ""} onChange={e => setEditForm(f => ({ ...f, notes: e.target.value }))} />
+                </div>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button className="btn btn-primary btn-sm" onClick={handleSaveEdit} disabled={saving}>{saving ? "저장 중…" : "저장"}</button>
+                  <button className="btn btn-ghost btn-sm" onClick={() => { setEditId(null); setErr(""); }}>취소</button>
+                </div>
+              </div>
+            ) : (
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontWeight: 600, fontSize: 13.5 }}>{d.name}</div>
+                  <div style={{ fontSize: 11, color: "var(--ink-60)", marginTop: 2 }}>
+                    {d.type === "percent" ? `${d.value}%` : `${Number(d.value).toLocaleString("ko-KR")}원`} 할인 · {burdenLabel(d)}
+                  </div>
+                </div>
+                <button
+                  onClick={() => handleToggleActive(d.id)}
+                  disabled={saving}
+                  style={{
+                    fontSize: 11, padding: "2px 8px", borderRadius: 99,
+                    border: "1px solid var(--border)",
+                    background: d.active !== false ? "var(--green)" : "var(--ink-10)",
+                    color: d.active !== false ? "#fff" : "var(--ink-30)",
+                    cursor: "pointer", fontWeight: 600, whiteSpace: "nowrap",
+                  }}
+                >
+                  {d.active !== false ? "활성" : "비활성"}
+                </button>
+                {deleteConfirmId === d.id ? (
+                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    <span style={{ fontSize: 11, color: "var(--red)", whiteSpace: "nowrap" }}>정말 삭제?</span>
+                    <button
+                      style={{ fontSize: 11, padding: "2px 8px", borderRadius: 6, background: "var(--red)", color: "#fff", border: "none", cursor: "pointer", fontWeight: 600 }}
+                      onClick={() => handleDelete(d.id)}
+                      disabled={saving}
+                    >
+                      삭제
+                    </button>
+                    <button className="btn btn-ghost btn-sm" onClick={() => setDeleteConfirmId(null)}>취소</button>
+                  </div>
+                ) : (
+                  <div style={{ display: "flex", gap: 4 }}>
+                    <button className="btn btn-ghost btn-sm" onClick={() => { setEditId(d.id); setEditForm({ ...d }); setErr(""); }}>수정</button>
+                    <button className="btn btn-ghost btn-sm" style={{ color: "var(--red)" }} onClick={() => setDeleteConfirmId(d.id)}>삭제</button>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+      {!adding ? (
+        <button className="btn btn-secondary btn-sm" onClick={() => { setAdding(true); setErr(""); }}>
+          + 할인 타입 추가
+        </button>
+      ) : (
+        <div className="card" style={{ padding: 16, marginTop: 4 }}>
+          <div className="fg-row" style={{ marginBottom: 8 }}>
+            <div className="fg">
+              <label className="fg-label">이름 <span className="req">*</span></label>
+              <input className="inp" value={newForm.name} onChange={e => setNewForm(f => ({ ...f, name: e.target.value }))} placeholder="예: 지인 소개" />
+            </div>
+            <div className="fg">
+              <label className="fg-label">타입</label>
+              <select className="sel" value={newForm.type} onChange={e => setNewForm(f => ({ ...f, type: e.target.value }))}>
+                <option value="percent">% 할인</option>
+                <option value="fixed">금액 할인(원)</option>
+              </select>
+            </div>
+            <div className="fg">
+              <label className="fg-label">값</label>
+              <input className="inp" type="number" min="0" value={newForm.value} onChange={e => setNewForm(f => ({ ...f, value: e.target.value }))} />
+            </div>
+          </div>
+          <div className="fg-row" style={{ marginBottom: 8 }}>
+            <div className="fg">
+              <label className="fg-label">부담 주체</label>
+              <select className="sel" value={newForm.burden} onChange={e => setNewForm(f => ({ ...f, burden: e.target.value }))}>
+                <option value="academy">학원</option>
+                <option value="teacher">강사</option>
+                <option value="split">분담</option>
+              </select>
+            </div>
+            {newForm.burden === "split" && (
+              <div className="fg">
+                <label className="fg-label">학원 부담 비율 (%)</label>
+                <input
+                  className="inp"
+                  type="number"
+                  min="0"
+                  max="100"
+                  defaultValue={50}
+                  onChange={e => {
+                    const v = Number(e.target.value) / 100;
+                    setNewForm(f => ({ ...f, splitRatio: { academy: v, teacher: 1 - v } }));
+                  }}
+                />
+              </div>
+            )}
+          </div>
+          <div className="fg" style={{ marginBottom: 8 }}>
+            <label className="fg-label">메모</label>
+            <input className="inp" value={newForm.notes} onChange={e => setNewForm(f => ({ ...f, notes: e.target.value }))} />
+          </div>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button className="btn btn-primary btn-sm" onClick={handleAddNew} disabled={saving}>{saving ? "추가 중…" : "추가"}</button>
+            <button className="btn btn-ghost btn-sm" onClick={() => { setAdding(false); setErr(""); }}>취소</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function PaymentsView({
   students, teachers, currentUser, payments, onSavePayments, onLog,
@@ -22,6 +286,8 @@ export default function PaymentsView({
   onApproveInstantCharge,
   onRejectInstantCharge,
   onConfirmInstantPayment,
+  discountTypes = [],
+  onSaveDiscountTypes,
 }) {
   const [month, setMonth] = useState(THIS_MONTH);
   const [editingId, setEditingId] = useState(null);
@@ -82,14 +348,15 @@ export default function PaymentsView({
   };
   const isTeacher = currentUser.role === "teacher";
 
+  function getPayment(studentId) { return payments.find(p => p.studentId === studentId && p.month === month); }
+  const autoFeeResult = (s) => calcTotalFee(s, feePresets, discountTypes);
+  const autoFee = (s) => autoFeeResult(s).total;
+  const isAllLessonsPaused = (s) => { const ls = s.lessons || []; return ls.length > 0 && ls.every(l => l.pausedAt); };
+
   const visibleStudents = (filterTeacher === "all" ? students : students.filter(s => s.teacherId === filterTeacher || (s.lessons||[]).some(l=>l.teacherId===filterTeacher)))
     .filter(s => (s.status || "active") === "active")
     .filter(s => !searchQuery.trim() || s.name.includes(searchQuery.trim()))
     .filter(s => { if (!filterUnpaid) return true; const p = getPayment(s.id); return !p?.paid || (p.paidAmount != null && (p.paidAmount||0) < (p.amount ?? autoFee(s))); });
-
-  function getPayment(studentId) { return payments.find(p => p.studentId === studentId && p.month === month); }
-
-  const autoFee = (s) => calcTotalFee(s, feePresets);
 
   const totalDue = visibleStudents.reduce((sum, s) => {
     const p = getPayment(s.id);
@@ -376,6 +643,10 @@ export default function PaymentsView({
             즉시청구
             {pendingInstantCount > 0 && <span style={{marginLeft:4,background:"var(--blue)",color:"#fff",borderRadius:99,padding:"0 5px",fontSize:10,fontWeight:700}}>{pendingInstantCount}</span>}
           </button>
+          <button className={`ftab${activeTab === "discounts" ? " active" : ""}`}
+            onClick={() => setActiveTab("discounts")}>
+            할인 관리
+          </button>
         </div>
       )}
       {activeTab === "payments" && <>
@@ -420,6 +691,7 @@ export default function PaymentsView({
       ) : visibleStudents.map(s => {
         const p = getPayment(s.id);
         const totalAmt = p?.amount ?? autoFee(s);
+        const feeResult = autoFeeResult(s);
         const isPaid = p?.paid && (p.paidAmount == null || (p.paidAmount||0) >= totalAmt);
         const isPartialPaid = p?.paid && p.paidAmount != null && (p.paidAmount||0) > 0 && (p.paidAmount||0) < totalAmt;
         const amt = totalAmt;
@@ -433,13 +705,37 @@ export default function PaymentsView({
                 <div style={{fontSize:13.5,fontWeight:600,display:"flex",alignItems:"center",gap:4,overflow:"hidden"}}>
                   {isInst && <span style={{fontSize:9.5,padding:"1px 5px",background:"var(--blue-lt)",color:"var(--blue)",borderRadius:4,fontWeight:700,flexShrink:0}}>🏢</span>}
                   <span style={{whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{s.name}</span>
+                  {isAllLessonsPaused(s) && <span style={{fontSize:9.5,padding:"1px 5px",background:"var(--gold-lt)",color:"var(--gold-dk)",borderRadius:4,fontWeight:700,flexShrink:0,whiteSpace:"nowrap"}}>단기 휴원</span>}
                 </div>
                 <div className={`pay-status ${isPaid ? "paid" : isPartialPaid ? "partial" : "unpaid"}`}>
                   {isPaid ? `✓ ${fmtDateShort(p.paidDate)} 입금` : isPartialPaid ? (isTeacher ? "부분납부" : `부분납부 · 잔액 ${fmtMoney(totalAmt - (p.paidAmount||0))}`) : "미납"}
                   {p?.method && isPaid ? ` · ${PAY_METHODS[p.method] || p.method}` : ""}
                 </div>
+                {!isTeacher && !isPaid && p?.amount != null && p.amount !== autoFee(s) && autoFee(s) > 0 && (
+                  <div style={{fontSize:10.5,color:"var(--gold-dk)",marginTop:2}}>⚠ 수강료 변경 ({fmtMoney(p.amount)} → {fmtMoney(autoFee(s))})</div>
+                )}
               </div>
-              {!isTeacher && <div className="pay-amount" style={{color: isPaid ? "var(--green)" : isPartialPaid ? "var(--gold-dk)" : "var(--ink)"}}>{fmtMoney(amt)}</div>}
+              {!isTeacher && (
+                <div style={{ textAlign: "right" }}>
+                  {feeResult.discountAmount > 0 && (p == null || p.amount > feeResult.total) ? (
+                    <>
+                      <div style={{ fontSize: 11, color: "var(--ink-30)", textDecoration: "line-through", lineHeight: 1.3 }}>
+                        {fmtMoney(feeResult.original)}
+                      </div>
+                      <div className="pay-amount" style={{ color: isPaid ? "var(--green)" : isPartialPaid ? "var(--gold-dk)" : "var(--ink)" }}>
+                        {fmtMoney(amt)}
+                      </div>
+                      <div style={{ fontSize: 9.5, background: "var(--blue-lt,#EFF6FF)", color: "var(--blue,#3B82F6)", borderRadius: 4, padding: "1px 5px", fontWeight: 600, marginTop: 1, display: "inline-block", whiteSpace: "nowrap" }}>
+                        {feeResult.discountName}
+                      </div>
+                    </>
+                  ) : (
+                    <div className="pay-amount" style={{ color: isPaid ? "var(--green)" : isPartialPaid ? "var(--gold-dk)" : "var(--ink)" }}>
+                      {fmtMoney(amt)}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
             {/* 2줄: 액션 버튼 + 수강료 입력 (관리자·매니저만) */}
             {canManageAll(currentUser.role) && !isInst && (
@@ -453,8 +749,9 @@ export default function PaymentsView({
                       const base = p?.amount ?? autoFee(s);
                       const record = { ...(p||{}), id: p?.id||uid(), studentId: s.id, month, amount: base, paid: true, paidAmount: base, paidDate: TODAY_STR, method: "transfer", note: p?.note||"", extraCharges: p?.extraCharges||[], createdAt: p?.createdAt||Date.now(), updatedAt: Date.now() };
                       const upd = p ? payments.map(pp => pp.id === p.id ? record : pp) : [...payments, record];
-                      try { await onSavePayments(upd); onLog(`${s.name} 회원 ${monthLabel(month)} 수강료 입금 확인`); } catch {}
-                      setQuickPayingId(null);
+                      try { await onSavePayments(upd); onLog(`${s.name} 회원 ${monthLabel(month)} 수강료 입금 확인`); }
+                      catch (e) { console.error("QuickPay 저장 실패:", e); onLog(`입금 처리 실패 (${s.name}): ${e?.message || "오류"}`); }
+                      finally { setQuickPayingId(null); }
                     }}
                     style={{background:"var(--green)",color:"#fff",border:"none",borderRadius:8,padding:"5px 11px",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit",opacity:quickPayingId===s.id?0.5:1,transition:"opacity .1s",whiteSpace:"nowrap"}}
                   >
@@ -474,8 +771,9 @@ export default function PaymentsView({
                     const base = p?.amount ?? autoFee(s);
                     const record = { ...(p||{}), id: p?.id||uid(), studentId: s.id, month, amount: base, paid: true, paidAmount: base, paidDate: TODAY_STR, method: "transfer", note: p?.note||"", extraCharges: p?.extraCharges||[], createdAt: p?.createdAt||Date.now(), updatedAt: Date.now() };
                     const upd = p ? payments.map(pp => pp.id === p.id ? record : pp) : [...payments, record];
-                    try { await onSavePayments(upd); onLog(`${s.name} 회원 ${monthLabel(month)} 수강료 입금 확인`); } catch {}
-                    setQuickPayingId(null);
+                    try { await onSavePayments(upd); onLog(`${s.name} 회원 ${monthLabel(month)} 수강료 입금 확인`); }
+                    catch (e) { console.error("QuickPay 저장 실패:", e); onLog(`입금 처리 실패 (${s.name}): ${e?.message || "오류"}`); }
+                    finally { setQuickPayingId(null); }
                   }}
                   style={{background:"var(--green)",color:"#fff",border:"none",borderRadius:8,padding:"5px 11px",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit",opacity:quickPayingId===s.id?0.5:1,transition:"opacity .1s",whiteSpace:"nowrap"}}
                 >
@@ -502,7 +800,12 @@ export default function PaymentsView({
         />
       )}
       {activeTab === "log" && canManageAll(currentUser.role) && (
-        <PaymentLogTab paymentLog={paymentLog} students={students} onSavePaymentLog={onSavePaymentLog} />
+        <PaymentLogTab
+          paymentLog={paymentLog}
+          students={students}
+          onSavePaymentLog={onSavePaymentLog}
+          onOpenStudentPayment={(sid) => { const st = students.find(s => s.id === sid); if (st) openEdit(st); }}
+        />
       )}
 
       {activeTab === "instantCharges" && canManageAll(currentUser.role) && (
@@ -567,6 +870,9 @@ export default function PaymentsView({
                           setConfirmingPaymentId(charge.id);
                           try {
                             await onConfirmInstantPayment(charge, student);
+                          } catch (e) {
+                            setApproveInstantErr(e?.message || "입금 확인 처리에 실패했습니다.");
+                            setTimeout(() => setApproveInstantErr(""), 4000);
                           } finally {
                             setConfirmingPaymentId(null);
                           }
@@ -628,8 +934,16 @@ export default function PaymentsView({
         </div>
       )}
 
+      {activeTab === "discounts" && canManageAll(currentUser.role) && (
+        <DiscountTypeManager
+          discountTypes={discountTypes}
+          onSaveDiscountTypes={onSaveDiscountTypes}
+          uid={uid}
+        />
+      )}
+
       {editingId && (() => {
-        const s = visibleStudents.find(st => st.id === editingId);
+        const s = visibleStudents.find(st => st.id === editingId) || students.find(st => st.id === editingId);
         const extraSum = (editForm.extraCharges || []).reduce((acc, x) => acc + (x.amount || 0), 0);
         const absenceCount = attendance.filter(a =>
           a.studentId === editForm.studentId &&
@@ -667,6 +981,17 @@ export default function PaymentsView({
                       }} style={{paddingRight:30}} />
                       <span style={{position:"absolute",right:12,top:"50%",transform:"translateY(-50%)",fontSize:13,color:"var(--ink-30)",pointerEvents:"none"}}>원</span>
                     </div>
+                    {/* 수강료 변경 감지: 저장된 수강료와 현재 설정이 다를 때 */}
+                    {s && editForm.amount != null && autoFee(s) > 0 && editForm.amount !== autoFee(s) && (
+                      <div style={{display:"flex",alignItems:"center",gap:8,marginTop:6,padding:"8px 12px",background:"var(--gold-lt)",border:"1.5px solid rgba(245,168,0,.3)",borderRadius:8,fontSize:12,color:"var(--gold-dk)"}}>
+                        <span style={{flex:1}}>현재 수강료 기준: <strong>{fmtMoney(autoFee(s))}</strong></span>
+                        <button className="btn btn-secondary btn-xs" onClick={() => setEditForm(f => {
+                          const newAmt = autoFee(s);
+                          const newBase = newAmt - (f.extraCharges||[]).reduce((sum,x)=>sum+(x.amount||0),0);
+                          return {...f, amount: newAmt, baseAmount: Math.max(0, newBase), ...(!f.paid ? { paidAmount: newAmt } : {})};
+                        })}>반영</button>
+                      </div>
+                    )}
                     {absenceCount > 0 && (
                       <div style={{display:"flex",alignItems:"center",gap:8,marginTop:8,padding:"10px 14px",background:"var(--gold-lt)",border:"1.5px solid #F59E0B",borderRadius:10,fontSize:13,color:"var(--gold-dk)",fontWeight:600}}>
                         <span style={{fontSize:18,flexShrink:0}}>⚠️</span>
@@ -789,6 +1114,26 @@ export default function PaymentsView({
                     )}
                   </div>
                 )}
+                {/* 할인 브레이크다운 — 자동계산 수강료 + 할인 적용 시만 표시 (DIS-07) */}
+                {canManageAll(currentUser.role) && !isTeacher && !s?.isInstitution && (() => {
+                  if (editForm.amount && getPayment(s?.id)?.amount) return null; // 수동 입력 금액인 경우 표시 안 함
+                  const feeRes = autoFeeResult(s);
+                  if (!feeRes || feeRes.discountAmount <= 0) return null;
+                  return (
+                    <div style={{ background: "var(--blue-lt,#EFF6FF)", border: "1px solid rgba(59,130,246,.2)", borderRadius: 10, padding: "10px 14px", marginBottom: 8, fontSize: 12.5 }}>
+                      <div style={{ fontWeight: 700, fontSize: 11, color: "var(--blue,#3B82F6)", marginBottom: 6, letterSpacing: .3 }}>할인 적용</div>
+                      <div style={{ display: "flex", justifyContent: "space-between", color: "var(--ink-60)", marginBottom: 3 }}>
+                        <span>원가</span><span>{fmtMoney(feeRes.original)}</span>
+                      </div>
+                      <div style={{ display: "flex", justifyContent: "space-between", color: "var(--blue,#3B82F6)", marginBottom: 3 }}>
+                        <span>{feeRes.discountName}</span><span>-{fmtMoney(feeRes.discountAmount)}</span>
+                      </div>
+                      <div style={{ borderTop: "1px dashed rgba(59,130,246,.25)", paddingTop: 6, display: "flex", justifyContent: "space-between", fontWeight: 700, color: "var(--ink)", fontSize: 13 }}>
+                        <span>할인 적용가</span><span>{fmtMoney(feeRes.total)}</span>
+                      </div>
+                    </div>
+                  );
+                })()}
                 {/* 합계 브레이크다운 — 추가 청구 항목이 있을 때만 */}
                 {canManageAll(currentUser.role) && !isTeacher && extraSum > 0 && (
                   <div style={{background:"var(--ink-5,#F8F8F8)",border:"1px solid var(--border)",borderRadius:10,padding:"10px 14px",marginBottom:8,fontSize:12.5}}>
@@ -803,6 +1148,70 @@ export default function PaymentsView({
                     </div>
                   </div>
                 )}
+                {/* 이달 입금 현황 — 관리자/매니저 전용 */}
+                {canManageAll(currentUser.role) && !isTeacher && (() => {
+                  const totalCharge = editForm.amount || 0;
+                  const totalPaid = editForm.paid ? (editForm.paidAmount ?? totalCharge) : 0;
+                  const remaining = Math.max(0, totalCharge - totalPaid);
+                  // 웹훅 자동매칭 로그 — 이 학생·이 달 항목
+                  const logEntries = paymentLog.filter(e => {
+                    if (!e.studentId || e.studentId !== editForm.studentId) return false;
+                    if (!e.timestamp) return false;
+                    const d = new Date(e.timestamp);
+                    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}` === month;
+                  });
+                  // 미매칭에서 수동 매칭된 항목 — matchedStudentId로 연결
+                  const manualEntries = unmatchedPayments.filter(u => {
+                    if (!u.matchedStudentId || u.matchedStudentId !== editForm.studentId) return false;
+                    if (!u.matchedAt) return false;
+                    if (!u.timestamp) return false;
+                    const d = new Date(u.timestamp);
+                    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}` === month;
+                  });
+                  if (logEntries.length === 0 && manualEntries.length === 0 && !editForm.paid) return null;
+                  return (
+                    <div style={{background:"#F0FDF4",border:"1px solid #BBF7D0",borderRadius:10,padding:"10px 14px",marginBottom:8,fontSize:12}}>
+                      <div style={{fontWeight:700,fontSize:11,color:"#15803D",marginBottom:6,letterSpacing:.3}}>{monthLabel(month)} 입금 현황</div>
+                      {logEntries.map(e => (
+                        <div key={e.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",color:"#166534",marginBottom:3,fontSize:11.5}}>
+                          <span style={{display:"flex",alignItems:"center",gap:5}}>
+                            <span style={{width:6,height:6,borderRadius:"50%",background:"#22C55E",display:"inline-block",flexShrink:0}} />
+                            <span style={{color:"var(--ink-60)"}}>{e.timestamp ? new Date(e.timestamp).toLocaleDateString("ko-KR",{month:"numeric",day:"numeric"}) : ""}</span>
+                            <span>{e.senderName || "입금"}</span>
+                            <span style={{fontSize:10,color:"var(--ink-30)"}}>웹훅</span>
+                          </span>
+                          <span style={{fontWeight:600}}>+{(e.amount||0).toLocaleString("ko-KR")}원</span>
+                        </div>
+                      ))}
+                      {manualEntries.map(e => (
+                        <div key={e.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",color:"#166534",marginBottom:3,fontSize:11.5}}>
+                          <span style={{display:"flex",alignItems:"center",gap:5}}>
+                            <span style={{width:6,height:6,borderRadius:"50%",background:"#3B82F6",display:"inline-block",flexShrink:0}} />
+                            <span style={{color:"var(--ink-60)"}}>{e.timestamp ? new Date(e.timestamp).toLocaleDateString("ko-KR",{month:"numeric",day:"numeric"}) : ""}</span>
+                            <span>{e.senderName || "수동 매칭"}</span>
+                            <span style={{fontSize:10,color:"var(--ink-30)"}}>수동</span>
+                          </span>
+                          <span style={{fontWeight:600}}>+{(e.amount||0).toLocaleString("ko-KR")}원</span>
+                        </div>
+                      ))}
+                      <div style={{borderTop:"1px dashed #BBF7D0",paddingTop:6,marginTop:(logEntries.length+manualEntries.length)>0?4:0,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                        <div>
+                          <div style={{fontSize:11.5,color:"#166534"}}>
+                            입금 <span style={{fontWeight:700}}>{fmtMoney(totalPaid)}</span>
+                            <span style={{color:"var(--ink-30)",margin:"0 4px"}}>/</span>
+                            청구 <span style={{fontWeight:600,color:"var(--ink)"}}>{fmtMoney(totalCharge)}</span>
+                          </div>
+                          {remaining > 0 && (
+                            <div style={{fontSize:11.5,color:"#B45309",fontWeight:600,marginTop:2}}>⚠ 미입금 잔액 {fmtMoney(remaining)}</div>
+                          )}
+                          {remaining === 0 && editForm.paid && (
+                            <div style={{fontSize:11.5,color:"#15803D",fontWeight:600,marginTop:2}}>✓ 완납</div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
                 <div className="fg"><label className="fg-label">메모</label><input className="inp" value={editForm.note} onChange={e => setEditForm(f => ({...f, note: e.target.value}))} placeholder="비고" /></div>
                 {isTeacher && (
                   <div style={{borderTop:"1px dashed var(--border)",paddingTop:10,marginTop:4}}>
@@ -867,6 +1276,8 @@ export default function PaymentsView({
           students={visibleStudents}
           month={month}
           getPayment={getPayment}
+          feePresets={feePresets}
+          discountTypes={discountTypes}
           onClose={() => setAlimtalkModal(null)}
           onSend={async (type, targets, options) => {
             try {
@@ -1452,6 +1863,9 @@ function UnmatchedPaymentsTab({
                 >
                   {matchingId === u.id ? "처리 중…" : "✓ 수납 처리"}
                 </button>
+                {!selectedStudentId[u.id] && (
+                  <div style={{fontSize:10,color:"var(--ink-30)",textAlign:"center",marginTop:2}}>회원 선택 후 처리</div>
+                )}
                 {confirmId === u.id ? (
                   <div style={{display:"flex",gap:4,alignItems:"center",marginTop:2}}>
                     <span style={{fontSize:10,color:"var(--red)"}}>삭제?</span>
@@ -1508,11 +1922,12 @@ function UnmatchedPaymentsTab({
   );
 }
 
-function PaymentLogTab({ paymentLog, students, onSavePaymentLog }) {
+function PaymentLogTab({ paymentLog, students, onSavePaymentLog, onOpenStudentPayment }) {
   const now = new Date();
   const [viewMonth, setViewMonth] = useState(`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}`);
   const [copied, setCopied] = useState(false);
   const [confirmId, setConfirmId] = useState(null);
+  const [matchFilter, setMatchFilter] = useState("all"); // "all" | "matched" | "unmatched"
 
   const changeMonth = (delta) => {
     const [y, m] = viewMonth.split("-").map(Number);
@@ -1523,7 +1938,10 @@ function PaymentLogTab({ paymentLog, students, onSavePaymentLog }) {
   const filtered = paymentLog.filter(e => {
     if (!e.timestamp) return false;
     const d = new Date(e.timestamp);
-    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}` === viewMonth;
+    if (`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}` !== viewMonth) return false;
+    if (matchFilter === "matched" && !e.matched) return false;
+    if (matchFilter === "unmatched" && e.matched) return false;
+    return true;
   });
   const sorted = [...filtered].sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
   const totalAmount = sorted.reduce((s, e) => s + (e.amount || 0), 0);
@@ -1588,7 +2006,7 @@ function PaymentLogTab({ paymentLog, students, onSavePaymentLog }) {
       {/* 월 탐색 + 요약 + 복사 */}
       <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:12,flexWrap:"wrap"}}>
         <button className="btn btn-secondary btn-xs" onClick={() => changeMonth(-1)}>←</button>
-        <span style={{fontWeight:700,fontSize:14,minWidth:88,textAlign:"center"}}>{monthLabel}</span>
+        <input className="inp" type="month" value={viewMonth} onChange={e => setViewMonth(e.target.value)} style={{textAlign:"center",maxWidth:140,fontSize:13,padding:"4px 8px",height:30}} />
         <button className="btn btn-secondary btn-xs" onClick={() => changeMonth(1)}>→</button>
         <span style={{flex:1}} />
         {sorted.length > 0 && (
@@ -1601,6 +2019,18 @@ function PaymentLogTab({ paymentLog, students, onSavePaymentLog }) {
             {copied ? "✓ 복사됨" : "표 복사"}
           </button>
         )}
+      </div>
+      {/* 매칭 필터 */}
+      <div style={{display:"flex",gap:6,marginBottom:10}}>
+        {[["all","전체"],["matched","매칭"],["unmatched","미매칭"]].map(([v,l]) => (
+          <button key={v} className="btn btn-xs" onClick={() => setMatchFilter(v)}
+            style={{background:matchFilter===v?"var(--ink)":"var(--ink-10)",color:matchFilter===v?"#fff":"var(--ink-60)",border:"none",fontWeight:matchFilter===v?700:400}}>
+            {l}
+          </button>
+        ))}
+        <span style={{fontSize:11,color:"var(--ink-30)",alignSelf:"center",marginLeft:4}}>
+          {sorted.length}건 · {sorted.reduce((s,e)=>s+(e.amount||0),0).toLocaleString()}원
+        </span>
       </div>
 
       {sorted.length === 0 ? (
@@ -1656,7 +2086,13 @@ function PaymentLogTab({ paymentLog, students, onSavePaymentLog }) {
                         <td>
                           <span style={{fontSize:10,fontWeight:700,padding:"2px 6px",borderRadius:8,background:"var(--green)",color:"#fff"}}>매칭</span>
                         </td>
-                        <td style={{color:"var(--ink-60)"}}>{student?.name || "—"}</td>
+                        <td>
+                          {student ? (
+                            <button onClick={() => onOpenStudentPayment?.(student.id)} style={{background:"none",border:"none",padding:"1px 0",cursor:"pointer",color:"var(--blue)",fontWeight:600,fontSize:12,textDecoration:"underline",textDecorationStyle:"dotted",fontFamily:"inherit"}}>
+                              {student.name}
+                            </button>
+                          ) : "—"}
+                        </td>
                         <td style={{textAlign:"center",whiteSpace:"nowrap"}}>
                           {onSavePaymentLog && (confirmId === e.id ? (
                             <span style={{display:"inline-flex",gap:3,alignItems:"center"}}>
@@ -1689,7 +2125,13 @@ function PaymentLogTab({ paymentLog, students, onSavePaymentLog }) {
                       <td>
                         <span style={{fontSize:10,fontWeight:700,padding:"2px 6px",borderRadius:8,background:"rgba(232,40,28,.12)",color:"var(--red)"}}>미매칭</span>
                       </td>
-                      <td style={{color:"var(--ink-60)"}}>{s ? s.name : "—"}</td>
+                      <td>
+                        {s && e.matched ? (
+                          <button onClick={() => onOpenStudentPayment?.(s.id)} style={{background:"none",border:"none",padding:"1px 0",cursor:"pointer",color:"var(--blue)",fontWeight:600,fontSize:12,textDecoration:"underline",textDecorationStyle:"dotted",fontFamily:"inherit"}}>
+                            {s.name}
+                          </button>
+                        ) : (s ? <span style={{color:"var(--ink-60)"}}>{s.name}</span> : "—")}
+                      </td>
                       <td style={{textAlign:"center",whiteSpace:"nowrap"}}>
                         {onSavePaymentLog && (confirmId === e.id ? (
                           <span style={{display:"inline-flex",gap:3,alignItems:"center"}}>
@@ -1720,7 +2162,11 @@ function PaymentLogTab({ paymentLog, students, onSavePaymentLog }) {
               <div key={`mg_${sid}`}>
                 {isMulti && (
                   <div style={{display:"flex",alignItems:"center",gap:6,padding:"8px 12px",background:"var(--blue-lt)",borderRadius:"var(--radius-sm) var(--radius-sm) 0 0",border:"1px solid rgba(43,58,159,.12)",borderBottom:"none",marginTop:4}}>
-                    <span style={{fontWeight:700,fontSize:13,color:"var(--blue)",flex:1}}>{student?.name || "?"}</span>
+                    {student ? (
+                    <button onClick={() => onOpenStudentPayment?.(student.id)} style={{background:"none",border:"none",padding:0,cursor:"pointer",fontWeight:700,fontSize:13,color:"var(--blue)",flex:1,textAlign:"left",fontFamily:"inherit",textDecoration:"underline",textDecorationStyle:"dotted"}}>
+                      {student.name}
+                    </button>
+                  ) : <span style={{fontWeight:700,fontSize:13,color:"var(--blue)",flex:1}}>?</span>}
                     <span style={{fontSize:11,color:"var(--ink-60)"}}>{entries.length}건</span>
                     <span style={{fontWeight:700,fontSize:13,color:"var(--green)"}}>{total.toLocaleString()}원</span>
                   </div>
@@ -1732,7 +2178,9 @@ function PaymentLogTab({ paymentLog, students, onSavePaymentLog }) {
                       <div style={{flex:1,minWidth:0}}>
                         <div style={{display:"flex",alignItems:"center",gap:6}}>
                           <span style={{fontSize:13.5,fontWeight:700}}>{e.senderName || "알 수 없음"}</span>
-                          {!isMulti && <span style={{fontSize:10,fontWeight:700,padding:"1px 5px",borderRadius:8,background:"var(--green)",color:"#fff"}}>→ {student?.name || "자동매칭"}</span>}
+                          {!isMulti && (student ? (
+                          <button onClick={() => onOpenStudentPayment?.(student.id)} style={{fontSize:10,fontWeight:700,padding:"1px 5px",borderRadius:8,background:"var(--green)",color:"#fff",border:"none",cursor:"pointer",fontFamily:"inherit"}}>→ {student.name}</button>
+                        ) : <span style={{fontSize:10,fontWeight:700,padding:"1px 5px",borderRadius:8,background:"var(--green)",color:"#fff"}}>자동매칭</span>)}
                         </div>
                         <div style={{fontSize:12,color:"var(--green)",fontWeight:600}}>{(e.amount||0).toLocaleString()}원</div>
                         <div style={{fontSize:11,color:"var(--ink-30)"}}>

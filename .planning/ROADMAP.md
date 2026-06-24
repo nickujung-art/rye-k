@@ -16,6 +16,7 @@
 - [x] **Phase 8: 그룹 레슨 고도화 (Group Lesson Enhancement)** - rye-lesson-slots 엔티티 신설 + 마이그레이션 + 그룹 이름 편집 + TimetableView ✓ 2026-06-13
 - [x] **Phase 9: 스케줄 고도화 (Schedule Enhancement)** - 슬롯 자동생성·연결 + TimetableView 직접 배정 + 휴회 관리 뷰 + pauseHistory 스키마 ✓ 2026-06-16
 - [ ] **Phase 10: 회계 앱 (Accounting App)** - 별도 앱(rye-k-accounting) 신규 구축: Supabase+복식부기+RYE-K연동+은행대사+급여+B2B계산서+세무사전송
+- [ ] **Phase 11: 할인 시스템 (Discount System)** - 할인 타입 CRUD·학생 배정·calcTotalFee 업데이트·수납 표시
 
 ## Phase Details
 
@@ -200,6 +201,17 @@ Plans:
 **Repo**: rye-k-accounting (별도 Git 리포지토리)
 **UI hint**: yes
 
+### Phase 11: 할인 시스템 (Discount System)
+**Goal**: 학생별 할인 타입을 배정하면 calcTotalFee가 할인을 자동 반영하고, 수납 화면에서 원가 취소선과 할인명 뱃지가 표시된다
+**Depends on**: Nothing (standalone feature)
+**Requirements**: DIS-01, DIS-02, DIS-03, DIS-04, DIS-05, DIS-06, DIS-07, DIS-08
+**Plans**: 4 plans
+Plans:
+- [x] 11-01-PLAN.md — calcTotalFee 확장 + saveDiscountTypes + App.jsx 배선 (DIS-01, DIS-02) ✓ 2026-06-22
+- [x] 11-02-PLAN.md — StudentFormModal 할인 섹션 + calcTotalFee 호출부 업데이트 (DIS-05, DIS-08) ✓ 2026-06-22
+- [x] 11-03-PLAN.md — PaymentsView 5번째 탭 + DiscountTypeManager + AdminTools 씨드 상수 (DIS-03, DIS-04) ✓ 2026-06-22
+- [ ] 11-04-PLAN.md — 수납 리스트 할인 표시 + 모달 브레이크다운 + Dashboard/SettlementView 업데이트 (DIS-06, DIS-07, DIS-08)
+
 ### Phase SHOP-01: 즉시 청구 & 상품 관리 시스템 (Instant Charge & Shop)
 **Goal**: 강사가 한복·악세사리·악기가방 등을 판매 시 즉시 청구를 요청하고, 관리자가 승인 후 알림 메시지를 클립보드 복사로 발송하며, 입금 확인 후 수납 레코드가 자동 생성된다. 상품 카탈로그는 AdminTools에서 관리한다.
 **Depends on**: Nothing (standalone feature)
@@ -233,6 +245,7 @@ Plans:
 | 8. 그룹 레슨 고도화 | 6/6 | ✓ COMPLETE | 2026-06-13 |
 | SHOP-01. 즉시 청구 & 상품 관리 | 5/5 | ✓ COMPLETE | 2026-05-14 |
 | 10. 회계 앱 | 0/11 | PLANNED | - |
+| 11. 할인 시스템 | 2/4 | IN PROGRESS | - |
 
 ---
 
@@ -315,4 +328,13 @@ Plans:
 | ACC-14 | Phase 10 | Planned |
 | ACC-15 | Phase 10 | Planned |
 
-**Total: 68/68 requirements mapped.**
+| DIS-01 | Phase 11 | Planned |
+| DIS-02 | Phase 11 | Planned |
+| DIS-03 | Phase 11 | Planned |
+| DIS-04 | Phase 11 | Planned |
+| DIS-05 | Phase 11 | Planned |
+| DIS-06 | Phase 11 | Planned |
+| DIS-07 | Phase 11 | Planned |
+| DIS-08 | Phase 11 | Planned |
+
+**Total: 76/76 requirements mapped.**

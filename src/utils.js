@@ -172,9 +172,14 @@ export async function sendAligoMessage(type, students, options = {}) {
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: params.toString(),
     });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: Aligo API 응답 오류`);
     const data = await res.json();
     results.push(data);
-    if (data.code !== 0) throw new Error(data.message || "Aligo API 오류");
+    if (data.code !== 0) {
+      const rawMsg = data.message || "Aligo API 오류";
+      const isIpError = rawMsg.includes("IP") || data.code === -100;
+      throw new Error(isIpError ? `알림톡 IP 인증 오류: Aligo 대시보드에서 발신 IP 등록이 필요합니다. (${rawMsg})` : rawMsg);
+    }
   }
   return { success: true, sent: valid.length, noPhone, details: results };
 }
@@ -189,6 +194,7 @@ export async function fetchAligoRemain() {
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: params.toString(),
   });
+  if (!res.ok) throw new Error(`HTTP ${res.status}: Aligo API 응답 오류`);
   const text = await res.text();
   let data;
   try { data = JSON.parse(text); } catch { throw new Error(`파싱실패: ${text.slice(0, 80)}`); }
@@ -260,21 +266,61 @@ export function calcLessonFeeWithFallback(lesson, feePresets, fallbackPerLesson 
   return fallbackPerLesson;
 }
 
-// student 전체 월 수강료 계산 (레슨별 fee 합산 + 대여료)
-// - lessons[].fee 있으면 해당 값 우선
-// - feePresets[instrument] 있으면 preset 사용
-// - 둘 다 없으면 monthlyFee를 lessons 수로 균등 분배
-// - lessons가 비어있으면 monthlyFee + rental 반환 (구 데이터 호환)
-export function calcTotalFee(student, feePresets) {
+// student 전체 월 수강료 계산 (레슨별 fee 합산 + 대여료 + 할인 적용)
+// - discountTypes: DiscountType[] (미전달 시 [] → 할인 없음)
+// - 반환: { total, original, discountAmount, discountName }
+// - 역호환: discountTypes 미전달 또는 student.discount 없을 시 total === original, discountAmount === 0
+export function calcTotalFee(student, feePresets, discountTypes = []) {
   const lessons = student.lessons || [];
   const rental = student.instrumentRental ? (student.rentalFee || 0) : 0;
-  if (lessons.length === 0) return (student.monthlyFee || 0) + rental;
-  const legacyPerLesson = Math.round((student.monthlyFee || 0) / lessons.length);
-  const lessonSum = lessons.reduce(
-    (sum, l) => sum + calcLessonFeeWithFallback(l, feePresets, legacyPerLesson),
-    0
-  );
-  return lessonSum + rental;
+  let original;
+  if (lessons.length === 0) {
+    original = (student.monthlyFee || 0) + rental;
+  } else {
+    const legacyPerLesson = Math.round((student.monthlyFee || 0) / lessons.length);
+    const lessonSum = lessons.reduce(
+      (sum, l) => sum + calcLessonFeeWithFallback(l, feePresets, legacyPerLesson),
+      0
+    );
+    original = lessonSum + rental;
+  }
+  // 할인 적용 (D-02: 학생 단위 단수 할인, D-03: student.discount 단수 객체)
+  let discountAmount = 0;
+  let discountName = null;
+  const disc = student.discount;
+  if (disc?.discountId && discountTypes.length > 0) {
+    const dtype = discountTypes.find(d => d.id === disc.discountId && d.active !== false);
+    if (dtype) {
+      const today = new Date().toISOString().slice(0, 10);
+      const started = !disc.startDate || disc.startDate <= today;
+      const notEnded = !disc.endDate || disc.endDate >= today;
+      if (started && notEnded && Number.isFinite(dtype.value) && dtype.value >= 0) {
+        if (disc.lessonInstrument && lessons.length > 0) {
+          // 특정 과목에만 적용 (D-02: lessonInstrument 옵션 필드)
+          const target = lessons.find(l => l.instrument === disc.lessonInstrument);
+          if (target) {
+            const fallback = Math.round((student.monthlyFee || 0) / lessons.length);
+            const lFee = calcLessonFeeWithFallback(target, feePresets, fallback);
+            discountAmount = dtype.type === "percent"
+              ? Math.round(lFee * dtype.value / 100)
+              : Math.min(dtype.value, lFee);
+          }
+        } else {
+          // 전 수강료에 적용
+          discountAmount = dtype.type === "percent"
+            ? Math.round(original * dtype.value / 100)
+            : Math.min(dtype.value, original);
+        }
+        discountName = dtype.name;
+      }
+    }
+  }
+  return {
+    total: Math.max(0, original - discountAmount),
+    original,
+    discountAmount,
+    discountName,
+  };
 }
 
 // Phase 9 — 슬롯-레슨 완전 일치 판단 (teacherId + instrument + schedule 배열 정렬 비교)

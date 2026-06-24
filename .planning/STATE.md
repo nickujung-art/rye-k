@@ -26,6 +26,12 @@
 
 ## Active Work
 
+**Phase 11: 할인 시스템** — COMPLETE (2026-06-22)
+- 11-01: calcTotalFee 확장 (객체 반환) + saveDiscountTypes + App.jsx 4개 컴포넌트 배선
+- 11-02: StudentFormModal 할인 섹션 UI + discountTypes prop + calcTotalFee 호출부 .total/.original 수정
+- 11-03: PaymentsView 할인 관리 5번째 탭 + DiscountTypeManager CRUD + AdminTools DEFAULT_DISCOUNT_TYPES
+- 11-04: autoFeeResult 래퍼 + 수납 리스트 할인 표시 + 모달 브레이크다운 + Dashboard/SettlementView NaN 제거 (DIS-01~DIS-08 전체 완료)
+
 **Phase 9: 스케줄 고도화** — Plans 01~04 완료 (2026-06-16)
 - 09-01: CSS + slotMatchesLesson 유틸 + IC.pause 아이콘
 - 09-02: App.jsx onAddStudentToSlot 함수 구현
@@ -49,6 +55,14 @@
 - [09-03] 강사 기존 악기 1종류 → 자동 선택, 복수 → 드롭다운
 - [09-04] AdminTools 폐강 버튼은 firebase.js 직접 import (prop drilling 없이)
 - [09-04] Dashboard 케어 관리 섹션 → pm-link-banner 교체 (케어 기능 PauseManagementView로 집중)
+- [11-01] calcTotalFee: number → { total, original, discountAmount, discountName } 객체 반환 (역호환)
+- [11-01] rye-discounts: setDoc 배열 전체 교체 안전 (소수 항목, D-07)
+- [11-02] monthlyFee 저장 = 원가(original) 기준; 할인은 student.discount 별도 관리
+- [11-02] StudentFormModal 할인 섹션: canManageAll 조건부, 다과목 시 lessonInstrument 드롭다운 표시
+- [11-03] DiscountTypeManager는 PaymentsView.jsx 상단 별도 함수 컴포넌트로 정의 (export default 전)
+- [11-03] 할인 관리 탭: canManageAll 조건 블록 내 탭 버튼 추가 → teacher 역할 미노출
+- [11-04] autoFeeResult 래퍼 패턴: autoFee(s) = autoFeeResult(s).total — 기존 호출부 무수정, 할인 표시 전용으로 autoFeeResult(s) 사용
+- [11-04] 수납 행 할인 표시: !p?.amount 조건 — 자동계산 수강료에만 표시, 관리자 수동 입력 금액 제외
 
 ## DB 백업 체계
 

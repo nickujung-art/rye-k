@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { IC, THIS_MONTH } from "../../constants.jsx";
-import { monthLabel, fmtMoney, getAudience, sendAligoMessage } from "../../utils.js";
+import { monthLabel, fmtMoney, getAudience, sendAligoMessage, calcTotalFee } from "../../utils.js";
 import { aiPolishPaymentMessage } from "../../aiClient.js";
 
 const TEMPLATES = {
@@ -18,7 +18,7 @@ const TYPE_LABELS = {
   makeup_lesson: "보강 안내",
 };
 
-export default function AlimtalkModal({ type: initialType = "monthly_fee", students = [], month = THIS_MONTH, onClose, onSend, getPayment }) {
+export default function AlimtalkModal({ type: initialType = "monthly_fee", students = [], month = THIS_MONTH, onClose, onSend, getPayment, feePresets = {}, discountTypes = [] }) {
   const [type, setType] = useState(initialType);
   const [targetMode, setTargetMode] = useState(type === "unpaid_reminder" ? "unpaid" : "all");
   const [makeupDate, setMakeupDate] = useState("");
@@ -33,12 +33,30 @@ export default function AlimtalkModal({ type: initialType = "monthly_fee", stude
   const [isTestSending, setIsTestSending] = useState(false);
   const [sendError, setSendError] = useState("");
 
-  // 미납 독촉 전용: 발송 제외할 대상 체크박스
+  // 미납 독촉 전용: 발송 제외할 대상 체크박스 (부분납부 잔액도 포함)
   const [selectedIds, setSelectedIds] = useState(() =>
-    new Set(students.filter(s => !getPayment?.(s.id)?.paid).map(s => s.id))
+    new Set(students.filter(s => {
+      const p = getPayment?.(s.id);
+      if (!p || !p.paid) return true;
+      const total = p.amount ?? calcTotalFee(s, feePresets, discountTypes).total;
+      return p.paidAmount != null && p.paidAmount < total;
+    }).map(s => s.id))
   );
 
-  const autoFee = (s) => (s.monthlyFee || 0) + (s.instrumentRental ? (s.rentalFee || 0) : 0);
+  const autoFee = (s) => calcTotalFee(s, feePresets, discountTypes).total;
+
+  // 잔액 계산: 부분납부 시 미납 잔액, 미납 시 전체 금액
+  const getRemainingAmt = (s) => {
+    const p = getPayment?.(s.id);
+    const total = p?.amount ?? autoFee(s);
+    return (p?.paid && p.paidAmount != null && p.paidAmount < total) ? total - p.paidAmount : total;
+  };
+  const isPartiallyPaid = (s) => {
+    const p = getPayment?.(s.id);
+    if (!p?.paid) return false;
+    const total = p.amount ?? autoFee(s);
+    return p.paidAmount != null && p.paidAmount < total;
+  };
 
   const deadline = (() => {
     const d = new Date(month + "-01");
@@ -46,7 +64,11 @@ export default function AlimtalkModal({ type: initialType = "monthly_fee", stude
     return `${d.getFullYear()}년 ${String(d.getMonth()+1).padStart(2,"0")}월 15일`;
   })();
 
-  const unpaidStudents = students.filter(s => !getPayment?.(s.id)?.paid);
+  const unpaidStudents = students.filter(s => {
+    const p = getPayment?.(s.id);
+    if (!p || !p.paid) return true;
+    return isPartiallyPaid(s);
+  });
   const allUnpaidSelected = unpaidStudents.length > 0 && unpaidStudents.every(s => selectedIds.has(s.id));
 
   const targets = (() => {
@@ -59,15 +81,15 @@ export default function AlimtalkModal({ type: initialType = "monthly_fee", stude
     return students;
   })();
 
-  const zeroFeeStudents = type === "monthly_fee"
-    ? targets.filter(s => { const p = getPayment?.(s.id); return (p?.amount ?? autoFee(s)) === 0; })
+  const zeroFeeStudents = (type === "monthly_fee" || type === "unpaid_reminder")
+    ? targets.filter(s => getRemainingAmt(s) === 0)
     : [];
 
   const preview = (() => {
     const first = targets[0];
     if (!first) return "(발송 대상이 없습니다)";
     const p = getPayment?.(first.id);
-    const amt = p?.amount ?? autoFee(first);
+    const amt = type === "unpaid_reminder" ? getRemainingAmt(first) : (p?.amount ?? autoFee(first));
     if (type === "monthly_fee") return TEMPLATES.monthly_fee({ name: first.name, month: monthLabel(month), amount: amt, deadline });
     if (type === "unpaid_reminder") return TEMPLATES.unpaid_reminder({ name: first.name, month: monthLabel(month), amount: amt });
     if (type === "makeup_lesson") return TEMPLATES.makeup_lesson({ name: first.name, date: makeupDate || "____년__월__일", time: makeupTime || "__:__" });
@@ -85,8 +107,7 @@ export default function AlimtalkModal({ type: initialType = "monthly_fee", stude
     setTestResult(null);
     try {
       const first = targets[0];
-      const p = getPayment?.(first.id);
-      const amt = p?.amount ?? autoFee(first);
+      const amt = type === "unpaid_reminder" ? getRemainingAmt(first) : (getPayment?.(first.id)?.amount ?? autoFee(first));
       const testStudent = { ...first, phone, amount: amt };
       await sendAligoMessage(type, [testStudent], { month, deadline, makeupDate, makeupTime });
       setTestResult({ ok: true, msg: `✓ ${phone} 발송 성공 — 카톡 확인해주세요` });
@@ -100,10 +121,10 @@ export default function AlimtalkModal({ type: initialType = "monthly_fee", stude
   const handleSend = async () => {
     setIsSubmitting(true);
     setSendError("");
-    const enriched = targets.map(s => {
-      const p = getPayment?.(s.id);
-      return { ...s, amount: p?.amount ?? autoFee(s) };
-    });
+    const enriched = targets.map(s => ({
+      ...s,
+      amount: type === "unpaid_reminder" ? getRemainingAmt(s) : (getPayment?.(s.id)?.amount ?? autoFee(s)),
+    }));
     try {
       await onSend?.(type, enriched, { month, deadline, makeupDate, makeupTime });
       onClose();
@@ -206,8 +227,8 @@ export default function AlimtalkModal({ type: initialType = "monthly_fee", stude
                       <span style={{textAlign:"right"}}>미납액</span>
                     </div>
                     {unpaidStudents.map(s => {
-                      const p = getPayment?.(s.id);
-                      const amt = p?.amount ?? autoFee(s);
+                      const remainAmt = getRemainingAmt(s);
+                      const partial = isPartiallyPaid(s);
                       const checked = selectedIds.has(s.id);
                       return (
                         <div
@@ -224,8 +245,14 @@ export default function AlimtalkModal({ type: initialType = "monthly_fee", stude
                           <div style={{width:20,height:20,border:`1.5px solid ${checked?"var(--blue)":"var(--border)"}`,borderRadius:5,display:"flex",alignItems:"center",justifyContent:"center",background:checked?"var(--blue)":"var(--paper)",color:"#fff",fontSize:12,fontWeight:700,flexShrink:0,transition:"all .12s"}}>
                             {checked && "✓"}
                           </div>
-                          <span style={{fontSize:13,fontWeight:500,color:checked?"var(--ink)":"var(--ink-30)"}}>{s.name}</span>
-                          <span style={{fontSize:12,color:checked?"var(--red)":"var(--ink-30)",fontWeight:600,fontFamily:"'Noto Serif KR',serif"}}>{fmtMoney(amt)}</span>
+                          <div>
+                            <span style={{fontSize:13,fontWeight:500,color:checked?"var(--ink)":"var(--ink-30)"}}>{s.name}</span>
+                            {partial && <span style={{marginLeft:6,fontSize:9.5,background:"var(--gold-lt)",color:"var(--gold-dk)",borderRadius:4,padding:"1px 5px",fontWeight:700}}>부분납부</span>}
+                          </div>
+                          <span style={{fontSize:12,color:checked?"var(--red)":"var(--ink-30)",fontWeight:600,fontFamily:"'Noto Serif KR',serif",textAlign:"right"}}>
+                            {fmtMoney(remainAmt)}
+                            {partial && <div style={{fontSize:10,color:"var(--gold-dk)",fontWeight:500}}>잔액</div>}
+                          </span>
                         </div>
                       );
                     })}

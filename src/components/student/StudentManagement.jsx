@@ -98,10 +98,10 @@ export function LessonEditor({ lessons, onChange, categories, teachers, feePrese
 }
 
 // ── STUDENT FORM ──────────────────────────────────────────────────────────────
-export function StudentFormModal({ student, teachers, currentUser, categories, feePresets, onClose, onSave }) {
+export function StudentFormModal({ student, teachers, currentUser, categories, feePresets, discountTypes = [], onClose, onSave }) {
   const [form, setForm] = useState(student
-    ? { ...student, instrumentRental: student.instrumentRental ?? false, rentalType: student.rentalType ?? "", rentalFee: student.rentalFee ?? 0, pendingOneTimeCharges: student.pendingOneTimeCharges ?? [], guardianName: student.guardianName ?? "" }
-    : { name: "", birthDate: "", startDate: TODAY_STR, phone: "", guardianPhone: "", guardianName: "", teacherId: currentUser.role === "teacher" ? currentUser.id : "", lessons: [], photo: "", notes: "", monthlyFee: 0, status: "active", instrumentRental: false, rentalType: "", rentalFee: 0, pendingOneTimeCharges: [] });
+    ? { ...student, instrumentRental: student.instrumentRental ?? false, rentalType: student.rentalType ?? "", rentalFee: student.rentalFee ?? 0, pendingOneTimeCharges: student.pendingOneTimeCharges ?? [], guardianName: student.guardianName ?? "", discount: student.discount ?? null }
+    : { name: "", birthDate: "", startDate: TODAY_STR, phone: "", guardianPhone: "", guardianName: "", teacherId: currentUser.role === "teacher" ? currentUser.id : "", lessons: [], photo: "", notes: "", monthlyFee: 0, status: "active", instrumentRental: false, rentalType: "", rentalFee: 0, pendingOneTimeCharges: [], discount: null });
   const [err, setErr] = useState("");
   const [confirming, setConfirming] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -112,12 +112,19 @@ export function StudentFormModal({ student, teachers, currentUser, categories, f
       const next = { ...f, [k]: v };
       if (k === "lessons") {
         next.lessons = (v || []).map(l => ({ ...l, fee: l.fee ?? 0 }));
+        // H-4: 삭제된 레슨의 lessonInstrument 자동 초기화 (할인 silent 미적용 방지)
+        if (next.discount?.lessonInstrument) {
+          const instruments = next.lessons.map(l => l.instrument);
+          if (!instruments.includes(next.discount.lessonInstrument)) {
+            next.discount = { ...next.discount, lessonInstrument: "" };
+          }
+        }
       }
       return next;
     });
     setErr(""); setConfirming(false);
   };
-  const handlePhoto = async (e) => { const file = e.target.files?.[0]; if (!file) return; try { const compressed = await compressImage(file, 360, 0.75); set("photo", compressed); } catch(err) { console.error("Photo error:",err); } };
+  const handlePhoto = async (e) => { const file = e.target.files?.[0]; if (!file) return; try { const compressed = await compressImage(file, 360, 0.75); set("photo", compressed); } catch(err) { console.error("Photo error:",err); setErr("사진 업로드에 실패했습니다."); } };
   const validate = () => {
     if (!form.name.trim()) { setErr("이름을 입력하세요."); return false; }
     if (!isEdit && !form.birthDate) { setErr("생년월일을 입력하세요. (회원코드 비밀번호 생성에 필요)"); return false; }
@@ -129,7 +136,7 @@ export function StudentFormModal({ student, teachers, currentUser, categories, f
   const handleConfirm = async () => {
     if (saving) return; setSaving(true);
     try {
-      const totalFee = calcTotalFee(form, feePresets);
+      const { original: totalFee } = calcTotalFee(form, feePresets, discountTypes);
       const finalLessons = (form.lessons || []).map(l => ({
         ...l,
         teacherId: l.teacherId || form.teacherId || "",
@@ -231,7 +238,23 @@ export function StudentFormModal({ student, teachers, currentUser, categories, f
                     )}
                     <div style={{ borderTop: "1px dashed var(--border)", paddingTop: 6, marginTop: 4, display: "flex", justifyContent: "space-between", fontWeight: 700, fontSize: 14 }}>
                       <span>합계</span>
-                      <span>{calcTotalFee(form, feePresets).toLocaleString("ko-KR")}원</span>
+                      {(() => {
+                        const fee = calcTotalFee(form, feePresets, discountTypes);
+                        if (fee.discountAmount > 0) {
+                          return (
+                            <span>
+                              <span style={{ textDecoration: "line-through", color: "var(--ink-30)", fontSize: 12, marginRight: 4 }}>
+                                {fee.original.toLocaleString("ko-KR")}원
+                              </span>
+                              {fee.total.toLocaleString("ko-KR")}원
+                              <span style={{ marginLeft: 6, fontSize: 10, background: "var(--blue-lt,#EFF6FF)", color: "var(--blue,#3B82F6)", borderRadius: 99, padding: "1px 6px", fontWeight: 600 }}>
+                                {fee.discountName}
+                              </span>
+                            </span>
+                          );
+                        }
+                        return <span>{fee.total.toLocaleString("ko-KR")}원</span>;
+                      })()}
                     </div>
                   </>
                 )}
@@ -270,6 +293,83 @@ export function StudentFormModal({ student, teachers, currentUser, categories, f
               </div>
             );
           })()}
+          {canManageAll(currentUser.role) && (
+            <div className="fg">
+              <label className="fg-label">할인 적용</label>
+              <select
+                className="sel"
+                value={form.discount?.discountId || ""}
+                onChange={e => {
+                  const id = e.target.value;
+                  if (!id) { set("discount", null); return; }
+                  const today = new Date().toISOString().slice(0, 10);
+                  set("discount", {
+                    discountId: id,
+                    startDate: form.discount?.startDate || today,
+                    endDate: form.discount?.endDate || null,
+                    lessonInstrument: form.discount?.lessonInstrument || "",
+                    appliedBy: currentUser.id,
+                    notes: form.discount?.notes || "",
+                  });
+                }}
+              >
+                <option value="">할인 없음</option>
+                {(discountTypes.filter(d => d.active !== false)).map(d => (
+                  <option key={d.id} value={d.id}>
+                    {d.name} ({d.type === "percent" ? `${d.value}%` : `${Number(d.value).toLocaleString("ko-KR")}원`} 할인)
+                  </option>
+                ))}
+              </select>
+              {form.discount?.discountId && discountTypes.some(d => d.id === form.discount.discountId && d.active !== false) && (
+                <>
+                  <div className="fg-row" style={{ marginTop: 6 }}>
+                    <div className="fg">
+                      <label className="fg-label" style={{ fontWeight: 400, fontSize: 11 }}>시작일</label>
+                      <input
+                        className="inp"
+                        type="date"
+                        value={form.discount.startDate || ""}
+                        onChange={e => set("discount", { ...form.discount, startDate: e.target.value })}
+                      />
+                    </div>
+                    <div className="fg">
+                      <label className="fg-label" style={{ fontWeight: 400, fontSize: 11 }}>종료일 (미입력 시 무기한)</label>
+                      <input
+                        className="inp"
+                        type="date"
+                        value={form.discount.endDate || ""}
+                        onChange={e => set("discount", { ...form.discount, endDate: e.target.value || null })}
+                      />
+                    </div>
+                  </div>
+                  {(form.lessons || []).length > 1 && (
+                    <div className="fg" style={{ marginTop: 6 }}>
+                      <label className="fg-label" style={{ fontWeight: 400, fontSize: 11 }}>특정 과목만 적용 (미선택 시 전 과목)</label>
+                      <select
+                        className="sel"
+                        value={form.discount.lessonInstrument || ""}
+                        onChange={e => set("discount", { ...form.discount, lessonInstrument: e.target.value })}
+                      >
+                        <option value="">전 과목 적용</option>
+                        {(form.lessons || []).map(l => (
+                          <option key={l.instrument} value={l.instrument}>{l.instrument}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+                  <div className="fg" style={{ marginTop: 6 }}>
+                    <label className="fg-label" style={{ fontWeight: 400, fontSize: 11 }}>메모</label>
+                    <input
+                      className="inp"
+                      value={form.discount.notes || ""}
+                      onChange={e => set("discount", { ...form.discount, notes: e.target.value })}
+                      placeholder="예: 지인 소개 — 박지연님"
+                    />
+                  </div>
+                </>
+              )}
+            </div>
+          )}
           {isEdit && (canManageAll(currentUser.role) || currentUser.role === "teacher") && (
             <div className="fg">
               <label className="fg-label">수강 상태</label>
@@ -513,10 +613,11 @@ export function StudentDetailModal({ student: s, teachers, currentUser, categori
                   {(l.schedule || []).filter(sc => sc.day).map((sc, i) => (<span key={i} className="sched-chip">{sc.day}요일{sc.time && <span className="sched-chip-time"> {sc.time}</span>}</span>))}
                   {(l.schedule || []).filter(sc => sc.day).length === 0 && <span style={{ color: "var(--ink-30)", fontSize: 12 }}>요일 미지정</span>}
                 </div>
-                {canManageAll(currentUser.role) && onSaveStudent && s.status !== "withdrawn" && (
-                  <button type="button" onClick={() => {
+                {onSaveStudent && s.status !== "withdrawn" && (canManageAll(currentUser.role) || (currentUser.role === "teacher" && !!currentUser.id && l.teacherId === currentUser.id)) && (
+                  <button type="button" onClick={async () => {
                     const updLessons = (s.lessons || []).map(ll => ll.instrument === l.instrument ? { ...ll, pausedAt: ll.pausedAt ? null : TODAY_STR } : ll);
-                    onSaveStudent({ ...s, lessons: updLessons });
+                    try { await onSaveStudent({ ...s, lessons: updLessons }); }
+                    catch (e) { console.error("레슨 휴원 저장 실패:", e); }
                   }} style={{background:l.pausedAt?"var(--green-lt)":"var(--gold-lt)",border:"none",borderRadius:6,color:l.pausedAt?"var(--green)":"var(--gold-dk)",cursor:"pointer",fontSize:11,fontWeight:600,padding:"3px 10px",fontFamily:"inherit",marginTop:4,alignSelf:"flex-start"}}>
                     {l.pausedAt ? "▶ 이 레슨 복귀" : "⏸ 이 레슨 휴원"}
                   </button>

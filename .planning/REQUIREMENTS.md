@@ -2,7 +2,7 @@
 
 > Scoped to current milestone (레슨 관리 완성) + Phase 10 회계 앱 신규  
 > Out of scope: SaaS/멀티테넌트(Phase 10 이후), 한복·악기 판매, 공연·이벤트, TypeScript 마이그레이션  
-> Version: 1.1 | Created: 2026-05-05 | Updated: 2026-06-16
+> Version: 1.2 | Created: 2026-05-05 | Updated: 2026-06-22
 
 ---
 
@@ -19,6 +19,7 @@
 | GRP | Group Lesson Enhancement |
 | SHOP | Instant Charge & Shop Catalog |
 | ACC | Accounting App (Phase 10) |
+| DIS | Discount System (Phase 11) |
 
 ---
 
@@ -160,73 +161,88 @@
 
 ## Traceability
 
-| Requirement | Phase | Status |
-|-------------|-------|--------|
-| SHOP-01 | SHOP-01 | ✓ Complete |
-| SHOP-02 | SHOP-01 | ✓ Complete |
-| SHOP-03 | SHOP-01 | ✓ Complete |
-| SHOP-04 | SHOP-01 | ✓ Complete |
-| SHOP-05 | SHOP-01 | ✓ Complete |
-| SHOP-06 | SHOP-01 | ✓ Complete |
-| SHOP-07 | SHOP-01 | ✓ Complete |
-| SEC-01 | Phase 1 | Pending |
-| SEC-02 | Phase 1 | Pending |
-| SEC-03 | Phase 1 | Pending |
-| SEC-04 | Phase 1 | Pending |
-| SEC-05 | Phase 1 | Pending |
-| SEC-06 | Phase 1 | Pending |
-| SEC-07 | Phase 1 | Pending |
-| POR-01 | Phase 2 | Pending |
-| POR-02 | Phase 2 | Pending |
-| POR-03 | Phase 2 | Pending |
-| POR-04 | Phase 2 | Pending |
-| POR-05 | Phase 2 | Pending |
-| POR-06 | Phase 2 | Pending |
-| POR-07 | Phase 2 | Pending |
-| POR-08 | Phase 2 | Pending |
-| AI-01 | Phase 3 | Pending |
-| AI-02 | Phase 3 | Pending |
-| AI-03 | Phase 3 | Pending |
-| AI-04 | Phase 3 | Pending |
-| AI-05 | Phase 3 | Pending |
-| SEC-08 | Phase 3 | Pending |
-| ALM-01 | Phase 4 | Pending |
-| ALM-02 | Phase 4 | Pending |
-| ALM-03 | Phase 4 | Pending |
-| ALM-04 | Phase 4 | Pending |
-| ALM-05 | Phase 4 | Pending |
-| ALM-06 | Phase 4 | Pending |
-| PAY-01 | Phase 5 | Pending |
-| PAY-02 | Phase 5 | Pending |
-| PAY-03 | Phase 5 | Pending |
-| PAY-04 | Phase 5 | Pending |
-| PAY-05 | Phase 5 | Pending |
-| PAY-06 | Phase 5 | Pending |
-| ALM-07 | Phase 5 | Pending |
-| ANL-01 | Phase 6 | Pending |
-| ANL-02 | Phase 6 | Pending |
-| ANL-03 | Phase 6 | Pending |
-| ANL-04 | Phase 6 | Pending |
-| PAY-07 | Phase 7 | ✓ Complete |
-| PAY-08 | Phase 7 | ✓ Complete |
-| PAY-09 | Phase 7 | ✓ Complete |
-| PAY-10 | Phase 7 | ✓ Complete |
-| PAY-11 | Phase 7 | ✓ Complete |
-| ACC-01 | Phase 10 | Pending |
-| ACC-02 | Phase 10 | Pending |
-| ACC-03 | Phase 10 | Pending |
-| ACC-04 | Phase 10 | Pending |
-| ACC-05 | Phase 10 | Pending |
-| ACC-06 | Phase 10 | Pending |
-| ACC-07 | Phase 10 | Pending |
-| ACC-08 | Phase 10 | Pending |
-| ACC-09 | Phase 10 | Pending |
-| ACC-10 | Phase 10 | Pending |
-| ACC-11 | Phase 10 | Pending |
-| ACC-12 | Phase 10 | Pending |
-| ACC-13 | Phase 10 | Pending |
-| ACC-14 | Phase 10 | Pending |
-| ACC-15 | Phase 10 | Pending |
+| Requirement | Phase | Status | Completed |
+|-------------|-------|--------|-----------|
+| SHOP-01 | SHOP-01 | ✓ Complete | 2026-06-13 |
+| SHOP-02 | SHOP-01 | ✓ Complete | 2026-06-13 |
+| SHOP-03 | SHOP-01 | ✓ Complete | 2026-06-13 |
+| SHOP-04 | SHOP-01 | ✓ Complete | 2026-06-13 |
+| SHOP-05 | SHOP-01 | ✓ Complete | 2026-06-13 |
+| SHOP-06 | SHOP-01 | ✓ Complete | 2026-06-13 |
+| SHOP-07 | SHOP-01 | ✓ Complete | 2026-06-13 |
+| GRP-01 | Phase 8 | ✓ Complete | 2026-06-13 |
+| GRP-02 | Phase 8 | ✓ Complete | 2026-06-13 |
+| GRP-03 | Phase 8 | ✓ Complete | 2026-06-13 |
+| GRP-04 | Phase 8 | ✓ Complete | 2026-06-13 |
+| GRP-05 | Phase 8 | ✓ Complete | 2026-06-13 |
+| GRP-06 | Phase 8 | ✓ Complete | 2026-06-13 |
+| GRP-07 | Phase 8 | ✓ Complete | 2026-06-13 |
+| PAY-07 | Phase 7 | ✓ Complete | 2026-06-20 |
+| PAY-08 | Phase 7 | ✓ Complete | 2026-06-20 |
+| PAY-09 | Phase 7 | ✓ Complete | 2026-06-20 |
+| PAY-10 | Phase 7 | ✓ Complete | 2026-06-20 |
+| PAY-11 | Phase 7 | ✓ Complete | 2026-06-20 |
+| DIS-01 | Phase 11 | ✓ Complete | 2026-06-22 |
+| DIS-02 | Phase 11 | ✓ Complete | 2026-06-22 |
+| DIS-03 | Phase 11 | ✓ Complete | 2026-06-22 |
+| DIS-04 | Phase 11 | ✓ Complete | 2026-06-22 |
+| DIS-05 | Phase 11 | ✓ Complete | 2026-06-22 |
+| DIS-06 | Phase 11 | ✓ Complete | 2026-06-22 |
+| DIS-07 | Phase 11 | ✓ Complete | 2026-06-22 |
+| DIS-08 | Phase 11 | ✓ Complete | 2026-06-22 |
+| SEC-01 | Phase 1 | Pending | — |
+| SEC-02 | Phase 1 | Pending | — |
+| SEC-03 | Phase 1 | Pending | — |
+| SEC-04 | Phase 1 | Pending | — |
+| SEC-05 | Phase 1 | Pending | — |
+| SEC-06 | Phase 1 | Pending | — |
+| SEC-07 | Phase 1 | Pending | — |
+| POR-01 | Phase 2 | Pending | — |
+| POR-02 | Phase 2 | Pending | — |
+| POR-03 | Phase 2 | Pending | — |
+| POR-04 | Phase 2 | Pending | — |
+| POR-05 | Phase 2 | Pending | — |
+| POR-06 | Phase 2 | Pending | — |
+| POR-07 | Phase 2 | Pending | — |
+| POR-08 | Phase 2 | Pending | — |
+| AI-01 | Phase 3 | Pending | — |
+| AI-02 | Phase 3 | Pending | — |
+| AI-03 | Phase 3 | Pending | — |
+| AI-04 | Phase 3 | Pending | — |
+| AI-05 | Phase 3 | Pending | — |
+| SEC-08 | Phase 3 | Pending | — |
+| ALM-01 | Phase 4 | Pending | — |
+| ALM-02 | Phase 4 | Pending | — |
+| ALM-03 | Phase 4 | Pending | — |
+| ALM-04 | Phase 4 | Pending | — |
+| ALM-05 | Phase 4 | Pending | — |
+| ALM-06 | Phase 4 | Pending | — |
+| PAY-01 | Phase 5 | Pending | — |
+| PAY-02 | Phase 5 | Pending | — |
+| PAY-03 | Phase 5 | Pending | — |
+| PAY-04 | Phase 5 | Pending | — |
+| PAY-05 | Phase 5 | Pending | — |
+| PAY-06 | Phase 5 | Pending | — |
+| ALM-07 | Phase 5 | Pending | — |
+| ANL-01 | Phase 6 | Pending | — |
+| ANL-02 | Phase 6 | Pending | — |
+| ANL-03 | Phase 6 | Pending | — |
+| ANL-04 | Phase 6 | Pending | — |
+| ACC-01 | Phase 10 | Pending | — |
+| ACC-02 | Phase 10 | Pending | — |
+| ACC-03 | Phase 10 | Pending | — |
+| ACC-04 | Phase 10 | Pending | — |
+| ACC-05 | Phase 10 | Pending | — |
+| ACC-06 | Phase 10 | Pending | — |
+| ACC-07 | Phase 10 | Pending | — |
+| ACC-08 | Phase 10 | Pending | — |
+| ACC-09 | Phase 10 | Pending | — |
+| ACC-10 | Phase 10 | Pending | — |
+| ACC-11 | Phase 10 | Pending | — |
+| ACC-12 | Phase 10 | Pending | — |
+| ACC-13 | Phase 10 | Pending | — |
+| ACC-14 | Phase 10 | Pending | — |
+| ACC-15 | Phase 10 | Pending | — |
 
 ---
 
@@ -249,3 +265,18 @@
 | ACC-13 | 세무사 이메일 자동 전송: 월별 손익 PDF 생성 + 이메일 발송(매월 N일 자동 or 수동) + 전송 이력 저장 | P1 | 10 |
 | ACC-14 | 모바일 퍼스트 반응형 UI: 하단 탭바(모바일)/좌측 사이드바(데스크탑), FAB, 카드 목록, 한국식 금액 포맷, 다크모드 | P0 | 10 |
 | ACC-15 | Cloudflare Pages 배포 설정: 환경변수(VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY, VITE_RYEK_FIREBASE_*), 빌드 명령, 커스텀 도메인 | P0 | 10 |
+
+---
+
+## DIS — Discount System (Phase 11)
+
+| ID | Requirement | Priority | Phase | Status |
+|----|-------------|----------|-------|--------|
+| DIS-01 | calcTotalFee(student, feePresets, discountTypes?) 할인 반영 — 반환: { total, original, discountAmount, discountName }. discountTypes 미전달 시 역호환 | P0 | 11 | ✓ 2026-06-22 |
+| DIS-02 | rye-discounts Firestore 리스너 + discountTypes state + saveDiscountTypes 함수 (App.jsx) | P0 | 11 | ✓ 2026-06-22 |
+| DIS-03 | 할인 타입 CRUD UI (PaymentsView 5번째 탭, admin/manager only): 리스트·추가·수정·삭제·활성/비활성 토글 | P0 | 11 | ✓ 2026-06-22 |
+| DIS-04 | 초기 할인 타입 7개 씨드 상수 (AdminTools에서 0개일 때 표시, 버튼 클릭 시 생성) | P1 | 11 | ✓ 2026-06-22 |
+| DIS-05 | StudentFormModal 할인 배정 섹션 — 할인 타입 선택·시작일·종료일·다과목 과목 선택·메모 (canManageAll만) | P0 | 11 | ✓ 2026-06-22 |
+| DIS-06 | 수납 리스트 행 할인 표시 — 원가 취소선 + 할인가 + 할인명 뱃지 (조건: discountAmount>0 && p.amount>feeResult.total) | P0 | 11 | ✓ 2026-06-22 |
+| DIS-07 | 수납 상세 모달 할인 브레이크다운 섹션 — "할인 적용: [할인명] -[할인액]원 (원가: [원가]원)" | P0 | 11 | ✓ 2026-06-22 |
+| DIS-08 | 모든 calcTotalFee 호출부 역호환 업데이트: Dashboard, SettlementView, StudentManagement, PaymentsView(TDZ 수정 포함) | P0 | 11 | ✓ 2026-06-22 |
