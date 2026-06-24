@@ -124,7 +124,7 @@ export function StudentFormModal({ student, teachers, currentUser, categories, f
     });
     setErr(""); setConfirming(false);
   };
-  const handlePhoto = async (e) => { const file = e.target.files?.[0]; if (!file) return; try { const compressed = await compressImage(file, 360, 0.75); set("photo", compressed); } catch(err) { console.error("Photo error:",err); } };
+  const handlePhoto = async (e) => { const file = e.target.files?.[0]; if (!file) return; try { const compressed = await compressImage(file, 360, 0.75); set("photo", compressed); } catch(err) { console.error("Photo error:",err); setErr("사진 업로드에 실패했습니다."); } };
   const validate = () => {
     if (!form.name.trim()) { setErr("이름을 입력하세요."); return false; }
     if (!isEdit && !form.birthDate) { setErr("생년월일을 입력하세요. (회원코드 비밀번호 생성에 필요)"); return false; }
@@ -614,9 +614,10 @@ export function StudentDetailModal({ student: s, teachers, currentUser, categori
                   {(l.schedule || []).filter(sc => sc.day).length === 0 && <span style={{ color: "var(--ink-30)", fontSize: 12 }}>요일 미지정</span>}
                 </div>
                 {onSaveStudent && s.status !== "withdrawn" && (canManageAll(currentUser.role) || (currentUser.role === "teacher" && !!currentUser.id && l.teacherId === currentUser.id)) && (
-                  <button type="button" onClick={() => {
+                  <button type="button" onClick={async () => {
                     const updLessons = (s.lessons || []).map(ll => ll.instrument === l.instrument ? { ...ll, pausedAt: ll.pausedAt ? null : TODAY_STR } : ll);
-                    onSaveStudent({ ...s, lessons: updLessons });
+                    try { await onSaveStudent({ ...s, lessons: updLessons }); }
+                    catch (e) { console.error("레슨 휴원 저장 실패:", e); }
                   }} style={{background:l.pausedAt?"var(--green-lt)":"var(--gold-lt)",border:"none",borderRadius:6,color:l.pausedAt?"var(--green)":"var(--gold-dk)",cursor:"pointer",fontSize:11,fontWeight:600,padding:"3px 10px",fontFamily:"inherit",marginTop:4,alignSelf:"flex-start"}}>
                     {l.pausedAt ? "▶ 이 레슨 복귀" : "⏸ 이 레슨 휴원"}
                   </button>

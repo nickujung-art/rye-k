@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { IC, THIS_MONTH } from "../../constants.jsx";
-import { monthLabel, fmtMoney, getAudience, sendAligoMessage } from "../../utils.js";
+import { monthLabel, fmtMoney, getAudience, sendAligoMessage, calcTotalFee } from "../../utils.js";
 import { aiPolishPaymentMessage } from "../../aiClient.js";
 
 const TEMPLATES = {
@@ -18,7 +18,7 @@ const TYPE_LABELS = {
   makeup_lesson: "보강 안내",
 };
 
-export default function AlimtalkModal({ type: initialType = "monthly_fee", students = [], month = THIS_MONTH, onClose, onSend, getPayment }) {
+export default function AlimtalkModal({ type: initialType = "monthly_fee", students = [], month = THIS_MONTH, onClose, onSend, getPayment, feePresets = {}, discountTypes = [] }) {
   const [type, setType] = useState(initialType);
   const [targetMode, setTargetMode] = useState(type === "unpaid_reminder" ? "unpaid" : "all");
   const [makeupDate, setMakeupDate] = useState("");
@@ -38,12 +38,12 @@ export default function AlimtalkModal({ type: initialType = "monthly_fee", stude
     new Set(students.filter(s => {
       const p = getPayment?.(s.id);
       if (!p || !p.paid) return true;
-      const total = p.amount ?? ((s.monthlyFee || 0) + (s.instrumentRental ? (s.rentalFee || 0) : 0));
+      const total = p.amount ?? calcTotalFee(s, feePresets, discountTypes).total;
       return p.paidAmount != null && p.paidAmount < total;
     }).map(s => s.id))
   );
 
-  const autoFee = (s) => (s.monthlyFee || 0) + (s.instrumentRental ? (s.rentalFee || 0) : 0);
+  const autoFee = (s) => calcTotalFee(s, feePresets, discountTypes).total;
 
   // 잔액 계산: 부분납부 시 미납 잔액, 미납 시 전체 금액
   const getRemainingAmt = (s) => {

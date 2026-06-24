@@ -749,8 +749,9 @@ export default function PaymentsView({
                       const base = p?.amount ?? autoFee(s);
                       const record = { ...(p||{}), id: p?.id||uid(), studentId: s.id, month, amount: base, paid: true, paidAmount: base, paidDate: TODAY_STR, method: "transfer", note: p?.note||"", extraCharges: p?.extraCharges||[], createdAt: p?.createdAt||Date.now(), updatedAt: Date.now() };
                       const upd = p ? payments.map(pp => pp.id === p.id ? record : pp) : [...payments, record];
-                      try { await onSavePayments(upd); onLog(`${s.name} 회원 ${monthLabel(month)} 수강료 입금 확인`); } catch {}
-                      setQuickPayingId(null);
+                      try { await onSavePayments(upd); onLog(`${s.name} 회원 ${monthLabel(month)} 수강료 입금 확인`); }
+                      catch (e) { console.error("QuickPay 저장 실패:", e); onLog(`입금 처리 실패 (${s.name}): ${e?.message || "오류"}`); }
+                      finally { setQuickPayingId(null); }
                     }}
                     style={{background:"var(--green)",color:"#fff",border:"none",borderRadius:8,padding:"5px 11px",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit",opacity:quickPayingId===s.id?0.5:1,transition:"opacity .1s",whiteSpace:"nowrap"}}
                   >
@@ -770,8 +771,9 @@ export default function PaymentsView({
                     const base = p?.amount ?? autoFee(s);
                     const record = { ...(p||{}), id: p?.id||uid(), studentId: s.id, month, amount: base, paid: true, paidAmount: base, paidDate: TODAY_STR, method: "transfer", note: p?.note||"", extraCharges: p?.extraCharges||[], createdAt: p?.createdAt||Date.now(), updatedAt: Date.now() };
                     const upd = p ? payments.map(pp => pp.id === p.id ? record : pp) : [...payments, record];
-                    try { await onSavePayments(upd); onLog(`${s.name} 회원 ${monthLabel(month)} 수강료 입금 확인`); } catch {}
-                    setQuickPayingId(null);
+                    try { await onSavePayments(upd); onLog(`${s.name} 회원 ${monthLabel(month)} 수강료 입금 확인`); }
+                    catch (e) { console.error("QuickPay 저장 실패:", e); onLog(`입금 처리 실패 (${s.name}): ${e?.message || "오류"}`); }
+                    finally { setQuickPayingId(null); }
                   }}
                   style={{background:"var(--green)",color:"#fff",border:"none",borderRadius:8,padding:"5px 11px",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit",opacity:quickPayingId===s.id?0.5:1,transition:"opacity .1s",whiteSpace:"nowrap"}}
                 >
@@ -868,6 +870,9 @@ export default function PaymentsView({
                           setConfirmingPaymentId(charge.id);
                           try {
                             await onConfirmInstantPayment(charge, student);
+                          } catch (e) {
+                            setApproveInstantErr(e?.message || "입금 확인 처리에 실패했습니다.");
+                            setTimeout(() => setApproveInstantErr(""), 4000);
                           } finally {
                             setConfirmingPaymentId(null);
                           }
@@ -1271,6 +1276,8 @@ export default function PaymentsView({
           students={visibleStudents}
           month={month}
           getPayment={getPayment}
+          feePresets={feePresets}
+          discountTypes={discountTypes}
           onClose={() => setAlimtalkModal(null)}
           onSend={async (type, targets, options) => {
             try {

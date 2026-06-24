@@ -172,6 +172,7 @@ export async function sendAligoMessage(type, students, options = {}) {
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: params.toString(),
     });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: Aligo API 응답 오류`);
     const data = await res.json();
     results.push(data);
     if (data.code !== 0) {
@@ -193,6 +194,7 @@ export async function fetchAligoRemain() {
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: params.toString(),
   });
+  if (!res.ok) throw new Error(`HTTP ${res.status}: Aligo API 응답 오류`);
   const text = await res.text();
   let data;
   try { data = JSON.parse(text); } catch { throw new Error(`파싱실패: ${text.slice(0, 80)}`); }
