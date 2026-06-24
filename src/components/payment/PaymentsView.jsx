@@ -981,8 +981,9 @@ export default function PaymentsView({
                       <div style={{display:"flex",alignItems:"center",gap:8,marginTop:6,padding:"8px 12px",background:"var(--gold-lt)",border:"1.5px solid rgba(245,168,0,.3)",borderRadius:8,fontSize:12,color:"var(--gold-dk)"}}>
                         <span style={{flex:1}}>현재 수강료 기준: <strong>{fmtMoney(autoFee(s))}</strong></span>
                         <button className="btn btn-secondary btn-xs" onClick={() => setEditForm(f => {
-                          const newBase = autoFee(s) - (f.extraCharges||[]).reduce((sum,x)=>sum+(x.amount||0),0);
-                          return {...f, amount: autoFee(s), baseAmount: Math.max(0, newBase)};
+                          const newAmt = autoFee(s);
+                          const newBase = newAmt - (f.extraCharges||[]).reduce((sum,x)=>sum+(x.amount||0),0);
+                          return {...f, amount: newAmt, baseAmount: Math.max(0, newBase), ...(!f.paid ? { paidAmount: newAmt } : {})};
                         })}>반영</button>
                       </div>
                     )}

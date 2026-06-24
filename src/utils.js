@@ -176,7 +176,7 @@ export async function sendAligoMessage(type, students, options = {}) {
     results.push(data);
     if (data.code !== 0) {
       const rawMsg = data.message || "Aligo API 오류";
-      const isIpError = rawMsg.includes("IP") || rawMsg.includes("서버") || data.code === -100;
+      const isIpError = rawMsg.includes("IP") || data.code === -100;
       throw new Error(isIpError ? `알림톡 IP 인증 오류: Aligo 대시보드에서 발신 IP 등록이 필요합니다. (${rawMsg})` : rawMsg);
     }
   }

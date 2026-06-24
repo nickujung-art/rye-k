@@ -613,7 +613,7 @@ export function StudentDetailModal({ student: s, teachers, currentUser, categori
                   {(l.schedule || []).filter(sc => sc.day).map((sc, i) => (<span key={i} className="sched-chip">{sc.day}요일{sc.time && <span className="sched-chip-time"> {sc.time}</span>}</span>))}
                   {(l.schedule || []).filter(sc => sc.day).length === 0 && <span style={{ color: "var(--ink-30)", fontSize: 12 }}>요일 미지정</span>}
                 </div>
-                {onSaveStudent && s.status !== "withdrawn" && (canManageAll(currentUser.role) || (currentUser.role === "teacher" && l.teacherId === currentUser.id)) && (
+                {onSaveStudent && s.status !== "withdrawn" && (canManageAll(currentUser.role) || (currentUser.role === "teacher" && !!currentUser.id && l.teacherId === currentUser.id)) && (
                   <button type="button" onClick={() => {
                     const updLessons = (s.lessons || []).map(ll => ll.instrument === l.instrument ? { ...ll, pausedAt: ll.pausedAt ? null : TODAY_STR } : ll);
                     onSaveStudent({ ...s, lessons: updLessons });

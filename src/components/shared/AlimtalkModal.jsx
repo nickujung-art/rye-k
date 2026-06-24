@@ -81,8 +81,8 @@ export default function AlimtalkModal({ type: initialType = "monthly_fee", stude
     return students;
   })();
 
-  const zeroFeeStudents = type === "monthly_fee"
-    ? targets.filter(s => { const p = getPayment?.(s.id); return (p?.amount ?? autoFee(s)) === 0; })
+  const zeroFeeStudents = (type === "monthly_fee" || type === "unpaid_reminder")
+    ? targets.filter(s => getRemainingAmt(s) === 0)
     : [];
 
   const preview = (() => {
